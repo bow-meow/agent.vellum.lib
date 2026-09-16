@@ -983,7 +983,13 @@ git commit -m "design-tournament: close loopholes found in pressure testing"
 
 ## Verification (whole plan)
 
-- [ ] `node --test .../tally.test.mjs` — 14 tests green (Tasks 1–2)
+- [ ] All tests green — **19** across both files (Tasks 1–3). Name the files explicitly; `node --test <dir>` tries to load the directory as a module and fails with `MODULE_NOT_FOUND`:
+
+```bash
+cd design-tournament/skills/design-tournament/scripts/tests
+node --test tally.test.mjs workflow-syntax.test.mjs
+```
+
 - [ ] `tally.mjs` CLI live-smoked against a real JSON file, output read (Task 2 Step 5)
 - [ ] Workflow script contains no `Date.now()` / `new Date()` / `Math.random()` (Task 3 Step 2)
 - [ ] `lint-skill.mjs` green with zero warnings (Task 4 Step 4)
