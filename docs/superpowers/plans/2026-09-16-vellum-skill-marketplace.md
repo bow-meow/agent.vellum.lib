@@ -58,12 +58,41 @@ Create `C:/repos/agent.vellum.lib/verify.mjs` — a throwaway checker used by ev
 ```js
 #!/usr/bin/env node
 // Throwaway plan-verification checker. Deleted in Task 8.
+// Usage: node verify.mjs [--generalized] <plugin-name>...
 import { readFileSync, existsSync } from 'node:fs';
 
 const root = 'C:/repos/agent.vellum.lib';
-const expected = process.argv.slice(2);
+const srcRoot = 'C:/repos/symmetry.world/claude-skills';
+
+const argv = process.argv.slice(2);
+const generalized = argv.includes('--generalized');
+const expected = argv.filter((a) => a !== '--generalized');
+
+// version is pinned exactly, not shape-matched — humanizer must stay 2.13.0.
+// driftBudget is (lines removed + lines added) against the copy source, so a
+// truncated or rewritten skill fails even though its manifest is well-formed.
+// ticket-quest's budget only opens up once Task 5's edits land.
+const EXPECT = {
+  'code-comments': { version: '1.0.0',  driftBudget: 0 },
+  'humanizer':     { version: '2.13.0', driftBudget: 0 },
+  'pr-respond':    { version: '1.0.0',  driftBudget: 2 },
+  'ticket-quest':  { version: '1.0.0',  driftBudget: generalized ? 24 : 0 },
+};
+
 let bad = 0;
 const fail = (m) => { console.error('FAIL ' + m); bad++; };
+
+// Multiset line comparison — immune to the line-number shifts that an
+// insertion causes, unlike a positional diff.
+function drift(aText, bText) {
+  const norm = (s) => s.split('\n').map((l) => l.trimEnd()).filter(Boolean);
+  const tally = (ls) => ls.reduce((m, l) => m.set(l, (m.get(l) || 0) + 1), new Map());
+  const a = tally(norm(aText)), b = tally(norm(bText));
+  let n = 0;
+  for (const [l, c] of a) n += Math.max(0, c - (b.get(l) || 0));
+  for (const [l, c] of b) n += Math.max(0, c - (a.get(l) || 0));
+  return n;
+}
 
 const mk = JSON.parse(readFileSync(`${root}/.claude-plugin/marketplace.json`, 'utf8'));
 if (mk.name !== 'vellum') fail(`marketplace name is "${mk.name}", expected "vellum"`);
@@ -73,19 +102,33 @@ const names = mk.plugins.map((p) => p.name);
 if (names.join(',') !== expected.join(',')) fail(`plugins are [${names}], expected [${expected}]`);
 
 for (const p of mk.plugins) {
+  const want = EXPECT[p.name];
+  if (!want) { fail(`${p.name}: unknown plugin`); continue; }
+
   if (p.source !== `./${p.name}`) fail(`${p.name}: source is "${p.source}", expected "./${p.name}"`);
-  if (!p.description?.trim()) fail(`${p.name}: empty description`);
+  if (!p.description?.trim()) fail(`${p.name}: empty catalogue description`);
 
-  const pj = `${root}/${p.name}/.claude-plugin/plugin.json`;
-  if (!existsSync(pj)) { fail(`${p.name}: no plugin.json`); continue; }
-  const j = JSON.parse(readFileSync(pj, 'utf8'));
-  if (j.name !== p.name) fail(`${p.name}: plugin.json name is "${j.name}"`);
-  if (j.author?.name !== 'bow-meow') fail(`${p.name}: author is "${j.author?.name}"`);
-  if (!/^\d+\.\d+\.\d+$/.test(j.version || '')) fail(`${p.name}: bad version "${j.version}"`);
+  const pjPath = `${root}/${p.name}/.claude-plugin/plugin.json`;
+  if (!existsSync(pjPath)) { fail(`${p.name}: no plugin.json`); continue; }
+  const pj = JSON.parse(readFileSync(pjPath, 'utf8'));
+  if (pj.name !== p.name) fail(`${p.name}: plugin.json name is "${pj.name}"`);
+  if (pj.author?.name !== 'bow-meow') fail(`${p.name}: author is "${pj.author?.name}"`);
+  if (pj.version !== want.version) fail(`${p.name}: version is "${pj.version}", expected "${want.version}"`);
+  if (pj.description !== p.description) fail(`${p.name}: plugin.json and catalogue descriptions differ`);
 
-  const skill = `${root}/${p.name}/skills/${p.name}/SKILL.md`;
-  if (!existsSync(skill)) fail(`${p.name}: no skills/${p.name}/SKILL.md`);
-  else if (!readFileSync(skill, 'utf8').startsWith('---\n')) fail(`${p.name}: SKILL.md lacks frontmatter`);
+  const skillPath = `${root}/${p.name}/skills/${p.name}/SKILL.md`;
+  if (!existsSync(skillPath)) { fail(`${p.name}: no skills/${p.name}/SKILL.md`); continue; }
+  const skill = readFileSync(skillPath, 'utf8');
+  if (!skill.startsWith('---\n')) fail(`${p.name}: SKILL.md lacks frontmatter`);
+  const declared = skill.match(/^name:\s*(\S+)/m)?.[1];
+  if (declared !== p.name) fail(`${p.name}: SKILL.md declares name "${declared}"`);
+
+  const srcPath = `${srcRoot}/${p.name}/SKILL.md`;
+  if (existsSync(srcPath)) {
+    const d = drift(readFileSync(srcPath, 'utf8'), skill);
+    if (d > want.driftBudget)
+      fail(`${p.name}: SKILL.md drifts ${d} line(s) from source, budget ${want.driftBudget}`);
+  }
 }
 
 console.log(bad ? `${bad} failure(s)` : `OK — ${names.length} plugin(s): ${names.join(', ')}`);
@@ -99,6 +142,8 @@ node C:/repos/agent.vellum.lib/verify.mjs code-comments
 ```
 
 Expected: FAIL — `ENOENT` on `.claude-plugin/marketplace.json`, because nothing exists yet.
+
+This is the weakest red in the plan: it fails because the checker cannot run at all, not because an assertion tripped. That is unavoidable when bootstrapping an empty repo — from Task 2 onward every red is a real assertion failure.
 
 - [ ] **Step 3: Write `.gitignore`**
 
@@ -213,7 +258,7 @@ git commit -m "Add vellum marketplace skeleton and code-comments plugin"
 
 **Interfaces:**
 - Consumes: `marketplace.json` and `README.md` from Task 1.
-- Produces: a second `plugins` entry. Note the version is **`2.13.0`**, not `1.0.0` — `verify.mjs` only checks the shape, so getting this wrong will pass verification. Check it by eye.
+- Produces: a second `plugins` entry. The version is **`2.13.0`**, not `1.0.0`. `verify.mjs` pins this exactly, so writing `1.0.0` fails the build rather than slipping through.
 
 - [ ] **Step 1: Run verification to see the expected failure**
 
@@ -272,7 +317,19 @@ Strips AI writing patterns out of prose headed somewhere permanent — PR replie
 emails, docs. Based on Wikipedia's "Signs of AI writing". MIT licensed.
 ```
 
-- [ ] **Step 6: Verify the version survived the copy**
+- [ ] **Step 6: Prove the version pin actually fails when wrong**
+
+Temporarily set `"version": "1.0.0"` in `humanizer/.claude-plugin/plugin.json` and run:
+
+```bash
+node C:/repos/agent.vellum.lib/verify.mjs code-comments humanizer
+```
+
+Expected: FAIL — `humanizer: version is "1.0.0", expected "2.13.0"`.
+
+This confirms the pin is load-bearing rather than decorative. Restore `2.13.0` before Step 7.
+
+Then confirm the manifest and the skill's own frontmatter agree:
 
 ```bash
 grep -n 'version' C:/repos/agent.vellum.lib/humanizer/.claude-plugin/plugin.json
@@ -541,34 +598,60 @@ Three tiers from the spec. No restructuring, no behaviour change on the author's
 - Consumes: the files created in Task 4.
 - Produces: nothing later tasks depend on.
 
+**Edit these by hand, not by script.** The replacement text contains `` `^[A-Z][A-Z0-9]+-\d+$` ``, and in JavaScript `String.replace(a, b)` the sequence `` $` `` means "insert everything before the match" — scripting this edit naively duplicates half the file into itself while still reporting success. If you must script it, pass a function as the replacement (`s.replace(a, () => b)`), which disables `$` substitution entirely. `sed` has the equivalent problem with `&` and backslashes. The drift budget in Step 10 is what catches this if it happens.
+
+**Measured, not estimated:** applying the four edits below produces a drift of exactly **22** lines against a budget of 24, and preserves all seven tier-3 tokens. If your numbers differ, your edits differ.
+
 - [ ] **Step 1: Write the regex behaviour check**
 
 Create `C:/repos/agent.vellum.lib/check-ticket-regex.mjs`. Deleted in Task 8.
 
 ```js
 #!/usr/bin/env node
-// Throwaway check: the generalized ticket pattern must still accept the author's
-// own keys while also accepting arbitrary Jira projects. Deleted in Task 8.
+// Throwaway check for the Task 5 generalization. Deleted in Task 8.
+// Asserts three things: the pattern generalized, the author's own keys still
+// match, and the tier-3 block was REFRAMED rather than deleted.
 import { readFileSync } from 'node:fs';
 
-const src = readFileSync(
+const packaged = readFileSync(
   'C:/repos/agent.vellum.lib/ticket-quest/skills/ticket-quest/SKILL.md', 'utf8');
-
-const m = src.match(/`\^\[A-Z\]\[A-Z0-9\]\+-\\d\+\$`/);
-if (!m) { console.error('FAIL no generalized pattern ^[A-Z][A-Z0-9]+-\\d+$ in SKILL.md'); process.exit(1); }
-
-const re = /^[A-Z][A-Z0-9]+-\d+$/;
-const accept = ['SYM-9713', 'ESG-1234', 'ABC-1', 'PROJ-42', 'A1B-7'];
-const reject = ['sym-9713', 'SYM9713', 'S-1', 'SYM-', '-123'];
+const source = readFileSync(
+  'C:/repos/symmetry.world/claude-skills/ticket-quest/SKILL.md', 'utf8');
 
 let bad = 0;
-for (const t of accept) if (!re.test(t)) { console.error(`FAIL should accept ${t}`); bad++; }
-for (const t of reject) if (re.test(t))  { console.error(`FAIL should reject ${t}`); bad++; }
+const fail = (m) => { console.error('FAIL ' + m); bad++; };
 
-if (/SYM-|ESG-/.test(src.split('\n').slice(0, 5).join('\n'))) {
-  console.error('FAIL frontmatter still names SYM-/ESG-'); bad++;
+// Tier 2 — the pattern is generalized in the prose...
+if (!/`\^\[A-Z\]\[A-Z0-9\]\+-\\d\+\$`/.test(packaged))
+  fail('no generalized pattern ^[A-Z][A-Z0-9]+-\\d+$ in SKILL.md');
+if (/\^\(SYM\|ESG\)/.test(packaged))
+  fail('old hardcoded pattern ^(SYM|ESG)-\\d+$ still present');
+if (/SYM-|ESG-/.test(packaged.split('\n').slice(0, 5).join('\n')))
+  fail('frontmatter still names SYM-/ESG-');
+
+// ...and it behaves correctly.
+const re = /^[A-Z][A-Z0-9]+-\d+$/;
+for (const t of ['SYM-9713', 'ESG-1234', 'ABC-1', 'PROJ-42', 'A1B-7'])
+  if (!re.test(t)) fail(`should accept ${t}`);
+for (const t of ['sym-9713', 'SYM9713', 'S-1', 'SYM-', '-123'])
+  if (re.test(t)) fail(`should reject ${t}`);
+
+// Tier 3 — reframed, not deleted. Every environment-specific detail that was in
+// the source must still be in the packaged copy, at the same frequency.
+const count = (hay, needle) =>
+  hay.split(needle).length - 1;
+for (const tok of ['codejock', 'robocopy', '.sym-target', 'mk-worktree',
+                   'bin\\debug', 'INSTALL', 'release/*']) {
+  const a = count(source, tok), b = count(packaged, tok);
+  if (a !== b) fail(`"${tok}" appears ${b}x, source has ${a}x — tier-3 content lost`);
 }
-console.log(bad ? `${bad} failure(s)` : 'OK — pattern generalized, old keys still match');
+if (!/environment-specific/.test(packaged))
+  fail('tier-3 block was not reframed (no "environment-specific" heading)');
+if (/Build\/run conveniences \(AMAG/.test(packaged))
+  fail('tier-3 block still carries the AMAG-only heading');
+
+console.log(bad ? `${bad} failure(s)`
+                : 'OK — pattern generalized, old keys still match, tier-3 content preserved');
 process.exit(bad ? 1 : 0);
 ```
 
@@ -674,7 +757,7 @@ Line 49's comment (`SYM-1.plan.md` / `SYM-1.testplan.md`) may stay — it illust
 node C:/repos/agent.vellum.lib/check-ticket-regex.mjs
 ```
 
-Expected: `OK — pattern generalized, old keys still match`
+Expected: `OK — pattern generalized, old keys still match, tier-3 content preserved`
 
 - [ ] **Step 9: Confirm the script still parses and the edits are comment-only**
 
@@ -686,16 +769,19 @@ diff C:/repos/symmetry.world/claude-skills/ticket-quest/scripts/watch-plan-revie
 
 Expected: `PARSES`, and the diff shows exactly two changed lines (6 and 62), both strings.
 
-- [ ] **Step 10: Confirm the AMAG block was reframed, not deleted**
+- [ ] **Step 10: Confirm the skill stayed within its drift budget**
+
+Step 8 already asserted that the tier-3 content survived. This confirms the file as a whole was edited, not rewritten:
 
 ```bash
-grep -c 'codejock\|robocopy\|sym-target\|mk-worktree' \
-  C:/repos/agent.vellum.lib/ticket-quest/skills/ticket-quest/SKILL.md
-grep -n 'environment-specific' \
-  C:/repos/agent.vellum.lib/ticket-quest/skills/ticket-quest/SKILL.md
+node C:/repos/agent.vellum.lib/verify.mjs --generalized code-comments humanizer pr-respond ticket-quest
 ```
 
-Expected: the count is unchanged from the source file (verify with the same grep against `C:/repos/symmetry.world/claude-skills/ticket-quest/SKILL.md`), and the `environment-specific` heading is present. Content preserved, framing changed.
+Expected: `OK — 4 plugin(s): code-comments, humanizer, pr-respond, ticket-quest`
+
+Without `--generalized` this same command fails with `ticket-quest: SKILL.md drifts N line(s) from source, budget 0` — run it both ways once to see the budget is real.
+
+If the drift number exceeds 24, the edits went further than the plan specifies. Re-read Steps 3–6 rather than raising the budget.
 
 - [ ] **Step 11: Commit**
 
@@ -723,10 +809,10 @@ git commit -m "Generalize ticket-quest's Jira keys and quarantine its environmen
 cd C:/repos/agent.vellum.lib
 git status --porcelain
 git log --oneline
-node verify.mjs code-comments humanizer pr-respond ticket-quest
+node verify.mjs --generalized code-comments humanizer pr-respond ticket-quest
 ```
 
-Expected: empty `git status`, six commits, verification OK.
+Expected: empty `git status`, six commits, verification OK. `--generalized` is required from Task 5 onward — without it, `ticket-quest` fails its drift budget by design.
 
 - [ ] **Step 2: Ask the user before pushing**
 
