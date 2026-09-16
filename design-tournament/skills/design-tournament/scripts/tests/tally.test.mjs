@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { tally } from '../tally.mjs';
+import { tally, hasCitation, validateEntries } from '../tally.mjs';
 
 const judge = (id, ranking, adequate = true, graft = null) => ({ id, ranking, adequate, graft });
 
@@ -72,4 +72,44 @@ test('no judges is an error, not an empty winner', () => {
 
 test('a judge with no ranking is an error', () => {
   assert.throws(() => tally([{ id: 'j1', adequate: true, ranking: [] }]), /no ranking/);
+});
+
+test('a file:line citation is recognised', () => {
+  assert.equal(hasCitation('as in src/app.ts:42 the handler returns early'), true);
+  assert.equal(hasCitation('see README.md:1'), true);
+  assert.equal(hasCitation('C:\\repos\\thing\\x.mjs:10 does it'), true);
+});
+
+test('prose with no citation is not a citation', () => {
+  assert.equal(hasCitation('This design introduces a service layer.'), false);
+  assert.equal(hasCitation(''), false);
+});
+
+test('a bare version number is not mistaken for a citation', () => {
+  assert.equal(hasCitation('bumped to 1.0:2 in the changelog'), false);
+});
+
+test('an uncited design is rejected before judging', () => {
+  const r = validateEntries([
+    { id: 'A', body: 'Refactor via src/index.mjs:12 and split the module.' },
+    { id: 'B', body: 'A truly elegant layered architecture.' },
+  ]);
+  assert.deepEqual(r.accepted.map((d) => d.id), ['A']);
+  assert.equal(r.rejected.length, 1);
+  assert.equal(r.rejected[0].id, 'B');
+  assert.equal(r.rejected[0].reason, 'no-citation');
+});
+
+test('an over-length design is rejected for compression, not judged long', () => {
+  const long = 'word '.repeat(700) + 'src/a.mjs:1';
+  const r = validateEntries([{ id: 'A', body: long }], 600);
+  assert.equal(r.accepted.length, 0);
+  assert.equal(r.rejected[0].reason, 'over-length');
+  assert.ok(r.rejected[0].words > 600);
+});
+
+test('a design at exactly the cap is accepted', () => {
+  const body = 'src/a.mjs:1 ' + 'word '.repeat(599);
+  const r = validateEntries([{ id: 'A', body }], 600);
+  assert.equal(r.accepted.length, 1);
 });

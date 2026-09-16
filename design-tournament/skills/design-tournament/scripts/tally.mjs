@@ -30,6 +30,28 @@ export function tally(judges) {
   return { outcome: 'winner', winner, firstPlaces, grafts };
 }
 
+// A design must point at real code. The extension must start with a letter so
+// version strings like "1.0:2" are not mistaken for a file reference.
+const CITATION = /[\w./\\-]+\.[A-Za-z]\w*:\d+/;
+
+export function hasCitation(body) {
+  return CITATION.test(body ?? '');
+}
+
+// Length is capped structurally rather than left to a judge's discretion:
+// without a cap, "more thorough" and "longer" are indistinguishable to a judge
+// and the tournament reliably selects for over-engineering.
+export function validateEntries(designs, cap = 600) {
+  const accepted = [], rejected = [];
+  for (const d of designs) {
+    const words = (d.body ?? '').trim().split(/\s+/).filter(Boolean).length;
+    if (!hasCitation(d.body)) rejected.push({ id: d.id, reason: 'no-citation' });
+    else if (words > cap) rejected.push({ id: d.id, reason: 'over-length', words });
+    else accepted.push(d);
+  }
+  return { accepted, rejected };
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const file = process.argv[2];
   if (!file) {
