@@ -105,16 +105,20 @@ the marketplace is the wording that actually fires the skill.
 Each plugin's `.claude-plugin/plugin.json` carries `name`, `description`, `version`, and
 `author`.
 
-### Versions
+### Versions — there are none
 
-| Plugin | Version | Note |
-|---|---|---|
-| `code-comments` | `1.0.0` | |
-| `humanizer` | `2.13.0` | Already self-versioned in frontmatter; resetting would discard real history |
-| `pr-respond` | `1.0.0` | |
-| `ticket-quest` | `1.0.0` | |
+**Corrected during implementation.** This spec originally pinned a `version` per plugin.
+That is wrong, and not as a matter of style: Claude Code uses the **git commit SHA** as
+the version, so every push reaches installers on their next update. A pinned `version`
+field keeps the cached copy until *that string* changes, so new commits silently never
+ship. The packaging linter treats a `version` field as an ERROR, and none of the ~25 peer
+plugins in `amag-claude-skills` carries one.
 
-`humanizer` keeps its existing MIT `LICENSE` file.
+So: **no `version` field in any `plugin.json`, and none in any marketplace entry.**
+
+`humanizer` keeps its own `metadata.version: "2.13.0"` in its SKILL.md frontmatter — a
+different thing, inside the skill rather than the manifest, which this rule does not reach.
+It also keeps its existing MIT `LICENSE` file.
 
 ### The one cross-skill dependency
 

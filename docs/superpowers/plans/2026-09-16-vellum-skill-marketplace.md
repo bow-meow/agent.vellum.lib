@@ -15,7 +15,8 @@
 - Marketplace `name` field is **`vellum`** — not `agent.vellum.lib`. Installs read `humanizer@vellum`.
 - Plugin layout is **`<plugin>/skills/<name>/SKILL.md`** with `scripts/` alongside the SKILL.md, mirroring `amag-symmetry-logs`.
 - **One plugin per skill.** Four plugins: `code-comments`, `humanizer`, `pr-respond`, `ticket-quest`.
-- Plugin versions: `1.0.0` for all except `humanizer`, which is **`2.13.0`** (existing self-versioning, preserved).
+- **No `version` field** in any `plugin.json` or marketplace entry. Claude Code uses the git SHA as the version; a pinned string freezes the cached copy so new commits never ship, and the packaging linter treats it as an ERROR. `humanizer` keeps its `2.13.0` in its SKILL.md frontmatter, which is a different thing.
+- Every `SKILL.md` must pass `node <writing-skills+ dir>/scripts/lint-skill.mjs <skill-dir>/` with zero errors.
 - `author.name` is **`bow-meow`** in every `plugin.json` and in `marketplace.json`'s `owner`.
 - Each catalogue `description` is the skill's own frontmatter `description` condensed to one line. Do not invent new prose.
 - **No contributor surface.** Do not create `CONTRIBUTING.md`, `template/`, `.github/`, or any validation CI.
@@ -822,6 +823,18 @@ This publishes to a public GitHub repo. Confirm, then:
 cd C:/repos/agent.vellum.lib
 git push -u origin main
 ```
+
+- [ ] **Step 2b: Disable the shadowing personal skills first**
+
+A personal skill at `~/.claude/skills/<name>/` **wins the name collision and silently shadows the plugin's copy.** All four skills are currently junctioned there by `setup-links.ps1`, so installing from the marketplace without this step tests the junction, not the plugin — and reports success either way.
+
+```bash
+for s in code-comments humanizer pr-respond ticket-quest; do
+  mv "C:/Users/LocalAdmin/.claude/skills/$s" "C:/Users/LocalAdmin/.claude/skills/_$s.disabled"
+done
+```
+
+The `_` prefix prevents loading and is reversible. Restore them if Task 6 fails and the migration is rolled back.
 
 - [ ] **Step 3: Add the marketplace from GitHub**
 
