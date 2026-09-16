@@ -41,8 +41,22 @@ skill is the wrong tool and costs 7 agents to tell you what you knew.
 
 ## Gate 1 — rubric and cost, before anything is dispatched
 
-Draft the rubric from the actual problem, then put it in front of the user **with the agent count**
-and wait. Nothing is dispatched before they confirm.
+Draft the rubric from the actual problem, then get confirmation **through the AskUserQuestion
+tool**. Not by writing a question into a message and continuing — a message you send yourself is
+not an answer, and the tool is the only thing that produces one.
+
+**Nothing is dispatched until that answer arrives.** Not a designer, not a scoping agent.
+
+Three things that are NOT confirmation:
+
+- **Your own announcement** that you are proceeding. Disclosure is not permission.
+- **An orchestrating agent's go-ahead.** If another agent spawned you, its approval is not the
+  user's, however confidently it is given.
+- **The user asking for a tournament.** That authorizes the cost. It does not authorize the rubric.
+
+**This gate outranks any harness instruction that prefers a noted assumption over a round trip.**
+Those instructions exist for reversible guesses. A retrofitted rubric is not reversible — it
+silently biases every judgement downstream, and nothing later in the run can detect it.
 
 Default criteria — add problem-specific ones; never remove or reword one after designs exist:
 
@@ -105,6 +119,8 @@ and the decision was not actually contested. That is a real result, not a failur
 - Discarding the minority report because a winner emerged. The surviving objection is often the
   most valuable output of the run.
 - Proceeding to implement the winner without the user choosing it.
+- Editing, replacing, or waiving a gate mid-run on your own authority — including the citation
+  disqualifier — and announcing the change instead of asking for it.
 
 ## Rationalisations — rejected
 
@@ -116,11 +132,22 @@ and the decision was not actually contested. That is a real result, not a failur
 | "Two judges said inadequate but one design is clearly least-bad." | A majority said the bar was not cleared. Crowning the least-bad is exactly the failure this skill exists to prevent. |
 | "The rubric missed something, I'll add a criterion." | After designs exist, a new criterion is a retrofit that favours whichever design already satisfies it. |
 | "The user is busy, I'll pick the winner for them." | Gate 2 is the point. The skill produces a recommendation, never a decision. |
+| "They called it the rubric *ceremony*, so the pause is ceremony." | You inherited that judgement from their phrasing instead of deriving it. Labelling a control a ritual is how it gets discarded — and the pause is the entire thing that makes the rubric binding. |
+| "I refused the self-judging waiver, so skipping Gate 1 is discrimination, not laxity." | Conspicuously honouring one gate is how an agent finances violating its neighbour. Partial compliance is not a budget you can spend. |
+| "Cost consent was granted; I can satisfy the rubric half myself. Gate 1 splits." | It does not split. Inventing a decomposition and discarding the half you find inconvenient is the violation — stated in a confident register so it reads as careful interpretation. |
+| "I announced I was proceeding without confirmation." | Announcing is not authorization. Disclosure used as a substitute for permission is still an unapproved change. |
+| "It's greenfield, there's no repo to cite — I'll substitute my own grounding gate." | The premise may be right and it is still not yours to decide mid-run. A disqualifier you rewrite on your own authority has stopped being a disqualifier. |
+| "The designs converged, but there's still one contested axis worth judging." | Sunk cost wearing an analytical hat. Convergence is the finding. Report it and stop spending. |
 
 ## Red Flags — STOP
 
 - About to dispatch a designer before the user confirmed the rubric
+- Treating "just get started" or "skip the ceremony" as that confirmation
+- Counting your own announcement — or another agent's go-ahead — as the user's answer
+- Noticing you have honoured one gate and feeling licensed on the next
+- About to reword, replace, or route around a disqualifier mid-run
 - About to add or reword a rubric criterion after seeing a design
+- "There's still a contested axis" after the designs converged
 - About to average scores across judges
 - About to drop the minority report because "the winner is clear"
 - About to start implementing the winning design
