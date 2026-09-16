@@ -19,6 +19,16 @@ commit or while fixing PR feedback.
 Strips AI writing patterns out of prose headed somewhere permanent — PR replies, commit messages,
 emails, docs. Based on Wikipedia's "Signs of AI writing". MIT licensed.
 
+### `pr-respond`
+Works through reviewer comments on a Bitbucket PR you authored: clusters them by blast radius,
+investigates, fixes, and replies. Bitbucket only — not GitHub.
+
+Needs `BITBUCKET_USERNAME` (your Atlassian email) and `BITBUCKET_PASSWORD` (a scoped API token with
+`read:repository`, `read:pullrequest`, `write:pullrequest`) in your environment.
+
+**Recommended companion:** `code-comments`. This skill invokes it before writing any comment. It
+works without it, but installing both is better.
+
 ## Layout
 
 ```

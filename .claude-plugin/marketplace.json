@@ -13,6 +13,11 @@
       "name": "humanizer",
       "source": "./humanizer",
       "description": "Edit outbound prose so it reads human-written, not AI-generated — PR replies, commit messages, Jira/Confluence comments, emails, docs. Based on Wikipedia's \"Signs of AI writing\" guide."
+    },
+    {
+      "name": "pr-respond",
+      "source": "./pr-respond",
+      "description": "Address reviewer comments on your own Bitbucket pull request — cluster feedback by blast radius, investigate, fix, and reply. Recommended companion: code-comments."
     }
   ]
 }

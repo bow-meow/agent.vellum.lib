@@ -1,0 +1,7 @@
+{
+  "name": "pr-respond",
+  "description": "Address reviewer comments on your own Bitbucket pull request — cluster feedback by blast radius, investigate, fix, and reply. Recommended companion: code-comments.",
+  "author": {
+    "name": "bow-meow"
+  }
+}
