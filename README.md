@@ -37,6 +37,15 @@ before any code is written.
 Shaped around my own setup — worktree root, branch prefix, and the worktree build-seeding steps are
 conventions you will want to change. The skill flags each one.
 
+### `design-tournament`
+For a design decision with a genuinely wide solution space: three designers work from deliberately
+different stances, three agents that wrote nothing judge the results blind against a rubric fixed
+before any design existed, and a synthesis stage grafts the best ideas from the designs that lost
+onto the winner.
+
+Costs 7 agents per run, and asks before spending them. Reports "no adequate design" rather than
+crowning the least-bad entry.
+
 ## Layout
 
 ```

@@ -1,0 +1,7 @@
+{
+  "name": "design-tournament",
+  "description": "Run competing code designs through blind judging — three stance-diverse designers, three fresh judges scoring against a rubric fixed beforehand, then a synthesis that grafts the best ideas from the designs that lost.",
+  "author": {
+    "name": "bow-meow"
+  }
+}
