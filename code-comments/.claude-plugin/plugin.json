@@ -1,0 +1,7 @@
+{
+  "name": "code-comments",
+  "description": "Comment discipline for any language — what earns a comment and what gets deleted. Sweeps comment noise out of changed code before a commit or while fixing PR feedback.",
+  "author": {
+    "name": "bow-meow"
+  }
+}
