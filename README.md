@@ -29,6 +29,14 @@ Needs `BITBUCKET_USERNAME` (your Atlassian email) and `BITBUCKET_PASSWORD` (a sc
 **Recommended companion:** `code-comments`. This skill invokes it before writing any comment. It
 works without it, but installing both is better.
 
+### `ticket-quest`
+Runs assigned Jira tickets end to end: an isolated git worktree per ticket, an agent that
+investigates and drafts a fix plan, peer review until the plan holds up, then a human approval gate
+before any code is written.
+
+Shaped around my own setup — worktree root, branch prefix, and the worktree build-seeding steps are
+conventions you will want to change. The skill flags each one.
+
 ## Layout
 
 ```

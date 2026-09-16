@@ -18,6 +18,11 @@
       "name": "pr-respond",
       "source": "./pr-respond",
       "description": "Address reviewer comments on your own Bitbucket pull request — cluster feedback by blast radius, investigate, fix, and reply. Recommended companion: code-comments."
+    },
+    {
+      "name": "ticket-quest",
+      "source": "./ticket-quest",
+      "description": "Take assigned Jira tickets from investigation through to implementation — an isolated git worktree per ticket, peer-reviewed fix plans, and a human approval gate before any code is written."
     }
   ]
 }
