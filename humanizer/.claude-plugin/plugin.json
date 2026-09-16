@@ -1,0 +1,8 @@
+{
+  "name": "humanizer",
+  "description": "Edit outbound prose so it reads human-written, not AI-generated — PR replies, commit messages, Jira/Confluence comments, emails, docs. Based on Wikipedia's \"Signs of AI writing\" guide.",
+  "author": {
+    "name": "bow-meow"
+  },
+  "license": "MIT"
+}

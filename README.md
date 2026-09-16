@@ -15,6 +15,10 @@ Each skill is its own plugin — install only what you want.
 Comment discipline for any language: what earns a comment, what gets deleted. Use it before a
 commit or while fixing PR feedback.
 
+### `humanizer`
+Strips AI writing patterns out of prose headed somewhere permanent — PR replies, commit messages,
+emails, docs. Based on Wikipedia's "Signs of AI writing". MIT licensed.
+
 ## Layout
 
 ```
