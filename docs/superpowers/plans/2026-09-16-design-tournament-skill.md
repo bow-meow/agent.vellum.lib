@@ -469,15 +469,16 @@ return { designs: entries, rejected, judges: verdicts };
 
 - [ ] **Step 2: Verify the script parses and respects the sandbox**
 
-`node --check` parses without executing, so the injected globals (`args`, `agent`, `parallel`, `phase`, `log`) do not matter — they are runtime names, not syntax.
+**`node --check` does not work on this file** — it rejects top-level `return` and `await`, which are legal here only because the Workflow runtime wraps the script in an async function. Checking it that way reports a false `SyntaxError: Illegal return statement`.
+
+The check has to mirror the wrapper instead, so it lives in a test file alongside the drift checks. Create `scripts/tests/workflow-syntax.test.mjs` with five tests: the wrapped-parse check, `meta` being a first-statement pure literal, no sandbox-forbidden calls (`Date.now()`, `new Date()`, `Math.random()`), and the two anti-drift checks from Step 3.
 
 ```bash
 cd C:/repos/agent.vellum.lib
-node --check design-tournament/skills/design-tournament/scripts/tournament-workflow.mjs && echo "PARSES"
-grep -c 'Date\.now()\|new Date()\|Math\.random()' design-tournament/skills/design-tournament/scripts/tournament-workflow.mjs
+node --test design-tournament/skills/design-tournament/scripts/tests/workflow-syntax.test.mjs
 ```
 
-Expected: `PARSES`, then `0`. Any hit on the second command would throw inside the sandbox at runtime — those three are unavailable because they would break workflow resume.
+Expected: PASS — 5 tests.
 
 - [ ] **Step 3: Write the anti-drift test**
 
