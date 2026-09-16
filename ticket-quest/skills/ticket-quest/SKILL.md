@@ -1,7 +1,7 @@
 ---
 name: ticket-quest
 description: >-
-  Use when taking one or more assigned Jira tickets from investigation through to implementation — a single SYM-/ESG- issue or a whole backlog batch, each worked in its own git worktree. Triggers — "run ticket-quest", "work this ticket", "take my assigned tickets", "work my backlog", or being handed one or more SYM-#### / ESG-#### issues to implement. SKIP for: a Jira question with no code to write, or a trivial change you would just make directly.
+  Use when taking one or more assigned Jira tickets from investigation through to implementation — a single issue or a whole backlog batch, each worked in its own git worktree. Triggers — "run ticket-quest", "work this ticket", "take my assigned tickets", "work my backlog", or being handed one or more `PROJ-####` issues to implement. SKIP for: a Jira question with no code to write, or a trivial change you would just make directly.
 ---
 
 # ticket-quest — Jira tickets to a reviewed, approved implementation
@@ -19,7 +19,7 @@ never tested. This skill is the **orchestrator's** disciplines for exactly those
 
 ## When to use
 
-- One or more Jira issues (`SYM-####` / `ESG-####`) to take from investigation to a reviewable plan
+- One or more Jira issues (`PROJ-####`) to take from investigation to a reviewable plan
   the user approves before any code is written.
 - SKIP for a Jira question with no code, or a trivial change already scoped — just make it.
 
@@ -63,10 +63,12 @@ investigation yourself.
 Create worktrees **generically, per involved repo** — this skill does not depend on any external
 worktree tool.
 
-- **Layout:** `C:\repos\ticket-work\<TICKET>\<repo>` per repo the ticket touches
-  (e.g. `C:\repos\ticket-work\SYM-9713\esg-ng-core-linux`). `<TICKET>` matches `^(SYM|ESG)-\d+$`.
-- **Branch:** `akt/<ticket>_<slug>`. Derive the slug from the ticket summary and **confirm it** with
-  the user before branching.
+- **Layout:** `<WORKTREE_ROOT>\<TICKET>\<repo>` per repo the ticket touches, where
+  `<WORKTREE_ROOT>` defaults to `C:\repos\ticket-work`
+  (e.g. `C:\repos\ticket-work\SYM-9713\esg-ng-core-linux`). `<TICKET>` is a Jira key, matching
+  `^[A-Z][A-Z0-9]+-\d+$`.
+- **Branch:** `<PREFIX>/<ticket>_<slug>`, where `<PREFIX>` is your initials or handle (default:
+  `akt`). Derive the slug from the ticket summary and **confirm it** with the user before branching.
 - **Create (per repo):**
   1. `git -C <clone> fetch`
   2. `git -C <clone> worktree add --no-track -b akt/<ticket>_<slug> <path> <base>`
@@ -75,9 +77,11 @@ worktree tool.
     if it ends up empty — so a fixed re-run isn't blocked by leftovers.
 - **Pre-existing** ticket dir or branch: surface it and let the user choose build-on vs start-fresh.
   Never clobber.
-- **Build/run conveniences (AMAG `symmetryclassic` / `esg-ng-core-linux` only).** A bare worktree
-  cannot be built or sim-tested. When the ticket will need either, you MUST also wire up, per the
-  repos it touches:
+- **Build/run conveniences (environment-specific — the four steps below are an example).** A bare
+  worktree often cannot be built or tested until you seed it, and what that takes depends entirely
+  on your repos. The steps below are what mine (`symmetryclassic` / `esg-ng-core-linux`) need,
+  given as an illustration of the pattern rather than as instructions to follow literally. When the
+  ticket will need building or sim-testing, wire up the equivalent for the repos it touches:
   1. **codejock symlink** — `<TICKET>\codejock` → `C:\repos\codejock` (classic MFC `.vcxproj`
      references CodeJock as a sibling of the checkout root; needs Developer Mode / elevation).
   2. **classic `bin\debug` seed** — robocopy `/XO` `C:\repos\symmetryclassic\Source\bin\debug` →

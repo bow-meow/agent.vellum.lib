@@ -3,7 +3,7 @@
 // so the orchestrator gets a completion notification instead of polling or waiting to be pinged.
 //
 // Run it in the BACKGROUND right after opening plan(s) at the human-review gate:
-//   node watch-plan-reviews.mjs <plans-dir> [--files SYM-1,SYM-2] [--interval 5] [--timeout 7200]
+//   node watch-plan-reviews.mjs <plans-dir> [--files ABC-1,ABC-2] [--interval 5] [--timeout 7200]
 //
 // A "decision" is any non-empty text below the plan's review marker line
 // (the line containing: YOUR REVIEW (type below this line). It exits as soon as ANY watched
@@ -59,7 +59,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function main() {
   const { dir, files, interval, timeout } = parseArgs(process.argv.slice(2));
   if (!dir) {
-    console.error('usage: node watch-plan-reviews.mjs <plans-dir> [--files SYM-1,SYM-2] [--interval 5] [--timeout 7200]');
+    console.error('usage: node watch-plan-reviews.mjs <plans-dir> [--files ABC-1,ABC-2] [--interval 5] [--timeout 7200]');
     process.exit(2);
   }
 
