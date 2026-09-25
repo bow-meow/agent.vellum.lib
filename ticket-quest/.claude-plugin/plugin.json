@@ -1,6 +1,6 @@
 {
   "name": "ticket-quest",
-  "description": "Take assigned Jira tickets from investigation through to implementation — an isolated git worktree per ticket, peer-reviewed fix plans, and a human approval gate before any code is written.",
+  "description": "Take assigned Jira tickets from investigation through to a verified implementation — an isolated git worktree per ticket, a Haiku orchestrator that delegates bounded work to an Opus engineer and consults a Fable advisor only on escalation, and verification of every delegated claim.",
   "author": {
     "name": "bow-meow"
   }

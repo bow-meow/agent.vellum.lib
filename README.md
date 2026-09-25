@@ -30,9 +30,10 @@ Needs `BITBUCKET_USERNAME` (your Atlassian email) and `BITBUCKET_PASSWORD` (a sc
 works without it, but installing both is better.
 
 ### `ticket-quest`
-Runs assigned Jira tickets end to end: an isolated git worktree per ticket, an agent that
-investigates and drafts a fix plan, peer review until the plan holds up, then a human approval gate
-before any code is written.
+Runs assigned Jira tickets end to end on three model roles: a Haiku orchestrator that owns the
+plan and verifies every claim, an Opus engineer that does the building in an isolated git worktree
+per ticket, and a Fable advisor consulted only for architecture, hard diagnosis, or after two failed
+attempts. No human gate before implementation; commit and push stay on your say-so.
 
 Shaped around my own setup — worktree root, branch prefix, and the worktree build-seeding steps are
 conventions you will want to change. The skill flags each one.
