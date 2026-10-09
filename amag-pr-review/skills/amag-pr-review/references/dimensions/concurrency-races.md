@@ -13,6 +13,10 @@ Races are subtle: name the exact interleaving (thread/request/message A does X, 
     operation" field, telling a host "busy" then "idle"): two overlapping runs let the first to finish
     clear the second's state. Needs a count, a per-run key, or proof the runs can't overlap. This
     applies to single-threaded JS too, where overlapping `async` calls interleave at every `await`.
+  - A gate, lock or busy flag that orders work against a disruptive action (a reconnect, a flush, a
+    reload): check every path that performs the action goes through it, not only the one the change was
+    written for (a timer, a deferred callback, a retry). Work skipped because the moment was wrong
+    (disconnected, busy, not ready) must be re-run when that clears, not silently dropped.
   - Lazy initialisation without `Lazy<T>` / lock / `sync.Once`; double-checked locking without volatile.
   - Lock ordering: two locks taken in different orders on different paths.
   - Timers and event handlers firing during or after teardown/dispose.

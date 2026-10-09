@@ -16,7 +16,10 @@
   stores what it was given and can't recover on its own.
 - Error handling: swallowed exceptions, broad `catch` that hides a real failure, errors that leave state
   half-written (DB row written, cache not; message acked, work not done), missing rollback, error paths
-  that surface as an unhandled 500 or crash a service.
+  that surface as an unhandled 500 or crash a service. A wrapper that acts on a thrown error (retry,
+  reclassify, interrupt detection) never fires around a call that returns its failure as a value
+  (`{ error }`, `undefined`, a status code): check what the wrapped call does on failure, and that
+  every step of the protected sequence goes through the wrapper.
 - Contract compatibility:
   - NATS messages / DTOs / generated API types: renamed or removed fields, changed types, enum values
     reordered or renumbered, changed defaults. Check old panel ↔ new server and new panel ↔ old server.

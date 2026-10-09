@@ -18,6 +18,9 @@ You are the **{{REVIEWER}}** reviewer on a code review.
   component, view, dialog, request or connection that can be destroyed and re-created (navigation,
   close and reopen, reconnect) while the work carries on in a service, singleton, task or the server
   does not stop a second run from starting, so the scenario is still live.
+- One defect per finding. When tracing a finding turns up a second path with its own failure (an aside
+  like "…which also skips the lock"), write it as a separate candidate: an aside inside another
+  finding's trigger list gets no fix of its own and is closed when that finding is fixed.
 - Added or changed prose that states facts about behaviour (doc comments, translator `<comment>`s in
   .resx, log, error and dialog text): list each concrete fact it states (the buttons a dialog shows,
   the paths or callers that reach it, units, limits) and open the code that decides each one, following

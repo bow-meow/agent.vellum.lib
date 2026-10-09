@@ -53,8 +53,9 @@
   - The comment names the replacement (`countValidRows`, `timeoutMs`), not just the problem.
 - Comment noise: comments that restate the code, narrate the change ("added to fix X"), or describe
   what instead of why. Missing "why" comments on genuinely non-obvious constraints.
-- Logging: wrong level (errors at Info, noise at Warning), missing context (ids) on error logs,
-  sensitive data in logs.
+- Logging: wrong level (errors at Info, noise at Warning, a failure that retries itself logged as an
+  error), missing context (ids) on error logs, sensitive data in logs. An existing function reused on a
+  new, more frequent path brings its logs and toasts along: check each is still true and not noise there.
 
 ## Severity hints
 - Mostly Low / nit. Duplication of non-trivial logic that will drift → Low. Wrong layer that breaks an
