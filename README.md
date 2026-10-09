@@ -47,6 +47,14 @@ onto the winner.
 Costs 7 agents per run, and asks before spending them. Reports "no adequate design" rather than
 crowning the least-bad entry.
 
+### `amag-raise-bug`
+Raises bug tickets in AMAG's Symmetry Jira from a list of findings. It checks for existing tickets,
+verifies every claim against the code, fills the fields the way the team's tickets do, and shows
+the drafts before creating anything. The field IDs and version values are AMAG's; outside AMAG it
+is only useful as a template.
+
+**Recommended companion:** `humanizer`. This skill writes every ticket through it.
+
 ## Layout
 
 ```

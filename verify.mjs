@@ -26,6 +26,7 @@ const EXPECT = {
   'ticket-quest':  { driftBudget: generalized ? 24 : 0 },
   // No copy source in symmetry.world — the existsSync guard skips its drift check.
   'design-tournament': { driftBudget: 0 },
+  'amag-raise-bug': { driftBudget: 0 },
 };
 
 let bad = 0;

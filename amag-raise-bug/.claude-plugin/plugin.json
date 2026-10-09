@@ -1,0 +1,7 @@
+{
+  "name": "amag-raise-bug",
+  "description": "Raise bug tickets in AMAG's Symmetry Jira — duplicate check, every claim verified against the code, the team's field layout, and drafts shown before anything is created. AMAG-specific.",
+  "author": {
+    "name": "bow-meow"
+  }
+}

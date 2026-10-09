@@ -28,6 +28,11 @@
       "name": "design-tournament",
       "source": "./design-tournament",
       "description": "Run competing code designs through blind judging — three stance-diverse designers, three fresh judges scoring against a rubric fixed beforehand, then a synthesis that grafts the best ideas from the designs that lost."
+    },
+    {
+      "name": "amag-raise-bug",
+      "source": "./amag-raise-bug",
+      "description": "Raise bug tickets in AMAG's Symmetry Jira — duplicate check, every claim verified against the code, the team's field layout, and drafts shown before anything is created. AMAG-specific."
     }
   ]
 }
