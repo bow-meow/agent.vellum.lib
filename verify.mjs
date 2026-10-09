@@ -1,48 +1,19 @@
 #!/usr/bin/env node
-// Throwaway plan-verification checker. Deleted in Task 8.
-// Usage: node verify.mjs [--generalized] <plugin-name>...
+// Marketplace consistency check. Usage: node verify.mjs <plugin-name>... (in catalogue order)
 import { readFileSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
-const root = 'C:/repos/agent.vellum.lib';
-const srcRoot = 'C:/repos/symmetry.world/claude-skills';
-
-const argv = process.argv.slice(2);
-const generalized = argv.includes('--generalized');
-const expected = argv.filter((a) => a !== '--generalized');
+const root = fileURLToPath(new URL('.', import.meta.url));
+const expected = process.argv.slice(2);
 
 // Manifests are intentionally UNVERSIONED: Claude Code uses the git SHA as the
 // version, and a pinned `version` field freezes the cached copy until that
 // string changes — so new commits would silently never reach installers.
 // humanizer keeps its own 2.13.0 in its SKILL.md frontmatter, which is a
 // different thing and stays.
-//
-// driftBudget is (lines removed + lines added) against the copy source, so a
-// truncated or rewritten skill fails even though its manifest is well-formed.
-// ticket-quest's budget only opens up once Task 5's edits land.
-const EXPECT = {
-  'code-comments': { driftBudget: 0 },
-  'humanizer':     { driftBudget: 0 },
-  'pr-respond':    { driftBudget: 2 },
-  'ticket-quest':  { driftBudget: generalized ? 24 : 0 },
-  // No copy source in symmetry.world — the existsSync guard skips its drift check.
-  'design-tournament': { driftBudget: 0 },
-  'amag-raise-bug': { driftBudget: 0 },
-};
 
 let bad = 0;
 const fail = (m) => { console.error('FAIL ' + m); bad++; };
-
-// Multiset line comparison — immune to the line-number shifts that an
-// insertion causes, unlike a positional diff.
-function drift(aText, bText) {
-  const norm = (s) => s.split('\n').map((l) => l.trimEnd()).filter(Boolean);
-  const tally = (ls) => ls.reduce((m, l) => m.set(l, (m.get(l) || 0) + 1), new Map());
-  const a = tally(norm(aText)), b = tally(norm(bText));
-  let n = 0;
-  for (const [l, c] of a) n += Math.max(0, c - (b.get(l) || 0));
-  for (const [l, c] of b) n += Math.max(0, c - (a.get(l) || 0));
-  return n;
-}
 
 const mk = JSON.parse(readFileSync(`${root}/.claude-plugin/marketplace.json`, 'utf8'));
 if (mk.name !== 'vellum') fail(`marketplace name is "${mk.name}", expected "vellum"`);
@@ -52,9 +23,6 @@ const names = mk.plugins.map((p) => p.name);
 if (names.join(',') !== expected.join(',')) fail(`plugins are [${names}], expected [${expected}]`);
 
 for (const p of mk.plugins) {
-  const want = EXPECT[p.name];
-  if (!want) { fail(`${p.name}: unknown plugin`); continue; }
-
   if (p.source !== `./${p.name}`) fail(`${p.name}: source is "${p.source}", expected "./${p.name}"`);
   if (!p.description?.trim()) fail(`${p.name}: empty catalogue description`);
 
@@ -73,13 +41,8 @@ for (const p of mk.plugins) {
   if (!skill.startsWith('---\n')) fail(`${p.name}: SKILL.md lacks frontmatter`);
   const declared = skill.match(/^name:\s*(\S+)/m)?.[1];
   if (declared !== p.name) fail(`${p.name}: SKILL.md declares name "${declared}"`);
-
-  const srcPath = `${srcRoot}/${p.name}/SKILL.md`;
-  if (existsSync(srcPath)) {
-    const d = drift(readFileSync(srcPath, 'utf8'), skill);
-    if (d > want.driftBudget)
-      fail(`${p.name}: SKILL.md drifts ${d} line(s) from source, budget ${want.driftBudget}`);
-  }
+  if (p.name.startsWith('amag-') !== /AMAG-specific\.$/.test(p.description))
+    fail(`${p.name}: an amag- name and an "AMAG-specific." description go together`);
 }
 
 console.log(bad ? `${bad} failure(s)` : `OK — ${names.length} plugin(s): ${names.join(', ')}`);

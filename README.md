@@ -19,15 +19,19 @@ commit or while fixing PR feedback.
 Strips AI writing patterns out of prose headed somewhere permanent — PR replies, commit messages,
 emails, docs. Based on Wikipedia's "Signs of AI writing". MIT licensed.
 
-### `pr-respond`
-Works through reviewer comments on a Bitbucket PR you authored: clusters them by blast radius,
-investigates, fixes, and replies. Bitbucket only — not GitHub.
+### `amag-pr-respond`
+Works through review feedback on your own work: reviewer comments on a Bitbucket PR you authored,
+or the findings a local `amag-pr-review` saved in a ticket folder. Clusters them by blast radius,
+investigates, fixes, and replies with a header giving the verdict, model and confidence. Then it
+writes each defect the human reviewer caught back into `amag-pr-review`'s checklists, so the next
+automated review catches its kind. Bitbucket only, not GitHub.
 
 Needs `BITBUCKET_USERNAME` (your Atlassian email) and `BITBUCKET_PASSWORD` (a scoped API token with
-`read:repository`, `read:pullrequest`, `write:pullrequest`) in your environment.
+`read:repository`, `read:pullrequest`, `write:pullrequest`) in your environment. Local mode needs
+neither.
 
-**Recommended companion:** `code-comments`. This skill invokes it before writing any comment. It
-works without it, but installing both is better.
+**Recommended companions:** `code-comments`, which it invokes before writing any comment, and
+`amag-pr-review`, which local mode and the retro step depend on.
 
 ### `ticket-quest`
 Runs assigned Jira tickets end to end on three model roles: a Haiku orchestrator that owns the
@@ -54,6 +58,18 @@ the drafts before creating anything. The field IDs and version values are AMAG's
 is only useful as a template.
 
 **Recommended companion:** `humanizer`. This skill writes every ticket through it.
+
+### `amag-pr-review`
+Reviews a Bitbucket pull request, or your own ticket worktree under `C:\repos\ticket-work` before
+you push. Opus reviewers each take one dimension (correctness, concurrency, SQL, security, tests and
+more), a verify pass drops what doesn't hold up, and re-reviewing a PR only looks at the files changed
+since the last review. Built around AMAG's Symmetry and Sentinel repos and the `C:\repos` layout.
+
+Needs the same Bitbucket variables as `amag-pr-respond`. If your API token lacks `read:user`, also
+set `BITBUCKET_ACCOUNT_ID`.
+
+Not the same plugin as `amag-pr-review` in the AMAG team marketplace, which posts its findings with
+no confirmation step. The two share a name, so install only one.
 
 ## Layout
 

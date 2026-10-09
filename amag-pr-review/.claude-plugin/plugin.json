@@ -1,0 +1,7 @@
+{
+  "name": "amag-pr-review",
+  "description": "Review a Bitbucket pull request or a ticket worktree under C:\\repos\\ticket-work with Opus reviewers per dimension, a verify pass, and incremental re-review. Built for AMAG's Symmetry and Sentinel repos. AMAG-specific.",
+  "author": {
+    "name": "bow-meow"
+  }
+}

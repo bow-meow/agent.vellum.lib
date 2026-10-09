@@ -4,7 +4,7 @@ description: >-
   Use when raising bug tickets in AMAG's Symmetry Jira (SYM project) for defects found in code
   review, testing, or a rig session. Triggers — "raise tickets for these", "file a bug for this",
   "log this in Jira", "make it like SYM-1234". SKIP for: working an existing ticket (ticket-quest),
-  or only commenting on one.
+  only commenting on one, or IDM project tickets (amag-jira-ticket).
 ---
 
 # amag-raise-bug — raise Symmetry bug tickets

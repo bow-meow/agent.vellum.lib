@@ -120,8 +120,9 @@ validation at milestones and before completion. TDD is not required universally.
 ## Worktree mechanics
 
 Create worktrees with the bundled script, never by hand-running git — it needs no console, and it
-owns the fetch, ref checks, and rollback. Once the repos, a base per repo, and the slug are
-confirmed, make one call (path relative to this skill's directory):
+owns the fetch, ref checks, and rollback. Where the environment has its own one-step worktree
+command (see the build/run conveniences below), use that instead. Once the repos, a base per repo,
+and the slug are confirmed, make one call (path relative to this skill's directory):
 
 ```
 node scripts/mk-worktree.mjs <TICKET> <slug> --repo <clone>[=<base>] [--repo ...]
@@ -148,19 +149,27 @@ node scripts/mk-worktree.mjs <TICKET> <slug> --repo <clone>[=<base>] [--repo ...
   ticket will need building or sim-testing, wire up the equivalent for the repos it touches:
   1. **codejock symlink** — `<TICKET>\codejock` → `C:\repos\codejock` (classic MFC `.vcxproj`
      references CodeJock as a sibling of the checkout root; needs Developer Mode / elevation).
-  2. **classic `bin\debug` seed** — robocopy `/XO` `C:\repos\symmetryclassic\Source\bin\debug` →
-     the classic worktree's `Source\bin\debug`, so `sym start` runs without a full classic build.
+  2. **classic `bin\debug` seed** — robocopy `/XO` from the complete build under
+     `C:\repos\symmetry.build` that matches the worktree's base (e.g.
+     `C:\repos\symmetry.build\11.1.0\symmetryclassic\Source\bin\debug` for a `release/11.1.0-*` base)
+     → the classic worktree's `Source\bin\debug`, so `sym start` runs without a full classic build.
+     `just seed-sym <build>` in `symmetry.world` does this without prompting. Never seed from
+     `C:\repos\symmetryclassic`: its branch and build date drift, so the worktree runs a mix of fresh
+     and stale binaries.
   3. **`INSTALL` seed** — robocopy `/XO` `C:\repos\INSTALL` → `C:\repos\ticket-work\<TICKET>\INSTALL`.
      **Required for docker-sim testing:** the sims now *bind-mount* the worktree's build outputs
      (they no longer bake a WSL image), so an unseeded worktree cannot spin sims.
   4. **`.sym-target`** — set to `<TICKET>` so `symmetry.world` `just` build/run/log recipes act on
      this worktree.
-  Seed sources must be built first (main classic + main esg). For a **fresh** setup,
-  `just mk-worktree <ticket> <slug> --repos classic=<base>,core=<base>` in `symmetry.world` does all
-  four plus the worktrees in one step. It needs a console — it still prompts for which build to seed
-  from — so with no TTY, or when the worktrees already exist (created by `mk-worktree.mjs`),
-  apply 1–4 directly instead; robocopy `/XO` is additive and never regresses a worktree's own
-  freshly-built binaries.
+  Seed sources must be built first (the matching `symmetry.build` build + main esg). When
+  `C:\repos\symmetry.world` exists, create the worktrees there with
+  `just mk-worktree <ticket> <slug> --repos classic=<base>,core=<base> [--seed <build>]` instead of
+  `mk-worktree.mjs`: it does all four steps plus the worktrees in one go and needs no console. The seed
+  build is inferred from the classic base; pass `--seed` when no `symmetry.build` build matches it.
+  It has no `--dry-run` and refuses an existing ticket dir, so show the user the plan first and treat
+  "already exists" as exit `3` above. Apply 1–4 by hand only when the worktrees already exist, setting
+  step 4 before step 2 because `seed-sym` follows the active target; robocopy `/XO` is additive and
+  never regresses a worktree's own freshly-built binaries.
 
 ### Base defaults
 

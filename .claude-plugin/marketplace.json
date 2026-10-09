@@ -15,9 +15,9 @@
       "description": "Edit outbound prose so it reads human-written, not AI-generated — PR replies, commit messages, Jira/Confluence comments, emails, docs. Based on Wikipedia's \"Signs of AI writing\" guide."
     },
     {
-      "name": "pr-respond",
-      "source": "./pr-respond",
-      "description": "Address reviewer comments on your own Bitbucket pull request — cluster feedback by blast radius, investigate, fix, and reply. Recommended companion: code-comments."
+      "name": "amag-pr-respond",
+      "source": "./amag-pr-respond",
+      "description": "Address review feedback on your own work — reviewer comments on a Bitbucket PR you authored, or the findings a local amag-pr-review saved for a ticket worktree. Investigates, fixes, replies, and teaches amag-pr-review what it missed. AMAG-specific."
     },
     {
       "name": "ticket-quest",
@@ -33,6 +33,11 @@
       "name": "amag-raise-bug",
       "source": "./amag-raise-bug",
       "description": "Raise bug tickets in AMAG's Symmetry Jira — duplicate check, every claim verified against the code, the team's field layout, and drafts shown before anything is created. AMAG-specific."
+    },
+    {
+      "name": "amag-pr-review",
+      "source": "./amag-pr-review",
+      "description": "Review a Bitbucket pull request or a ticket worktree under C:\\repos\\ticket-work with Opus reviewers per dimension, a verify pass, and incremental re-review. Built for AMAG's Symmetry and Sentinel repos. AMAG-specific."
     }
   ]
 }

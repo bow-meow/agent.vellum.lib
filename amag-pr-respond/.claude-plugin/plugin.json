@@ -1,0 +1,7 @@
+{
+  "name": "amag-pr-respond",
+  "description": "Address review feedback on your own work — reviewer comments on a Bitbucket PR you authored, or the findings a local amag-pr-review saved for a ticket worktree. Investigates, fixes, replies, and teaches amag-pr-review what it missed. AMAG-specific.",
+  "author": {
+    "name": "bow-meow"
+  }
+}
