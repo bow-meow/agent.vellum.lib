@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { findingsFile } from '../local-findings.mjs';
+import { decisions, findingsFile } from '../local-findings.mjs';
 
 const script = fileURLToPath(new URL('../local-findings.mjs', import.meta.url));
 
@@ -56,4 +56,25 @@ test('CLI save records each repo\'s head and whether it was dirty', () => {
 
 test('CLI save refuses without a ticket or a repo', () => {
   assert.throws(() => execFileSync('node', [script, 'save', 'v.json', 'f.json', 'o.json'], { stdio: 'pipe' }));
+});
+
+const previous = { findings: [
+  { n: 1, repo: 'a', path: 'x.ts', text: 'No release note for the template change. More detail.\n\n**Fix:** add one.', state: 'dismissed', resolution: 'User decision: no release notes.' },
+  { n: 2, repo: 'a', path: 'y.ts', text: 'A real bug.', state: 'fixed', resolution: 'Guard added.' },
+  { n: 3, repo: 'b', path: 'z.ps1', text: 'Pin needs the release first.', state: 'open', resolution: 'User decision: note it in the PR description.' },
+  { n: 4, repo: 'b', path: 'w.ts', text: 'Untouched.', state: 'open', resolution: null },
+] };
+
+test('decisions lists only the user\'s decisions, each with the finding it settled', () => {
+  assert.deepEqual(decisions(previous), [
+    '- a/x.ts: "No release note for the template change." → User decision: no release notes.',
+    '- b/z.ps1: "Pin needs the release first." → User decision: note it in the PR description.',
+  ]);
+});
+
+test('CLI decisions prints nothing when there is no earlier round', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lf-'));
+  assert.equal(execFileSync('node', [script, 'decisions', join(dir, 'missing.json')], { encoding: 'utf8' }), '');
+  writeFileSync(join(dir, 'prev.json'), JSON.stringify(previous));
+  assert.equal(execFileSync('node', [script, 'decisions', join(dir, 'prev.json')], { encoding: 'utf8' }).trim().split('\n').length, 2);
 });

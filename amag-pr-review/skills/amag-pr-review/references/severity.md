@@ -133,3 +133,19 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
 - Moving a test lifecycle attribute (setup/teardown) from a leaf-class override onto the base method,
   when the repo's own instruction files prescribe the split: base method unattributed, attribute on the
   leaf fixture, override calling the base. Those files can sit in a subdirectory, not only the repo root.
+- A prediction that a test in the change fails (or passes) worked out only from package versions,
+  lockfiles or path mappings (two copies of a dependency, a bundler alias). The test runner resolves
+  modules its own way, and a test you haven't run settles nothing: say it wasn't run, keep it Low at
+  most, and phrase it as "run this to confirm", not as a failure.
+- Two places that derive the same state by different rules, when the event order the library guarantees
+  makes them agree on every input. The divergence can't be reached, and merging them is taste.
+- A retry, poll or redial called unbounded ("indefinitely", "until reload") without checking for a
+  higher-level backstop that already ends it: a watchdog, a connection-lost page, a session timeout.
+  Name the backstop you checked for; raise it only if none exists or it fires too late to matter.
+- Dev tooling on the same branch that exists to build or test the ticket's change, such as a switch to
+  build against local checkouts of a dependency. It serves the ticket and isn't scope creep.
+- A missing test for a second entry point whose changed line only delegates to a shared function the
+  tests already cover with the same inputs (two clients calling one mapper). Testing the delegation adds
+  nothing.
+- "Reimplements helper X" when the wrapped call already goes through X one layer down (the callee is
+  itself wrapped). Trace the callee before flagging; swapping X in would double-wrap.

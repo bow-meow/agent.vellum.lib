@@ -17,6 +17,10 @@ Races are subtle: name the exact interleaving (thread/request/message A does X, 
     reload): check every path that performs the action goes through it, not only the one the change was
     written for (a timer, a deferred callback, a retry). Work skipped because the moment was wrong
     (disconnected, busy, not ready) must be re-run when that clears, not silently dropped.
+  - A user action whose handler now awaits a slow operation (a save, a network write): while it waits,
+    the trigger and the inputs feeding it stay live, so a second click starts a second run, edits made
+    meanwhile are dropped or leak into the result, and leave/close guards warn about work already under
+    way. Look for a busy flag that disables them.
   - Lazy initialisation without `Lazy<T>` / lock / `sync.Once`; double-checked locking without volatile.
   - Lock ordering: two locks taken in different orders on different paths.
   - Timers and event handlers firing during or after teardown/dispose.

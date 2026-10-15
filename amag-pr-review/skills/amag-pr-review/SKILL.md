@@ -157,11 +157,11 @@ If git reports "dubious ownership" for a repo, skip it and tell the user.
   MCP (`getAccessibleAtlassianResources` for the cloud id, then `getJiraIssue`, including comments).
   Write the full issue (summary, description, acceptance criteria, repro steps, comments, linked
   issues) to `$W/ticket.md` and a 3-line summary to `$W/ticket-summary.txt`. No ticket → note it.
-  `ticket.md` holds the Jira issue and nothing else. A decision the user stated in this session may
-  follow, under `## Decisions the user stated (not from Jira)`, one line each quoting the user. Never
-  add your own design choices or descriptions of where code lives or why, here or in the summary:
-  reviewers and verify drop whatever this file accepts, so an assumption written here hides the very
-  finding that would question it.
+  `ticket.md` holds the Jira issue and nothing else. Decisions the user stated this session may
+  follow, under `## Decisions the user stated (not from Jira)`, one line each quoting the user (local:
+  plus `local-findings.mjs decisions <prev.json>`). Never add your own design choices or notes on
+  where code lives or why, here or in the summary: reviewers and verify drop whatever this file
+  accepts, so an assumption here hides the finding that would question it.
 - **Siblings**: for each repo in `SIBLING_REPOS` plus those in the request,
   `node $S/scripts/bb.mjs search-prs <ws> <repo> <TICKET_KEY>` → `$W/siblings.json` (excluding this PR).
   Prefetch each sibling's diff: `node $S/scripts/bb.mjs diff <ws> <repo> <id> > $W/siblings/<repo>-<id>.diff`

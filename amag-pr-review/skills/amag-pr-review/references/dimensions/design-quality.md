@@ -21,6 +21,9 @@
   picked in one, what is done with it in another), check both key on the same value. One reading the
   raw input and the other a resolved or normalised form agree only for the inputs that need no
   resolving.
+- Repo-guide rules keyed on touching code rather than adding it ("when touching a class that…", "fix
+  on contact"): for each class the diff edits, check the guides (CLAUDE.md at the root and in the
+  touched directories) for such rules and whether the change applies them.
 - Premature abstraction: interfaces, factories or generics with one implementation and no second use.
 - God methods: a change that pushes a method well past what fits on a screen with mixed concerns.
 - Misplaced logic: code the change adds that belongs on another type. A method that mostly reads or

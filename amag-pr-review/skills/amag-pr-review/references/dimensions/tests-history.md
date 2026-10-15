@@ -7,7 +7,13 @@
   - Would it still pass against the old code? (If yes, it proves nothing about the fix.)
   - Are the edge cases in the change covered: empty, null, boundary values, the error path, the
     concurrent case for race fixes?
-  - Over-mocking: the mock returns exactly what the code under test needs, so the test can't fail.
+  - Over-mocking: the mock returns exactly what the code under test needs, so the test can't fail. A
+    fake that sets a state flag (closed, connected, ready) at the same moment as the event under test
+    hides when the real library sets it: check whether the library updates the flag before or after it
+    rejects or notifies callers, and make the fake match.
+  - A fix extracted into a small pure helper and tested only there: the call site that applies it (the
+    guard reading its result, the order state is updated in, the timer that rechecks it) is the fix.
+    Check a test drives the call site; otherwise the helper's tests still pass with the guard removed.
   - Tests changed to match new behaviour without the ticket asking for that change.
   - A test that asserts a value equals the constant or literal it is defined from only restates the
     code: it fails only on a deliberate edit. Don't count it as coverage of the behaviour.
@@ -31,7 +37,9 @@
 - A repro from the ticket or its QA comments (each input or step it names) with no test that would
   fail if that bug came back → Medium (severity.md). Check the test runs where the bug lives: a
   model/view desync needs the binding, so a handler test on a bare element can't catch it. The fix
-  must name a test that would fail on the reported bug, not more cases for a test that can't.
+  must name a test that would fail on the reported bug, not more cases for a test that can't. A fix
+  made of several parts (a client option plus a recovery handler) needs a test per part: a test that
+  fails without one part says nothing about the other.
 - A change that reverts an earlier fix → Medium or High depending on what the fix protected.
 
 ## Team history

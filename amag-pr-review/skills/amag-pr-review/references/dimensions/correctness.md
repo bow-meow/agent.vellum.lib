@@ -15,11 +15,23 @@
   produces. Any kind whose output changed without the ticket asking is a finding, Medium when a client
   stores what it was given and can't recover on its own.
 - Error handling: swallowed exceptions, broad `catch` that hides a real failure, errors that leave state
-  half-written (DB row written, cache not; message acked, work not done), missing rollback, error paths
+  half-written (DB row written, cache not; message acked, work not done; an in-memory copy updated
+  before the write it mirrors, so a failed write leaves memory claiming saved), missing rollback, error paths
   that surface as an unhandled 500 or crash a service. A wrapper that acts on a thrown error (retry,
   reclassify, interrupt detection) never fires around a call that returns its failure as a value
   (`{ error }`, `undefined`, a status code): check what the wrapped call does on failure, and that
   every step of the protected sequence goes through the wrapper.
+- Code that reads a library's state flag (`isClosed()`, `isConnected`, `readyState`) inside a callback
+  or `catch` for that library's own event: check when the library sets the flag relative to firing the
+  event. Many update it only after rejecting pending calls or notifying listeners, so the handler sees
+  the old value and takes the wrong branch. Classify from the error or event itself where it can.
+- A draft or edit copy assigned into the committed state by reference (`saved.x = draft`) rather than
+  copied: anything that later writes to the draft, including events firing after the commit, silently
+  changes what counts as saved, and the next unrelated save persists it.
+- State recorded from per-item events (the item the user dragged, the rows an event lists as changed)
+  when the action also moves other items as a side effect, or read while a responsive view shows a
+  reduced form (single column, collapsed, scaled) and written back into the full-size model. Check what
+  is saved for items the event didn't name, and what the model holds after an edit in the reduced view.
 - Contract compatibility:
   - NATS messages / DTOs / generated API types: renamed or removed fields, changed types, enum values
     reordered or renumbered, changed defaults. Check old panel ↔ new server and new panel ↔ old server.

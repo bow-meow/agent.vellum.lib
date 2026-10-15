@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STATUSES, stripHeader } from './comment.mjs';
@@ -33,6 +33,16 @@ export function findingsFile({ ticketKey, verified, built, repos, now = new Date
   return { ticketKey, reviewedAt: now.toISOString(), repos, findings };
 }
 
+// A later round re-raises what the user already settled unless the reviewers see the decision.
+export function decisions(previous) {
+  return (previous?.findings ?? [])
+    .filter(f => f.resolution?.startsWith('User decision:'))
+    .map(f => {
+      const gist = (f.text ?? '').match(/^[^\n]*?[.!?](?=\s|$)|^[^\n]*/)[0];
+      return `- ${f.repo}/${f.path}: "${gist}" → ${f.resolution}`;
+    });
+}
+
 // head + dirty let a later reader tell whether line numbers may have moved since the review.
 export function repoState(name, path, dest) {
   const git = (...a) => execFileSync('git', ['-C', path, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -42,7 +52,11 @@ export function repoState(name, path, dest) {
 const invoked = process.argv[1] && resolve(process.argv[1]).toLowerCase();
 if (invoked === fileURLToPath(import.meta.url).toLowerCase()) {
   const args = process.argv.slice(2);
-  const usage = 'usage: local-findings.mjs save <verified.json> <factcheck.json> <out.json> --ticket <KEY> (--repo <name> <path> <dest>)...';
+  if (args[0] === 'decisions') {
+    if (existsSync(args[1])) for (const line of decisions(JSON.parse(readFileSync(args[1], 'utf8')))) console.log(line);
+    process.exit(0);
+  }
+  const usage = 'usage: local-findings.mjs decisions <prev.json> | save <verified.json> <factcheck.json> <out.json> --ticket <KEY> (--repo <name> <path> <dest>)...';
   const ticketAt = args.indexOf('--ticket');
   const ticketKey = ticketAt >= 0 ? args.splice(ticketAt, 2)[1] : null;
   const repos = [];
