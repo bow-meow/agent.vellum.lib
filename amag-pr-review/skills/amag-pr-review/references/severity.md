@@ -142,6 +142,10 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
 - A retry, poll or redial called unbounded ("indefinitely", "until reload") without checking for a
   higher-level backstop that already ends it: a watchdog, a connection-lost page, a session timeout.
   Name the backstop you checked for; raise it only if none exists or it fires too late to matter.
+- Proposing a shared-call or dedupe helper to wrap a call that already goes through that same helper:
+  the wrap stacks a second timeout or share on the first and changes nothing else.
+- A missing test for one copy of generated code when another copy generated from the same template,
+  with an identical body, is already tested.
 - Dev tooling on the same branch that exists to build or test the ticket's change, such as a switch to
   build against local checkouts of a dependency. It serves the ticket and isn't scope creep.
 - A missing test for a second entry point whose changed line only delegates to a shared function the

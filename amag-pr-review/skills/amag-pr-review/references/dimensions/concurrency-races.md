@@ -23,7 +23,10 @@ Races are subtle: name the exact interleaving (thread/request/message A does X, 
     way. Look for a busy flag that disables them.
   - Lazy initialisation without `Lazy<T>` / lock / `sync.Once`; double-checked locking without volatile.
   - Lock ordering: two locks taken in different orders on different paths.
-  - Timers and event handlers firing during or after teardown/dispose.
+  - Timers and event handlers firing during or after teardown/dispose, or after a later event has
+    superseded the state they were scheduled for (a drop then a fresh reconnect inside the delay). A
+    callback that only re-checks a flag when it fires acts on the newer cycle; cancel it on the state
+    change or tag it with a per-cycle counter.
   - C++: data races on members touched from D-Bus/NATS callbacks and a worker thread; `std::atomic`
     used for one field but not the invariant it protects. Go: maps written from goroutines, loop
     variable capture, unsynchronised struct fields.

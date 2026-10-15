@@ -11,6 +11,12 @@
     fake that sets a state flag (closed, connected, ready) at the same moment as the event under test
     hides when the real library sets it: check whether the library updates the flag before or after it
     rejects or notifies callers, and make the fake match.
+  - A fake error, event or message built by hand with exactly the name, code or string the code under
+    test matches on: the test passes whatever the real library produces. Use the library's own type
+    where the test can import it.
+  - A hand-kept table keyed by values another component produces (error codes to messages, event names
+    to handlers) with no test that builds its keys from that producer: a rename falls through to the
+    default silently.
   - A fix extracted into a small pure helper and tested only there: the call site that applies it (the
     guard reading its result, the order state is updated in, the timer that rechecks it) is the fix.
     Check a test drives the call site; otherwise the helper's tests still pass with the guard removed.
