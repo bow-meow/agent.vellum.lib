@@ -5,7 +5,9 @@ This is an access-control product: authorization mistakes are the worst class of
 ## Look for
 - Authorization: new endpoints, NATS subjects, commands or UI actions with no permission check, or a
   check weaker than neighbouring operations; operator/site/partition scoping missing on queries.
-- Injection: SQL, command lines, LDAP, file paths built from input (path traversal).
+- Injection: SQL, command lines, LDAP, file paths built from input (path traversal), and text another
+  party chooses (client or host names, remote fields, file contents) written to a terminal or log
+  without stripping control characters, which can rewrite what an operator sees at a prompt.
 - Input from panels, network or files trusted without validation: lengths, ranges, enum values,
   deserialisation of untrusted data into arbitrary types.
 - Secrets: credentials, keys or tokens in code, config committed to the repo, or logs.

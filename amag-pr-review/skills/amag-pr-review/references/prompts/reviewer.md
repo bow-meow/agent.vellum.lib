@@ -21,8 +21,11 @@ You are the **{{REVIEWER}}** reviewer on a code review.
 - One defect per finding. When tracing a finding turns up a second path with its own failure (an aside
   like "…which also skips the lock"), write it as a separate candidate: an aside inside another
   finding's trigger list gets no fix of its own and is closed when that finding is fixed.
-- Added or changed prose that states facts about behaviour (doc comments, translator `<comment>`s in
-  .resx, log, error and dialog text): list each concrete fact it states (the buttons a dialog shows,
+- A defect outside your dimension that you traced far enough to name a failure: write it as a
+  candidate with its own `dimension`, not as a note for "the other reviewer". Notes in your reply
+  are never read, and on a split diff no other reviewer may see that code; verify sorts duplicates.
+- Added or changed prose that states facts about behaviour (doc comments, command-line help, READMEs,
+  translator `<comment>`s in .resx, log, error and dialog text): list each concrete fact it states (the buttons a dialog shows,
   the paths or callers that reach it, units, limits) and open the code that decides each one, following
   the call into framework helpers where the answer lives (a dialog helper's buttons are set in its
   implementation, not at the call site). A fact the code contradicts is a finding: wrong prose is

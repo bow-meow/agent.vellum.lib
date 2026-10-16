@@ -169,6 +169,8 @@ If git reports "dubious ownership" for a repo, skip it and tell the user.
 - **History** (for the reviewer covering tests-history): per changed, non-generated file,
   `git -C <worktree> log --oneline -n 20 -i -E --grep='fix|revert|regress' -- "<file>"` appended to
   `$W/history.txt` under a `## <file>` heading.
+- **Commit messages**: per repo, `git -C <worktree> log --format='--- %h%n%B' <its merge base>..HEAD >> $W/commits.txt`
+  (empty when nothing is committed yet). Repo guides set rules on them (a line per version bump).
 - **Size**: `node $S/scripts/anchors.mjs stats $W/context.diff` → `changed`.
 - **Languages** from extensions: `.cs .csproj .sln` → csharp-dotnet; `.cpp .cc .h .hpp .c` →
   cpp-embedded; `.go` → go; `.ts .tsx .html` (Angular) → typescript-angular.
@@ -197,8 +199,8 @@ If git reports "dubious ownership" for a repo, skip it and tell the user.
 | `changed` | Reviewers |
 |---|---|
 | < 200 | `combined` (all dimension files except ticket-fit) + `ticket-fit` (if ticket) |
-| 200–3000 | `correctness` · `concurrency-races` · `resources-performance` (+`sql` if SQL) · `tests-design` (tests-history + design-quality) · `ticket-fit` (if ticket) · `security` (always: a new handler or grant needn't contain a security keyword) · `styles` (if `styles` ≥ 100) |
-| > 3000 | `node $S/scripts/anchors.mjs split $W/context.diff $W/chunks 1500`; run the 200–3000 set minus ticket-fit/security/styles **per chunk** (DIFF_FILE = the chunk, OUT_FILE suffixed `-<n>`); ticket-fit, security and styles once over the whole diff |
+| 200–3000 | `correctness` · `concurrency-races` · `resources-performance` (+`sql` if SQL) · `tests-design` (tests-history + design-quality) · `ticket-fit` (if ticket) · `security` (always: a new handler or grant needn't contain a security keyword) · `docs` · `styles` (if `styles` ≥ 100) |
+| > 3000 | `node $S/scripts/anchors.mjs split $W/context.diff $W/chunks 1500`; run the 200–3000 set minus ticket-fit/security/docs/styles **per chunk** (DIFF_FILE = the chunk, OUT_FILE suffixed `-<n>`); ticket-fit, security, docs and styles once over the whole diff (docs needs the code behind each claim, which a chunk rarely holds) |
 
 Each prompt = [references/prompts/reviewer.md](references/prompts/reviewer.md) with slots filled:
 - `REVIEWER`: the name above. `SKILL_DIR`: this skill's base directory (Windows path).
@@ -214,7 +216,7 @@ Each prompt = [references/prompts/reviewer.md](references/prompts/reviewer.md) w
 - `EXTRA_MATERIAL`: ticket-fit → `Sibling PRs: $W/siblings.json`;
   reviewer covering SQL → `Index maps: $W/index-map-<repo>.json` (each); `sql`, `correctness` and
   `combined` → `Forward-scan: $W/forward-<repo>.json` (each); reviewer covering tests-history (`combined`,
-  `tests-design`) → `History file: $W/history.txt`; `styles` and `combined` → `Stylesheet facts (leads to
+  `tests-design`) → `History file: $W/history.txt; Commit messages: $W/commits.txt`; `styles` and `combined` → `Stylesheet facts (leads to
   confirm, not findings): $W/styles-facts-<repo>.json` (each); list several separated by `;`; otherwise `none`.
 - `EXTRA_RULES`: ticket-fit → `Uncertain coverage goes in with terminal_only: true.`; styles →
   `Your scope is the changed stylesheets and the template classes they style or that no stylesheet styles; read other files only as context.`;

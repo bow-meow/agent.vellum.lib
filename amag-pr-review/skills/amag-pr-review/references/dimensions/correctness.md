@@ -2,13 +2,18 @@
 
 ## Look for
 - Logic errors: inverted conditions, wrong operator, off-by-one, wrong variable, early return that skips
-  cleanup or state updates, switch/if chains missing a case the change introduced.
+  cleanup, state updates or setup a later step relies on (logging started only after the checks whose
+  failures it should record), switch/if chains missing a case the change introduced.
 - Null / empty / default handling on new inputs and on values from DB, NATS, config and files.
 - "Unknown" outcomes: a lookup that times out, a read caught by `catch`, an empty result. Find what the
   code falls back to, follow that value to the final output (the URL, message or row it ends up in) and
   check it does what the comment on the fallback promises. "Treat it as X when unsure" is a common
   comment whose downstream still emits the not-X value because a later step needed data the failed
-  read never produced.
+  read never produced. When the value guards a destructive action (stop, kill, drop, delete,
+  overwrite), "couldn't check" must refuse or ask: a probe that returns empty on failure reads as
+  "nothing in the way", a classifying lookup that fails drops items into the harsher branch, and a
+  success that records nothing leaves the next unattended run choosing the destructive default.
+  Compare with sibling probes in the change that do report "not checked".
 - An input the change now handles differently (a setting, preference or request field): list the
   kinds of value it can hold (empty, the default, each format it accepts, values that point at this
   system vs somewhere else) and compare what the base branch produced for each with what the change
@@ -21,6 +26,16 @@
   reclassify, interrupt detection) never fires around a call that returns its failure as a value
   (`{ error }`, `undefined`, a status code): check what the wrapped call does on failure, and that
   every step of the protected sequence goes through the wrapper.
+- A new mode or kind of work run through existing shared code (a run that can't be resumed, a
+  different job shown in an existing progress view): list every message, hint, label and summary that
+  code prints and check each still reads right for the new kind. Sibling hint paths often get the new
+  flag in one place and keep the old advice in another.
+- A branch, option or command the change replaces or removes: list what the old one did besides its
+  main job (cleared a saved record, reset a flag, released something) and check the replacement still
+  does it, or that dropping it was intended.
+- A confirmation before a destructive or hard-to-undo action: its default should be the safe answer,
+  and keystrokes buffered while earlier work ran must not answer it. Compare with the change's other
+  prompts.
 - A retry or resend that is only safe because the receiver drops duplicates (a dedupe window, an
   idempotency key's retention, a unique key): check the retry's bound is read from that setting as
   configured, not a constant copied from its default. Shortened elsewhere, it lets a late resend be

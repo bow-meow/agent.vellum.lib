@@ -23,7 +23,9 @@
   resolving.
 - Repo-guide rules keyed on touching code rather than adding it ("when touching a class that…", "fix
   on contact"): for each class the diff edits, check the guides (CLAUDE.md at the root and in the
-  touched directories) for such rules and whether the change applies them.
+  touched directories) for such rules and whether the change applies them. Rules about the commit
+  itself (a message line required with a version bump, files that must change together) count too:
+  check them against the commit messages file.
 - Premature abstraction: interfaces, factories or generics with one implementation and no second use.
 - God methods: a change that pushes a method well past what fits on a screen with mixed concerns.
 - Misplaced logic: code the change adds that belongs on another type. A method that mostly reads or
@@ -38,7 +40,13 @@
 - Only flag these when the change itself adds the misplaced code or the extra responsibility; a class
   that was already too big or already in the wrong place is out of scope. Don't suggest a split that
   would leave a class or interface with a single use (see premature abstraction).
-- Dead code: unused parameters, unreachable branches, commented-out code, leftover debug output.
+- Dead code: unused parameters, unreachable branches, commented-out code, leftover debug output. Also
+  what the change leaves behind: a member it adds that nothing calls, imports left unused when code
+  moved out of a file, a condition on a flag that can't be set at that point.
+- The same literal (an environment variable name, a key, a marker string) defined separately in
+  several files the change adds: grep the literal and name one shared constant.
+- Line-1 or whole-file churn with no content change (a byte-order mark added, line endings
+  converted): nit, unless the repo's own files show that's their convention.
 - AI slop: verbose wrappers that add nothing, defensive checks for impossible states, boilerplate
   comments.
 - Naming, for every function, method, variable, parameter, field, class and file the change adds or

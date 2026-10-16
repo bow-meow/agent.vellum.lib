@@ -21,6 +21,12 @@ Races are subtle: name the exact interleaving (thread/request/message A does X, 
     the trigger and the inputs feeding it stay live, so a second click starts a second run, edits made
     meanwhile are dropped or leak into the result, and leave/close guards warn about work already under
     way. Look for a busy flag that disables them.
+  - Cancellation with more than one meaning (a first press asks to finish the current item, a second
+    aborts): code that later asks "was it cancelled?" by reading the shared token reports a real
+    failure after a soft stop as a cancel, with the cancel exit code. Check what each check means.
+    A follow-up that must run once a side effect has started (a restart hint, a cleanup, a state
+    write) placed after the awaited call is skipped when cancellation lands mid-call; it belongs in
+    a `finally` keyed on "started".
   - Lazy initialisation without `Lazy<T>` / lock / `sync.Once`; double-checked locking without volatile.
   - Lock ordering: two locks taken in different orders on different paths.
   - Timers and event handlers firing during or after teardown/dispose, or after a later event has
