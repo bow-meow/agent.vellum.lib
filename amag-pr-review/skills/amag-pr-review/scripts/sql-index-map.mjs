@@ -28,14 +28,82 @@ export function tablesInSql(text) {
   const re = new RegExp(String.raw`\b(?:FROM|JOIN|(?<!\bON\s+)UPDATE|(?<!\bON\s+)DELETE(?:\s+FROM)?|MERGE(?:\s+INTO)?|INSERT(?:\s+INTO)?|INTO)\s+(${QUAL})(?!\s+in\b)`, 'gi');
   for (const m of text.matchAll(re)) {
     const t = normTable(m[1]);
-    if (!/^[#@]/.test(t) && !/^(select|set|where|values|using)$/.test(t)) out.add(t);
+    if (!/^[#@]/.test(t) && !/^(select|set|where|values|using|statistics)$/.test(t)) out.add(t);
   }
   return out;
 }
 
+const PROSE_FILE = /\.(md|markdown|txt|rst|adoc|resx|html?|xml|config)$/i;
+// A statement's shape, not a lone keyword: help text says "delete outputs" and "select a project".
+// Lowercase SQL also needs an operator or bracket, which sentences rarely have.
+const SHAPE = String.raw`\bSELECT\b[\s\S]*\bFROM\b|\bINSERT\s+INTO\b|\bUPDATE\s+(?!STATISTICS\b)\S+\s+SET\b|\bDELETE\s+FROM\b|\bMERGE\b[\s\S]*\bUSING\b|\bEXEC(?:UTE)?\s+[\w\[\].]+`;
+const isSql = s => new RegExp(SHAPE).test(s) || new RegExp(SHAPE, 'i').test(s) && /[=*@(]/.test(s);
+
+// One line's string-literal text. `open` carries a literal that spans lines (verbatim @"", raw """,
+// template `) into the next line; comments end the line.
+function literalsIn(line, open) {
+  const out = [];
+  let i = 0;
+  const take = (close, escapes) => {
+    let s = '';
+    while (i < line.length) {
+      if (line.startsWith(close, i) && !(close === '"' && open === '@"' && line[i + 1] === '"')) { i += close.length; return { s, closed: true }; }
+      if (close === '"' && open === '@"' && line.startsWith('""', i)) { s += '"'; i += 2; continue; }
+      if (escapes && line[i] === '\\') { s += line[i + 1] ?? ''; i += 2; continue; }
+      s += line[i++];
+    }
+    return { s, closed: false };
+  };
+  if (open) {
+    const r = take(open === '@"' ? '"' : open, open === '`');
+    out.push(r.s);
+    if (!r.closed) return { text: out.join(' '), open };
+    open = null;
+  }
+  while (i < line.length) {
+    if (line.startsWith('//', i) || line.startsWith('/*', i) || line[i] === '#' && !line.slice(0, i).trim()) break;
+    let m;
+    if (line.startsWith('"""', i)) { i += 3; open = '"""'; }
+    else if ((m = /^[$]?@[$]?"|^[$]?"/.exec(line.slice(i)))) { i += m[0].length; open = m[0].includes('@') ? '@"' : '"'; }
+    else if (line[i] === '`') { i++; open = '`'; }
+    else if (line[i] === "'") { i++; open = "'"; }
+    else { i++; continue; }
+    const r = take(open === '@"' ? '"' : open, open === '"' || open === "'" || open === '`');
+    out.push(r.s);
+    if (r.closed || open === '"' || open === "'") open = null;
+    else break;
+  }
+  return { text: out.join(' '), open };
+}
+
+// SQL a code file builds: the string literals of one code statement joined, kept when they have a
+// statement's shape and an added line contributed. Prose in comments and messages never reaches it.
+export function sqlInCode(lines) {
+  const frags = [];
+  let cur = [], touched = false, open = null;
+  const flush = () => { if (touched && isSql(cur.join(' '))) frags.push(cur.join(' ')); cur = []; touched = false; };
+  for (const { text: line, added } of lines) {
+    const r = literalsIn(line, open);
+    open = r.open;
+    if (r.text.trim()) { cur.push(r.text); touched ||= added; }
+    if (!open && /[;{}]\s*(\/\/.*)?$/.test(line.trim())) flush();
+  }
+  flush();
+  return frags;
+}
+
 export function tablesFromDiff(diffText) {
-  const added = diffText.split(/\r?\n/).filter(l => l.startsWith('+') && !/^\+\+\+ (b\/|\/dev\/null|")/.test(l)).map(l => l.slice(1));
-  return tablesInSql(added.join('\n'));
+  const out = new Set();
+  for (const f of parseDiff(diffText).values()) {
+    if (f.binary || f.deleted || PROSE_FILE.test(f.path ?? '')) continue;
+    const start = f.raw.findIndex(l => l.startsWith('@@'));
+    if (start < 0) continue;
+    const body = f.raw.slice(start);
+    const lines = body.filter(l => /^[+ ]/.test(l)).map(l => ({ text: l.slice(1), added: l[0] === '+' }));
+    const sql = /\.sql$/i.test(f.path) ? [lines.filter(l => l.added).map(l => l.text).join('\n')] : sqlInCode(lines);
+    for (const s of sql) for (const t of tablesInSql(s)) out.add(t);
+  }
+  return out;
 }
 
 export function indexesIn(text, file) {

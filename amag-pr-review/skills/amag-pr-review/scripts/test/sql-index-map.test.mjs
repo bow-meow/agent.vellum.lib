@@ -97,3 +97,30 @@ test('tablesInSql handles DELETE without FROM and ignores cascades and LINQ', ()
   const t = tablesInSql('DELETE dbo.BADGE WHERE ID=1; ALTER TABLE A ADD CONSTRAINT F FOREIGN KEY (X) REFERENCES B (Y) ON DELETE CASCADE ON UPDATE CASCADE; var q = from c in cards select c;');
   assert.deepEqual([...t], ['badge']);
 });
+
+test('tablesFromDiff reads SQL from string literals in code, not prose or comments', () => {
+  const d = [
+    'diff --git a/README.md b/README.md', '--- a/README.md', '+++ b/README.md', '@@ -1,1 +1,2 @@', ' # Tool',
+    '+Pick a folder from the list, then copy it into the release.',
+    'diff --git a/Lock.cs b/Lock.cs', '--- a/Lock.cs', '+++ b/Lock.cs', '@@ -1,2 +1,9 @@', ' class Lock {',
+    '+  // Read the record from this file and update the state into memory.',
+    '+  /// <summary>Takes the lock from another run.</summary>',
+    '+  const string Q = "SELECT s.id FROM sys.dm_exec_sessions s "',
+    '+    + "JOIN sys.databases d ON d.database_id = s.database_id";',
+    '+  var msg = $"Copying from {src} into the cache";',
+    '+  const string V = @"UPDATE dbo.Badge',
+    '+    SET Status = 1";',
+    ' }', ''].join('\n');
+  assert.deepEqual([...tablesFromDiff(d)].sort(), ['badge', 'databases', 'dm_exec_sessions']);
+});
+
+test('tablesFromDiff ignores English in strings and data files, and UPDATE STATISTICS', () => {
+  const d = [
+    'diff --git a/Menu.cs b/Menu.cs', '--- a/Menu.cs', '+++ b/Menu.cs', '@@ -1,1 +1,4 @@', ' class Menu {',
+    '+  const string Help = "c clean: delete outputs, build nothing";',
+    '+  const string Tip = "Select a project from the list";',
+    '+  [InlineData("UPDATE STATISTICS dbo.NodeTable WITH FULLSCAN")]',
+    'diff --git a/Changes.xml b/Changes.xml', '--- a/Changes.xml', '+++ b/Changes.xml', '@@ -1,1 +1,2 @@', ' <Changes>',
+    '+  <Change displayText="Select a branch from itself; update conflicts into Bitbucket" />', ''].join('\n');
+  assert.deepEqual([...tablesFromDiff(d)], []);
+});
