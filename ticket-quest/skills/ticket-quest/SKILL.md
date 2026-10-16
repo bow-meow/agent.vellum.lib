@@ -46,8 +46,11 @@ Keep one task list for all tickets; every ticket has its own lane and its own wo
 tickets progress at different speeds; never block one on another.
 
 1. **Scope.** Read the ticket(s), description and comments. Confirm **which repos** each touches —
-   a ticket may span a service repo and a companion/firmware repo. Confirm the **base ref per
-   repo** (see [Base defaults](#base-defaults)) and confirm the branch **slug**.
+   a ticket may span a service repo and a companion/firmware repo. **`symmetryclassic` is always
+   in the set**, plus whatever other repos the ticket touches, even when the change lives entirely
+   in a companion repo (e.g. `amag.symmetry.nats`): without it the ticket can't be targeted, built,
+   run, or tested end to end. Confirm the **base ref per repo** (see [Base defaults](#base-defaults))
+   and confirm the branch **slug**.
 2. **Isolate — one git worktree per repo per ticket** (see [Worktree mechanics](#worktree-mechanics)).
    Detect a pre-existing ticket dir or branch and ask build-on vs start-fresh rather than clobbering.
 3. **Establish context yourself.** Search, read the relevant sections, locate the implementation,
@@ -163,7 +166,7 @@ node scripts/mk-worktree.mjs <TICKET> <slug> --repo <clone>[=<base>] [--repo ...
      this worktree.
   Seed sources must be built first (the matching `symmetry.build` build + main esg). When
   `C:\repos\symmetry.world` exists, create the worktrees there with
-  `just mk-worktree <ticket> <slug> --repos classic=<base>,core=<base> [--seed <build>]` instead of
+  `just mk-worktree <ticket> <slug> --repos classic=<base>[,<other>=<base>...] [--seed <build>]` instead of
   `mk-worktree.mjs`: it does all four steps plus the worktrees in one go and needs no console. The seed
   build is inferred from the classic base; pass `--seed` when no `symmetry.build` build matches it.
   It has no `--dry-run` and refuses an existing ticket dir, so show the user the plan first and treat
