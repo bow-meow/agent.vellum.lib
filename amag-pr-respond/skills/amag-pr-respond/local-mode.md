@@ -53,7 +53,7 @@ work, and a commit would sweep it in. Record which files each fix touched.
 ### L6. Retro — misses and noise, before the pause
 
 Both halves follow SKILL.md step 7's location rules (never the plugin cache, grep for an existing
-line to sharpen first, never commit) and its rule that **every line written into amag-pr-review is
+line to sharpen first, commit and push to `main`) and its rule that **every line written into amag-pr-review is
 generic**.
 
 **Misses.** A local review that is run again on the same ticket finds what earlier rounds didn't.
