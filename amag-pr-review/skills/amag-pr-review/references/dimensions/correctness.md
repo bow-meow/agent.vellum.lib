@@ -21,6 +21,10 @@
   reclassify, interrupt detection) never fires around a call that returns its failure as a value
   (`{ error }`, `undefined`, a status code): check what the wrapped call does on failure, and that
   every step of the protected sequence goes through the wrapper.
+- A retry or resend that is only safe because the receiver drops duplicates (a dedupe window, an
+  idempotency key's retention, a unique key): check the retry's bound is read from that setting as
+  configured, not a constant copied from its default. Shortened elsewhere, it lets a late resend be
+  applied twice, usually as silent corruption rather than an error.
 - Code that reads a library's state flag (`isClosed()`, `isConnected`, `readyState`) inside a callback
   or `catch` for that library's own event: check when the library sets the flag relative to firing the
   event. Many update it only after rejecting pending calls or notifying listeners, so the handler sees
