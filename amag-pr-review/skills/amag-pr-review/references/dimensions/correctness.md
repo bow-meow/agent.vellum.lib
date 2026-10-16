@@ -43,7 +43,10 @@
 - Code that reads a library's state flag (`isClosed()`, `isConnected`, `readyState`) inside a callback
   or `catch` for that library's own event: check when the library sets the flag relative to firing the
   event. Many update it only after rejecting pending calls or notifying listeners, so the handler sees
-  the old value and takes the wrong branch. Classify from the error or event itself where it can.
+  the old value and takes the wrong branch. Classify from the error or event itself where it can. If
+  only its message text identifies it (no type, code or cause), check that a test against the real
+  library pins that text or the versions it was checked on are recorded: a release inside the declared
+  dependency range can reword it, and the case silently falls through to the generic branch.
 - A draft or edit copy assigned into the committed state by reference (`saved.x = draft`) rather than
   copied: anything that later writes to the draft, including events firing after the commit, silently
   changes what counts as saved, and the next unrelated save persists it.
@@ -68,7 +71,10 @@
   release branch it will be rebased into has also changed, with those commits and a `diffFile` of that
   branch's change. Read it for a member the PR calls or a behaviour it relies on that the branch
   renamed, removed or changed. A concrete break after the rebase is Info with the commit named; overlap
-  alone isn't a finding. A file the branch moved (`renamedTo`) isn't a finding: git follows the move
+  alone isn't a finding. Where nothing merges the destination forward into that branch (its history
+  shows no earlier merge from it), also read the branch's copy for the old behaviour this change
+  fixes: a fix the newer line doesn't carry regresses for anyone upgrading, so Info naming the branch
+  and the code still needing the change. A file the branch moved (`renamedTo`) isn't a finding: git follows the move
   on a rebase or merge, and only content changed alongside it (`pureRename: false`) can need a look.
 
 ## Severity hints

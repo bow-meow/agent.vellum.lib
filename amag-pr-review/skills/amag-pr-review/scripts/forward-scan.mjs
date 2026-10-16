@@ -16,8 +16,14 @@ const PATTERN_MIN = 3;
 const CAP = 40;
 const DIFF_BYTES = 200_000;
 
-export function parseVersion(branch) {
-  const m = String(branch).match(/^(?:origin\/)?release\/(\d+)\.(\d+)\.(\d+)/);
+// The prefix a destination's version sits under (`release/`, `template/<name>/`); unversioned → `release/`.
+export function familyOf(dest) {
+  return String(dest).replace(/^origin\//, '').match(/^(.+\/)\d+\.\d+\.\d+/)?.[1] ?? 'release/';
+}
+
+export function parseVersion(branch, family = 'release/') {
+  const prefix = family.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = String(branch).match(new RegExp(`^(?:origin\\/)?${prefix}(\\d+)\\.(\\d+)\\.(\\d+)`));
   return m ? m.slice(1, 4).map(Number) : null;
 }
 
@@ -135,11 +141,12 @@ function readBlobs(repo, specs) {
 }
 
 export function newerBranches(repo, dest, remote = 'origin') {
-  const refs = git(repo, ['for-each-ref', '--format=%(refname:short) %(committerdate:unix)', `refs/remotes/${remote}/release/`])
-    .split('\n').filter(Boolean).map(l => { const [ref, t] = l.split(' '); return { ref, time: +t, version: parseVersion(ref) }; })
+  const family = familyOf(dest);
+  const refs = git(repo, ['for-each-ref', '--format=%(refname:short) %(committerdate:unix)', `refs/remotes/${remote}/${family}`])
+    .split('\n').filter(Boolean).map(l => { const [ref, t] = l.split(' '); return { ref, time: +t, version: parseVersion(ref, family) }; })
     .filter(b => b.version && b.ref !== `${remote}/${dest}`);
   const fresh = Date.now() / 1000 - STALE_DAYS * 86400;
-  const destVersion = parseVersion(dest);
+  const destVersion = parseVersion(dest, family);
   let picked = refs.filter(b => b.time >= fresh);
   if (destVersion) picked = picked.filter(b => compareVersions(b.version, destVersion) > 0);
   else picked = picked.filter(b => git(repo, ['rev-list', '--count', `${remote}/${dest}..${b.ref}`]).trim() !== '0');

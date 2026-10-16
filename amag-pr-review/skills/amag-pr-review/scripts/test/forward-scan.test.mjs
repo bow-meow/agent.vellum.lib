@@ -95,6 +95,18 @@ test('newerBranches keeps only higher release versions than the destination', ()
   assert.deepEqual(newerBranches(dir, 'release/11.0.10'), ['origin/release/11.2.0-y', 'origin/release/11.1.0-x']);
 });
 
+test('newerBranches follows a destination versioned under another prefix, not only release/', () => {
+  const dir = repoWithBranches();
+  const g = (...a) => execFileSync('git', ['-C', dir, ...a], { encoding: 'utf8' });
+  g('update-ref', 'refs/remotes/origin/template/sample/1.10.1', 'HEAD~3');
+  g('update-ref', 'refs/remotes/origin/template/sample/1.11.1', 'HEAD');
+  g('update-ref', 'refs/remotes/origin/template/sample/1.9.0', 'HEAD~3');
+  g('update-ref', 'refs/remotes/origin/template/other/2.0.0', 'HEAD');
+  assert.deepEqual(newerBranches(dir, 'template/sample/1.10.1'), ['origin/template/sample/1.11.1']);
+  assert.deepEqual(parseVersion('origin/template/sample/1.11.1', 'template/sample/'), [1, 11, 1]);
+  assert.equal(parseVersion('origin/template/sample/1.11.1'), null);
+});
+
 test('scan flags a new name parameter at the width the newer branch moved away from, and files it changed', () => {
   const dir = repoWithBranches();
   const diff = [

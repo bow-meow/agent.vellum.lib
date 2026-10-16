@@ -184,10 +184,11 @@ If git reports "dubious ownership" for a repo, skip it and tell the user.
   It fetches, at the lockfile's version, the npm packages that changed files import from a registry
   other than the public one, so reviewers can read code the model has never seen. It does nothing
   outside npm projects. A record with `error` is not a failure: note it in the terminal and carry on.
-- **Newer release branches**: per repo, `git -C <clone> fetch -q origin '+refs/heads/release/*:refs/remotes/origin/release/*'`,
+- **Newer release branches**: per repo, `git -C <clone> fetch -q origin '+refs/heads/release/*:refs/remotes/origin/release/*'`
+  (and `<prefix>/*` for DEST `template/x/1.0.0`),
   then `node $S/scripts/forward-scan.mjs <clone> <that repo's diff> <its DEST> --diffs $W/forward > $W/forward-<repo>.json`.
-  It lists widths a later release branch widened that the change still declares at the old size, and
-  files that branch also changed (with its diff). No newer branch → `branches: []`; pass it anyway.
+  It lists widths a newer branch widened that the change keeps narrow, and files it also
+  changed (with diff). None → `branches: []`; pass it anyway.
 - **Stylesheet facts** (only if `styles` ≥ 1): per repo, after the packages step,
   `node $S/scripts/styles-scan.mjs <worktree> <that repo's diff> <its merge base> [--lib <path>]... > $W/styles-facts-<repo>.json`,
   with one `--lib` per fetched package path. It lists mechanical leads (physical direction properties,
