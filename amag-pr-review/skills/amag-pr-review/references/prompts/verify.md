@@ -11,6 +11,10 @@ real ones get posted under the user's name.
 - Existing comments by others: `{{COMMENTS_OTHERS}}` (PR mode; may be absent)
 - All our open previous findings: `{{OURS_PREVIOUS}}` (PR mode; may be absent)
 - Our previous findings whose code changed: `{{PREVIOUS_CHANGED}}` (PR mode; may be absent)
+- Candidates an earlier review of this PR dropped, with the reason: `{{DROPPED_PREVIOUS}}` (may be
+  absent). A candidate with the same path and root cause keeps that verdict and reason, unless the
+  code the reason rests on changed since or the candidate shows evidence the reason didn't weigh;
+  then say which in `reason`.
 - Sibling PRs for ticket {{TICKET_KEY}}: `{{SIBLINGS}}`; their diffs are prefetched as
   `<repo>-<id>.diff` files next to it in the `siblings` folder.
 - The full ticket, comments included: `{{TICKET_FILE}}` (may be `none`)

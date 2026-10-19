@@ -17,6 +17,8 @@ Read from SKILL.md step 2 when `state-prev.json` is not `null`, or when it is `n
   the code is unchanged (possibly moved): mark it `unchanged` at that line. `null` means the code
   changed: it goes to `$W/previous-changed.json` (comment id, parentId, path, old line, severity) for
   the verify agent. Findings on old-side lines (no fingerprint) also go there.
+- Write the previous state's `dropped` list (candidates an earlier verify rejected, with its reason)
+  to `$W/dropped-previous.json`, if it has one.
 - Write every open previous finding (comment id, parentId, path, line, severity) to
   `$W/ours-previous.json` so verify can match fresh candidates against them.
 - Review scope: if `git -C $WT merge-base --is-ancestor <reviewedCommit> HEAD` succeeds, review

@@ -184,24 +184,16 @@ If git reports "dubious ownership" for a repo, skip it and tell the user.
   It fetches, at the lockfile's version, the npm packages that changed files import from a registry
   other than the public one, so reviewers can read code the model has never seen. It does nothing
   outside npm projects. A record with `error` is not a failure: note it in the terminal and carry on.
-- **Newer release branches**: per repo, `git -C <clone> fetch -q origin '+refs/heads/release/*:refs/remotes/origin/release/*'`
-  (and `<prefix>/*` for DEST `template/x/1.0.0`),
-  then `node $S/scripts/forward-scan.mjs <clone> <that repo's diff> <its DEST> --diffs $W/forward > $W/forward-<repo>.json`.
-  It lists widths a newer branch widened that the change keeps narrow, and files it also
-  changed (with diff). None → `branches: []`; pass it anyway.
-- **Stylesheet facts** (only if `styles` ≥ 1): per repo, after the packages step,
-  `node $S/scripts/styles-scan.mjs <worktree> <that repo's diff> <its merge base> [--lib <path>]... > $W/styles-facts-<repo>.json`,
-  with one `--lib` per fetched package path. It lists mechanical leads (physical direction properties,
-  rules left dead by removed elements or classes, unused classes, repeated blocks, fences and token
-  declarations, long comments, `url()` files missing at base or head) for the reviewer to confirm.
+- **Newer release branches** and **stylesheet facts**: run the scans in
+  [references/context-scans.md](references/context-scans.md) (forward-scan always, styles-scan if `styles` ≥ 1).
 
 ## 5. Dispatch reviewers (parallel, one message)
 
 | `changed` | Reviewers |
 |---|---|
 | < 200 | `combined` (all dimension files except ticket-fit) + `ticket-fit` (if ticket) |
-| 200–3000 | `correctness` · `concurrency-races` · `resources-performance` (+`sql` if SQL) · `tests-design` (tests-history + design-quality) · `ticket-fit` (if ticket) · `security` (always: a new handler or grant needn't contain a security keyword) · `docs` · `styles` (if `styles` ≥ 100) |
-| > 3000 | `node $S/scripts/anchors.mjs split $W/context.diff $W/chunks 1500`; run the 200–3000 set minus ticket-fit/security/docs/styles **per chunk** (DIFF_FILE = the chunk, OUT_FILE suffixed `-<n>`); ticket-fit, security, docs and styles once over the whole diff (docs needs the code behind each claim, which a chunk rarely holds) |
+| 200–1000 | `correctness` · `concurrency-races` · `resources-performance` (+`sql` if SQL) · `tests-design` (tests-history + design-quality) · `ticket-fit` (if ticket) · `security` (always: a new handler or grant needn't contain a security keyword) · `docs` · `styles` (if `styles` ≥ 100) |
+| > 1000 | `node $S/scripts/anchors.mjs split $W/context.diff $W/chunks 800`; run the 200–1000 set minus ticket-fit/docs/styles **per chunk** (DIFF_FILE = the chunk, OUT_FILE and COVERAGE_FILE suffixed `-<n>`); ticket-fit, docs and styles once over the whole diff (docs needs the code behind each claim, which a chunk rarely holds) |
 
 Each prompt = [references/prompts/reviewer.md](references/prompts/reviewer.md) with slots filled:
 - `REVIEWER`: the name above. `SKILL_DIR`: this skill's base directory (Windows path).
@@ -214,6 +206,7 @@ Each prompt = [references/prompts/reviewer.md](references/prompts/reviewer.md) w
   `none` without a ticket. Every reviewer gets it, not only ticket-fit: the summary drops the comments,
   and a triage comment can already accept the consequence a reviewer is about to flag.
 - `DIFF_FILE`: `$W/context.diff` (Windows path). `OUT_FILE`: `$W/cand-<reviewer>.json`.
+  `COVERAGE_FILE`: `$W/cov-<reviewer>.json`.
 - `EXTRA_MATERIAL`: ticket-fit → `Sibling PRs: $W/siblings.json`;
   reviewer covering SQL → `Index maps: $W/index-map-<repo>.json` (each); `sql`, `correctness` and
   `combined` → `Forward-scan: $W/forward-<repo>.json` (each); reviewer covering tests-history (`combined`,
@@ -223,12 +216,9 @@ Each prompt = [references/prompts/reviewer.md](references/prompts/reviewer.md) w
   `Your scope is the changed stylesheets and the template classes they style or that no stylesheet styles; read other files only as context.`;
   otherwise `none`.
 
-A reviewer that errors or writes no file: re-dispatch once. A second failure → record the dimension as
-**uncovered** (blocks approval).
-
-**Token usage**: each agent's completion notification carries `<subagent_tokens>`. Keep
-`$W/usage.json` as `{"<reviewer>": tokens, ..., "verify": tokens}` (Write tool), keyed by the reviewer
-name that prefixes its candidate ids; chunked runs and retries add to the same key.
+**As each reviewer finishes**, follow [references/after-dispatch.md](references/after-dispatch.md):
+retries, the coverage check that sends a reviewer back for units it skipped, and token usage.
+No reviewer counts as done until its coverage check passes or is recorded as uncovered.
 
 ## 6. Verify (one agent)
 
@@ -238,7 +228,8 @@ step and step 7; there are no confirmed findings, and it isn't a verify failure.
 Fill [references/prompts/verify.md](references/prompts/verify.md): `CANDIDATE_FILES` = all
 `$W/cand-*.json`; `DIFF_FILE`, `REPOS`, `SKILL_DIR` as above; `COMMENTS_OTHERS` =
 `$W/comments-others.json` (PR) or `none`; `OURS_PREVIOUS` = `$W/ours-previous.json` or `none`;
-`PREVIOUS_CHANGED` = `$W/previous-changed.json` or `none`; `SIBLINGS` = `$W/siblings.json`;
+`PREVIOUS_CHANGED` = `$W/previous-changed.json` or `none`; `DROPPED_PREVIOUS` =
+`$W/dropped-previous.json` or `none`; `SIBLINGS` = `$W/siblings.json`;
 `TICKET_KEY`; `TICKET_FILE` as for the reviewers; `HUMANIZER` = the humanizer skill's `SKILL.md`, or `none` if not installed; `OUT_FILE` =
 `$W/verified.json`. Dispatch; retry once on failure (second failure → no posting, no approval, no
 state saved; show the raw candidates in the terminal).
@@ -336,7 +327,9 @@ root for a `reply`, else `null`), `path`, `line`, `side`, `severity`, `status: '
 for old side). Previous `fixed` → `status: 'fixed'`. `reviewedCommit` = `HEAD_SHA`, except when any
 post failed: then keep the previous `reviewedCommit` (or omit it on a first run) so the failed
 findings are found and posted next time. Write
-`{reviewedCommit, reviewedAt: <ISO now>, findings: [...]}` to `$W/state.json` with the Write tool, then
+`dropped` = every `verified.json` finding with verdict `dropped` (`path`, `line`, `claim`, `reason`),
+plus the previous state's `dropped` entries still in `dropped-previous.json`. Write
+`{reviewedCommit, reviewedAt: <ISO now>, findings: [...], dropped: [...]}` to `$W/state.json` with the Write tool, then
 `node $S/scripts/state.mjs save $WS $REPO $PR < $W/state.json`.
 
 ## 10. Cleanup (always, including after errors)

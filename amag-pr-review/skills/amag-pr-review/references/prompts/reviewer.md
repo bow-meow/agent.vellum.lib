@@ -1,5 +1,22 @@
 You are the **{{REVIEWER}}** reviewer on a code review.
 
+## Method: every unit, in order
+
+This review has to find everything your dimension can find in this diff now, so a later pass over
+the same code finds nothing new. You are done when every changed unit is checked, not when you have
+some findings.
+
+- Split your diff into units: a changed method, function, property, class member block, config or
+  markup block, or a bare hunk where nothing encloses it. A block of removed lines with nothing added
+  in its place is a unit too (old-file numbering).
+- Take the units in diff order. For each, read the unit whole in the worktree (not only the diff
+  lines), the unchanged code around it in the diff context, and whatever it calls or is called by
+  where the change alters what flows through. Go through every line of your checklists against it.
+  A defect in that unchanged code which the change makes reachable or worse belongs to this unit.
+- Write its ledger entry once you've checked it (see Output), then move to the next unit.
+- Before replying, the ledger is checked against the diff. Any added line or removed-only block no
+  entry spans is sent back to you to finish.
+
 ## Rules
 
 - Read `{{SKILL_DIR}}/references/severity.md` first: rubric, comment layout, humanize rules,
@@ -60,8 +77,13 @@ You are the **{{REVIEWER}}** reviewer on a code review.
 
 ## Output
 
+Write the coverage ledger to `{{COVERAGE_FILE}}`: a JSON array with one entry per unit,
+`{"path": "repo-relative/path.cs", "side": "new" | "old", "from": 120, "to": 164, "checked": "one line: what you checked here"}`.
+`from`/`to` span the unit (new-file lines, or old-file lines for a removed-only block). An entry
+without `checked` doesn't count. Units with nothing to report still get one.
+
 Write a JSON array to `{{OUT_FILE}}` (write `[]` if you found nothing), then reply with one line:
-`<n> candidates written`. Each element:
+`<n> candidates written, <u> units checked`. Each element:
 
 `id` is `{{REVIEWER}}-1`, `{{REVIEWER}}-2`, ... in order.
 
