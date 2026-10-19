@@ -15,8 +15,10 @@
 ## Look for
 - Wrong layer: UI calling the DB directly, business rules in controllers or stored procs when the module
   keeps them in services, transport types leaking into domain code.
-- Duplication: the change reimplements a helper that already exists. Grep the repo for the key logic
-  before flagging, and name the existing helper.
+- Duplication: the change reimplements a helper that already exists, or copies logic that lives inline
+  in another function (a "keep in sync with X" comment is the tell); then the fix is to extract it so
+  both call one copy. Grep the repo for the key logic before flagging, and name the existing helper or
+  site.
 - One decision made in two places: when a change splits a choice across components (which item is
   picked in one, what is done with it in another), check both key on the same value. One reading the
   raw input and the other a resolved or normalised form agree only for the inputs that need no

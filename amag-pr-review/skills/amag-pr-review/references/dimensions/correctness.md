@@ -67,6 +67,18 @@
 - Loops over a reader that fetches rows in batches (bulk/multi-row recordsets, paged result iterators):
   check the advance call moves one row, not one batch. A base-class "next" can skip the rest of the
   fetched batch, so only the first row of each batch is processed. Open the reader type to confirm.
+- Work done per row while a result set is still open, through a helper that runs its own query on the
+  same connection: without multiple active result sets the connection is still busy with the outer
+  results, so the inner query fails, or a reconnect-and-retry layer re-runs the outer query and the
+  remaining rows are silently lost. Open the helper to see whether it queries; collect the rows and
+  close the reader first.
+- A safety net (a reconcile, sweep or orphan check) for what a primary step can miss, skipped when that
+  step fails: the failure is often exactly when it's needed, such as a step with no transaction that
+  commits part of its work and then errors. Check the gate's premise ("a failure means the database is
+  down") against what the failure path really does, retries and reconnects included.
+- An orphan check or reconcile that only asks whether a record still exists: also check it still
+  belongs to this owner (machine, tenant, shard, worker). A record moved elsewhere often notifies only
+  its new owner, so the old owner's copy is the same orphan.
 - Newer release branches: the forward-scan file's `drift` lists files this change touches that a
   release branch it will be rebased into has also changed, with those commits and a `diffFile` of that
   branch's change. Read it for a member the PR calls or a behaviour it relies on that the branch
