@@ -14,6 +14,11 @@
 - LINQ multiple enumeration of a lazy query hitting the DB; `.Count() > 0` instead of `.Any()` on
   queryables.
 - `DateTime.Now` where UTC is stored; `DateTime` vs `DateTimeOffset` mixing.
+- A logging formatter default set through a named overload (`AddSimpleConsole(o => ...)`,
+  `AddJsonConsole(...)`): it registers `FormatterName` after configuration has bound `Logging:Console`,
+  so a formatter the settings file selects is silently replaced. A code default that must yield to
+  configuration is plain `AddConsole()` plus `Configure<TFormatterOptions>`, applied only while the
+  option is still unset. A suggested fix is held to this too.
 - Exceptions: `catch (Exception)` that swallows; `throw ex;` losing the stack.
 - Nullable reference annotations ignored with `!` on values that can be null, or on values that can't only
   because of a separate check the compiler can't see (a `(T?, Error?)` tuple whose error half was checked,
