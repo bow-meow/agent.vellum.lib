@@ -172,3 +172,9 @@ test('a corrected fix still keeps the issue\'s facts', () => {
   assert.match(e.body, /AddConsole\(\)/);
   assert.doesNotMatch(e.body, /AddSimpleConsole/);
 });
+
+test('buildPairs refuses candidates that share an id instead of drafting from the wrong one', () => {
+  const verified = { findings: [{ id: 'f1', sources: ['c-1'], verdict: 'confirmed', status: 'suggestion', issue: 'x', fix: 'y' }] };
+  const dup = [{ id: 'c-1', issue: 'first', fix: 'a' }, { id: 'c-1', issue: 'second', fix: 'b' }];
+  assert.throws(() => buildPairs(verified, dup), /duplicate candidate id c-1/);
+});

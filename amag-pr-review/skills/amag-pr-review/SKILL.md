@@ -199,6 +199,7 @@ If git reports "dubious ownership" for a repo, skip it and tell the user.
 
 Each prompt = [references/prompts/reviewer.md](references/prompts/reviewer.md) with slots filled:
 - `REVIEWER`: the name above. `SKILL_DIR`: this skill's base directory (Windows path).
+- `ID_START`: `1`; chunk `<n>` uses `<n>01`, so ids stay unique (the scripts refuse duplicates).
 - `CHECKLIST_FILES`: the dimension file(s) under `references/dimensions/` for that reviewer +
   `references/languages/<lang>.md` for each language detected (absolute paths).
 - `MODE`: `PR mode (#<id>: <title>)` or `local mode (<ticketKey>, uncommitted changes included)`.

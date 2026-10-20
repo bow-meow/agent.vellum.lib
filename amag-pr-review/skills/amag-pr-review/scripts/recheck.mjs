@@ -9,9 +9,19 @@ const STATUS = { High: 'critical', Medium: 'blocking', Low: 'suggestion', 'Low/n
 
 const worst = cands => cands.reduce((a, c) => (a && RANK[a] <= RANK[c.severity] ? a : c.severity), null);
 
+// Verify cites candidates by id alone, so two files sharing an id would silently resolve to the wrong one.
+export function indexById(candidates) {
+  const byId = new Map();
+  for (const c of candidates) {
+    if (byId.has(c.id)) throw new Error(`duplicate candidate id ${c.id}: give each chunk its own ID_START`);
+    byId.set(c.id, c);
+  }
+  return byId;
+}
+
 // A blocking candidate that verify dropped, graded below blocking, or never accounted for at all.
 export function contested(verified, candidates) {
-  const byId = new Map(candidates.map(c => [c.id, c]));
+  const byId = indexById(candidates);
   const out = [];
   const seen = new Set();
   for (const f of verified.findings) {

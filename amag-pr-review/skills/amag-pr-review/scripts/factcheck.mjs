@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CONFIDENCES, formatComment, readModel, stripHeader, styleIssues } from './comment.mjs';
+import { indexById } from './recheck.mjs';
 
 const CERTAIN = /\b(will|always|never|must|cannot|can't|won't|guaranteed)\b/gi;
 const HEDGE = /\b(might|may|could|possibly|perhaps|potentially|probably|likely|seems?)\b/gi;
@@ -42,7 +43,7 @@ const side = (issue, fix) => {
 // The draft comes from the reviewer's own wording, not the verifier's copy of it, so a verifier that
 // drops a fact from both draft and final is still caught. The status is the verifier's: it re-grades.
 export function buildPairs(verified, candidates) {
-  const byId = new Map(candidates.map(c => [c.id, c]));
+  const byId = indexById(candidates);
   return verified.findings
     .filter(f => f.verdict === 'confirmed' && (f.issue || f.fix))
     .map(f => {

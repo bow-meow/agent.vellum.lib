@@ -52,3 +52,8 @@ test('apply refuses a missing decision, an unknown id, or an overturn that is no
   const low = overturn('f2', 'Low');
   assert.throws(() => apply(verified, [low, { id: 'f3', decision: 'uphold' }, { id: 'sql-1', decision: 'uphold' }], c), /High\/Medium/);
 });
+
+test('contested refuses candidates that share an id, which verify could not tell apart', () => {
+  const dup = [{ id: 'correctness-1', severity: 'High' }, { id: 'correctness-1', severity: 'Low' }];
+  assert.throws(() => contested({ findings: [] }, dup), /duplicate candidate id correctness-1/);
+});

@@ -87,11 +87,11 @@ without `checked` doesn't count. Units with nothing to report still get one.
 Write a JSON array to `{{OUT_FILE}}` (write `[]` if you found nothing), then reply with one line:
 `<n> candidates written, <u> units checked`. Each element:
 
-`id` is `{{REVIEWER}}-1`, `{{REVIEWER}}-2`, ... in order.
+`id` is `{{REVIEWER}}-{{ID_START}}`, then counting up by one in order.
 
 ```json
 {
-  "id": "{{REVIEWER}}-1",
+  "id": "{{REVIEWER}}-{{ID_START}}",
   "repo": "symmetryclassic",
   "severity": "High | Medium | Low | Low/nit | Info",
   "dimension": "{{REVIEWER}}",
