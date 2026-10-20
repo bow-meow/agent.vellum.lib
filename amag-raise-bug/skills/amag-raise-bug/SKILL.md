@@ -63,10 +63,11 @@ the moment they exist, and the issue type can't be changed afterwards.
 | Environment | Bug only. The build and rig, when there was one. Empty otherwise |
 | Assignee | "me" means the caller: `atlassianUserInfo` gives the account ID |
 | Priority | Proposed with a reason in step 7. The user decides |
+| Project Charge | Tech debt (any ticket parented to SYM-985) is always `21462` TD103ER/04 Symmetry Software Tech Debt, whatever the reference ticket uses. Otherwise the reference ticket's, or the release's |
 
 Copy from the reference ticket only what describes the kind of ticket: type, versions, Project
-Charge, summary style. Its parent epic, estimate, RAG status and team fields describe its own work,
-so leave them off.
+Charge (except on tech debt), summary style. Its parent epic, estimate, RAG status and team fields
+describe its own work, so leave them off.
 
 ## Field reference (SYM)
 
@@ -85,8 +86,7 @@ so leave them off.
 
 Pass the description as markdown with `contentFormat: "markdown"`. For another release, read the
 version and Project Charge IDs off a recent ticket for that release. Tasks under SYM-985 usually
-have no fix version, and their Project Charge varies, so propose one in step 7 and let the user
-pick.
+have no fix version. Older ones carry assorted release charges; don't copy them.
 
 ## Common mistakes
 
