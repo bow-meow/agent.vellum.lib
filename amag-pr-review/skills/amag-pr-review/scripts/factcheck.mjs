@@ -50,7 +50,7 @@ export function buildPairs(verified, candidates) {
       const final = side(f.issue, f.fix);
       const draft = src ? (src.issue != null ? side(src.issue, src.fix) : side(src.comment, '')) : final;
       const srcs = (f.sources ?? []).map(id => byId.get(id)).filter(Boolean);
-      return { id: f.id, status: f.status, confidence: confidenceOf(f, srcs), draft, final };
+      return { id: f.id, status: f.status, confidence: confidenceOf(f, srcs), draft, final, fixRewritten: !!f.fix_rewritten };
     });
 }
 
@@ -83,10 +83,12 @@ export function build(verified, candidates, model, usage = null) {
   const pairs = buildPairs(verified, candidates);
   const reviewersById = new Map(pairs.map(({ id }) => [id, [...new Set(sourcesById.get(id).map(reviewerOf))]]));
   const tokensById = estimateTokens(reviewersById, usage);
-  return pairs.map(({ id, status, confidence, draft, final }) => {
-    const r = factCheck(draft.text, final.text);
+  return pairs.map(({ id, status, confidence, draft, final, fixRewritten }) => {
+    // A fix verify corrected drops the wrong fix's identifiers by design, so only the issue's facts are
+    // held to the draft; falling back to the draft fix would post the fix verify rejected.
+    const r = fixRewritten ? factCheck(draft.issue, final.text) : factCheck(draft.text, final.text);
     const use = r.ok ? 'final' : 'draft';
-    const chosen = use === 'final' ? final : draft;
+    const chosen = r.ok ? final : fixRewritten ? { issue: draft.issue, fix: final.fix } : draft;
     const reviewers = reviewersById.get(id);
     const tokens = tokensById.get(id) ?? null;
     const body = formatComment({ status, model, tokens, reviewers, confidence, issue: chosen.issue, fix: chosen.fix });

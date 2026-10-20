@@ -42,6 +42,8 @@ SIBLING_REPOS: amag-engineering/symmetryclassic amag-engineering/esg-ng-core-lin
 - Bitbucket allows ~1000 API calls an hour: never page through PR lists without `--max`.
 - If the user says a finding was wrong or noise: fix what they asked, then say you'll add the pattern
   to the don't-flag list in `references/severity.md`, and do it.
+- If the user says a fix we suggested or applied was wrong: fix it, then add the class of mistake to
+  the don't-suggest list in `references/fixes.md`, generic like every checklist line.
 
 ## 1. Intake
 
@@ -376,6 +378,9 @@ nearest thousand; drop the `· 🪙` part if there is no `usage.json`.
   `Dry run: would <approve|request changes|hold>`. One block per PR.
 - **Local mode**: number the table rows by each finding's `n`, then: `Saved to <TICKET_DIR>/review-findings.json.
   Which should I fix? (e.g. "fix 1,3", "fix all blocking"; or later, "pr-respond <TICKET>")`. On
-  an answer, apply the fixes in the ticket worktree, run the repo's quick checks if obvious (build of
-  the touched project), and **never commit**. Then set each fixed finding's `state` to `fixed` and
-  its `resolution` to a one-line what-changed in `review-findings.json` (Edit tool).
+  an answer, follow step 12.
+
+## 12. Local mode: applying fixes
+
+When the user picks findings to fix, read [references/local-fixes.md](references/local-fixes.md) and
+follow it: each fix is recorded, then reviewed by a fix-review pass before it is shown.

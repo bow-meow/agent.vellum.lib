@@ -151,3 +151,24 @@ test('CLI build --out writes one body file per finding', () => {
   execFileSync('node', [script, 'build', join(dir, 'verified.json'), join(dir, 'cand-x.json'), '--out', dir, '--usage', join(dir, 'usage.json')]);
   assert.match(readFileSync(join(dir, 'body-f1.txt'), 'utf8'), /^🔵 \*\*info\*\* · 🤖 AI:.+ · 🔎 c · 🪙 ~4k tokens\n\nScope creep\.$/);
 });
+
+test('a fix verify corrected is posted, though it drops the wrong fix\'s identifiers', () => {
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', status: 'suggestion', sources: ['c-1'],
+    issue: 'Upgraded servers log no timestamps.', fix: 'Keep `AddConsole()` and set the default with `Configure<SimpleConsoleFormatterOptions>`.', fix_rewritten: true }] };
+  const cands = [{ id: 'c-1', issue: 'Upgraded servers log no timestamps.', fix: 'Call `AddSimpleConsole(o => o.UseUtcTimestamp = true)`.' }];
+  const [e] = build(verified, cands, 'Opus 5.5');
+  assert.equal(e.use, 'final');
+  assert.match(e.body, /Configure<SimpleConsoleFormatterOptions>/);
+  assert.doesNotMatch(e.body, /AddSimpleConsole/);
+});
+
+test('a corrected fix still keeps the issue\'s facts', () => {
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', status: 'suggestion', sources: ['c-1'],
+    issue: 'Upgraded servers log nothing.', fix: 'Use `AddConsole()`.', fix_rewritten: true }] };
+  const cands = [{ id: 'c-1', issue: 'Servers upgraded past 11.0 log no `Timestamp`.', fix: 'Call `AddSimpleConsole()`.' }];
+  const [e] = build(verified, cands, 'Opus 5.5');
+  assert.match(e.body, /11\.0/);
+  assert.match(e.body, /`Timestamp`/);
+  assert.match(e.body, /AddConsole\(\)/);
+  assert.doesNotMatch(e.body, /AddSimpleConsole/);
+});

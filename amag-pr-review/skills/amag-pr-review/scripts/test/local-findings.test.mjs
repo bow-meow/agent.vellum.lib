@@ -78,3 +78,96 @@ test('CLI decisions prints nothing when there is no earlier round', () => {
   writeFileSync(join(dir, 'prev.json'), JSON.stringify(previous));
   assert.equal(execFileSync('node', [script, 'decisions', join(dir, 'prev.json')], { encoding: 'utf8' }).trim().split('\n').length, 2);
 });
+
+const git = (repo, ...a) => execFileSync('git', ['-C', repo, '-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { encoding: 'utf8' }).trim();
+
+function fixture() {
+  const dir = mkdtempSync(join(tmpdir(), 'lf-'));
+  const repo = join(dir, 'a');
+  execFileSync('git', ['init', '-q', repo]);
+  writeFileSync(join(repo, 'Log.cs'), 'class Log\n{\n    void Setup() => builder.AddConsole();\n}\n');
+  git(repo, 'add', '.');
+  git(repo, 'commit', '-q', '-m', 'x');
+  writeFileSync(join(repo, 'Log.cs'), 'class Log\n{\n    void Setup() => builder.AddConsole(); // user edit\n}\n');
+  const findings = { ticketKey: 'SYM-1', repos: [{ name: 'a', path: repo }], findings: [
+    { n: 1, id: 'f1', repo: 'a', path: 'Log.cs', line: 3, text: 'No UTC timestamps.\n\n**Fix:** pin the formatter.', state: 'open', resolution: null },
+    { n: 2, id: 'f2', repo: 'a', path: 'Other.cs', line: 1, text: 'Untouched.', state: 'open', resolution: null },
+  ] };
+  const file = join(dir, 'review-findings.json');
+  writeFileSync(file, JSON.stringify(findings));
+  return { dir, repo, file };
+}
+
+const run = (...a) => execFileSync('node', [script, ...a], { encoding: 'utf8' });
+
+test('snapshot names the tree as it stands, uncommitted edits included, and changes nothing', () => {
+  const { repo } = fixture();
+  const before = git(repo, 'status', '--porcelain');
+  const snap = run('snapshot', repo).trim();
+  assert.match(snap, /^[0-9a-f]{40}$/);
+  assert.match(git(repo, 'show', `${snap}:Log.cs`), /user edit/);
+  assert.equal(git(repo, 'status', '--porcelain'), before);
+  assert.equal(git(repo, 'stash', 'list'), '');
+});
+
+test('record-fix stores only the fix\'s own change, not the user\'s uncommitted work', () => {
+  const { repo, file } = fixture();
+  const snap = run('snapshot', repo).trim();
+  writeFileSync(join(repo, 'Log.cs'), 'class Log\n{\n    void Setup() => builder.AddSimpleConsole(o => o.UseUtcTimestamp = true); // user edit\n}\n');
+  run('record-fix', file, '1', repo, snap, 'Log.cs');
+  const f = JSON.parse(readFileSync(file, 'utf8')).findings[0];
+  assert.equal(f.fix.repo, 'a');
+  assert.equal(f.fix.snapshot, snap);
+  assert.deepEqual(f.fix.files, ['Log.cs']);
+  assert.match(f.fix.patch, /^\+.*AddSimpleConsole/m);
+  assert.match(f.fix.patch, /^-.*AddConsole\(\); \/\/ user edit/m);
+  assert.doesNotMatch(f.fix.patch, /^-.*AddConsole\(\);$/m);
+});
+
+test('record-fix includes a file the fix created', () => {
+  const { repo, file } = fixture();
+  const snap = run('snapshot', repo).trim();
+  writeFileSync(join(repo, 'LogTests.cs'), 'class LogTests { }\n');
+  run('record-fix', file, '1', repo, snap, 'LogTests.cs');
+  const f = JSON.parse(readFileSync(file, 'utf8')).findings[0];
+  assert.match(f.fix.patch, /^\+\+\+ b\/LogTests\.cs$/m);
+  assert.match(f.fix.patch, /^\+class LogTests/m);
+});
+
+test('record-fix refuses a fix that changed nothing, and an unknown finding', () => {
+  const { repo, file } = fixture();
+  const snap = run('snapshot', repo).trim();
+  assert.throws(() => execFileSync('node', [script, 'record-fix', file, '1', repo, snap, 'Log.cs'], { stdio: 'pipe' }));
+  writeFileSync(join(repo, 'Log.cs'), 'changed\n');
+  assert.throws(() => execFileSync('node', [script, 'record-fix', file, '9', repo, snap, 'Log.cs'], { stdio: 'pipe' }));
+});
+
+test('fix-diff lists each recorded fix under its finding, and fails when none is recorded', () => {
+  const { repo, file } = fixture();
+  assert.throws(() => execFileSync('node', [script, 'fix-diff', file], { stdio: 'pipe' }));
+  const snap = run('snapshot', repo).trim();
+  writeFileSync(join(repo, 'Log.cs'), 'class Log\n{\n    void Setup() => builder.AddSimpleConsole(); // user edit\n}\n');
+  run('record-fix', file, '1', repo, snap, 'Log.cs');
+  const out = run('fix-diff', file);
+  assert.match(out, /^## Finding 1 \(f1\): a\/Log\.cs:3$/m);
+  assert.match(out, /No UTC timestamps\./);
+  assert.match(out, /```diff\n[\s\S]*AddSimpleConsole[\s\S]*```/);
+  assert.doesNotMatch(out, /Finding 2/);
+});
+
+test('provenance names the fix that added the flagged lines, from either round\'s file', () => {
+  const { dir, repo, file } = fixture();
+  const snap = run('snapshot', repo).trim();
+  writeFileSync(join(repo, 'Log.cs'), 'class Log\n{\n    void Setup() => builder.AddSimpleConsole(); // user edit\n}\n');
+  run('record-fix', file, '1', repo, snap, 'Log.cs');
+  const prev = join(dir, 'review-findings.prev.json');
+  writeFileSync(prev, readFileSync(file));
+  writeFileSync(file, JSON.stringify({ findings: [] }));
+  git(repo, 'commit', '-qam', 'later');
+  const hit = JSON.parse(run('provenance', repo, 'a', 'Log.cs', '3', '3', file, prev, join(dir, 'missing.json')));
+  assert.equal(hit.length, 1);
+  assert.equal(hit[0].n, 1);
+  assert.equal(hit[0].source, prev);
+  assert.match(hit[0].finding, /No UTC timestamps\./);
+  assert.deepEqual(JSON.parse(run('provenance', repo, 'a', 'Log.cs', '1', '2', prev)), []);
+});
