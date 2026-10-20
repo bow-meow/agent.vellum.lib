@@ -13,7 +13,11 @@ of expanding on your own.
 
 ## Loop
 
-1. **Inspect** the files and evidence named in the task; search before reading widely.
+1. **Inspect** the files and evidence named in the task; search before reading widely. When a
+   folder on the path to a file you are about to open has its own `CLAUDE.md`, read it first:
+   nothing injects it for you in a worktree. If the task is to write or refresh such a map, follow
+   the reference file the task names exactly; a map holds orientation and traps, never rules or
+   file listings.
 2. **Understand** the cause or the design before changing anything. If the task's diagnosis does
    not match what the code shows, stop and report the contradiction — do not build on it.
 3. **Implement** the smallest change that solves the task in the codebase's own idiom.

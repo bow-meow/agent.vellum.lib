@@ -54,11 +54,15 @@ tickets progress at different speeds; never block one on another.
 2. **Isolate — one git worktree per repo per ticket** (see [Worktree mechanics](#worktree-mechanics)).
    Detect a pre-existing ticket dir or branch and ask build-on vs start-fresh rather than clobbering.
 3. **Establish context yourself.** Search, read the relevant sections, locate the implementation,
-   note exact files and lines, prior attempts, and what QA saw. Move the ticket to In Development
+   note exact files and lines, prior attempts, and what QA saw. When a search hit sits under a
+   folder that has its own `CLAUDE.md`, read that file before opening anything else there: a
+   worktree outside the launch repo gets no automatic injection of nested `CLAUDE.md` files, so
+   nothing loads it for you (see [Module maps](#module-maps)). Move the ticket to In Development
    and set a Jira estimate from the scope you found. Then route: routine (clear cause, bounded
    change) goes to step 4; an [advisor trigger](#when-to-consult-the-advisor) goes to step 6 first.
 4. **Delegate a bounded task to the engineer.** The prompt carries: the goal; worktree path(s) and
-   base; the files, lines, and evidence you found; constraints (compatibility, conventions,
+   base; the files, lines, and evidence you found; the path of every module `CLAUDE.md` the task
+   touches; constraints (compatibility, conventions,
    generated artifacts to leave alone); exactly which build and tests to run and in which
    environment (see [Non-negotiables](#non-negotiables)); and that it returns the
    [engineer report](#engineer-report). Give it your findings, not the whole conversation. One
@@ -78,10 +82,25 @@ tickets progress at different speeds; never block one on another.
    - build and checks succeed and the appropriate tests pass, verified by you;
    - a regression test was added where practical, or you say why not;
    - no known blocking issue, no temporary or debug code, and the diff is coherent and scoped to
-     the ticket.
+     the ticket, with any module-map change (see [Module maps](#module-maps)) verified and
+     listed apart from the ticket change.
 8. **Close out honestly.** Jira status and worklog match reality: a logging-only or partial
    deliverable is not "fixed". Commit, push, or PR only on the user's explicit say-so. Report per
-   ticket: what changed, what you verified and how, and what you could not verify.
+   ticket: what changed, what you verified and how, what you could not verify, and which module
+   maps were added or refreshed — they go in their own commit in the same PR when the user commits.
+
+## Module maps
+
+A module's `CLAUDE.md` is a ≤15-line orientation — what it is, entry points, what it talks to,
+traps — in the shape given in [references/module-map.md](references/module-map.md); read that file
+before dispatching a map task. Ticket work maintains these maps as a side effect:
+
+- **Read** one whenever step 3 or an engineer task enters a folder that has one (the rule in step 3).
+- **Write or refresh** one when either holds: the context step or an engineer task opened three or
+  more files in a module that has no `CLAUDE.md`; or the ticket's diff changed a module whose
+  `CLAUDE.md` now says something false. Dispatch it as its own bounded engineer task after the
+  main change, naming the reference file. A module only grepped through gets no map.
+- **Verify** it yourself with the checks in the reference file before it counts as done.
 
 ## When to consult the advisor
 
@@ -237,6 +256,7 @@ Each of these is here because an agent was observed violating it, not because it
 | "The advisor already understands the problem, I'll have it implement." | The advisor advises; the engineer implements. |
 | "The engineer can review its own diff, it knows the change best." | That is why it cannot. A review pass is a fresh engineer or nothing. |
 | "I'll commit/push so it's ready when they're back." | Commit, push, and PR are the user's explicit call, never a default. |
+| "The grep hit is right there, I'll open the code." | The module's `CLAUDE.md` is ~400 tokens and names the trap you are about to re-derive over five reads. Read it first. |
 
 ## Red Flags — STOP and re-check
 
@@ -249,6 +269,7 @@ Each of these is here because an agent was observed violating it, not because it
 - Asking the implementing engineer to review its own diff.
 - About to commit, push, or transition to a done-ish status without the user asking.
 - About to run `git worktree add` by hand instead of `mk-worktree.mjs`.
+- About to open a file in a folder that has a `CLAUDE.md` you have not read.
 
 ## Anti-patterns
 
