@@ -48,7 +48,21 @@ use `HEAD`). Keep the hash per repo.
 
 The code-comments skill and the narrowest build/tests still apply, and what was and wasn't verified
 still goes in the pause table. **Never commit**: the worktree usually holds the user's uncommitted
-work, and a commit would sweep it in. Record which files each fix touched.
+work, and a commit would sweep it in.
+
+Record each fix as it lands, so a later round can tell code we wrote from code the user wrote
+(`PRR` as in SKILL.md step 6):
+
+```bash
+SNAP=$(node $PRR/scripts/local-findings.mjs snapshot <repo path>)     # before this finding's fix
+# apply the fix, then:
+node $PRR/scripts/local-findings.mjs record-fix <ticketDir>/review-findings.json <n> <repo path> $SNAP <repo-relative files it touched>
+```
+
+Then review the fixes: `node $PRR/scripts/local-findings.mjs fix-diff <ticketDir>/review-findings.json <n...>`
+into `fixes.md` in the scratchpad, and dispatch the fix-review pass exactly as SKILL.md step 6 does,
+with that file as `FIXES_FILE`. A `defect` or `incomplete` is reworked and recorded again with
+`record-fix` against the snapshot in its `fix.snapshot`, then reviewed once more.
 
 ### L6. Retro — misses and noise, before the pause
 
@@ -63,8 +77,10 @@ keeps one generation). For each **fix** verdict, run step 7's miss analysis agai
 1. **Did the earlier round see this code?** Check the cited code against the earlier `head`
    (`git show <head>:<path>`, `git log -L` on the lines). When the earlier record has
    `dirty: true`, its uncommitted code isn't in `head`: judge from the finding's text and the
-   branch's later commits, and record "uncertain" when you can't tell. Code that arrived after it,
-   including this run's own earlier fixes, isn't a miss.
+   branch's later commits, and record "uncertain" when you can't tell. Code that arrived after it
+   isn't a miss of the diff, but first check whether one of our fixes wrote it: run SKILL.md step 7's
+   question 1 (`provenance` over the finding's lines against both findings files). A hit is a **bad
+   fix** and takes that question's route.
 2. **Was it raised then and lost?** A finding in the earlier record on the same code that it
    dismissed, or that its verify dropped or downgraded (say so in the summary if the dropped
    candidates aren't on record), points at the verify or recheck rule that let it go.
@@ -85,6 +101,7 @@ Show, then wait for the user:
   (one line: what changed, the evidence for a push-back, or the question for a clarify)
 - the diff of this run's changes only: `git -C <path> diff <snapshot> -- <touched files>` per repo. A
   touched file that was untracked has no snapshot; list it instead of diffing it.
+- the fix-review verdict per fix, and for each one that isn't `ok`, what was reworked or why it stands.
 - the L6 miss table and each amag-pr-review line it added or rewrote, quoted with its file.
 - each drafted don't-flag line from L6, with the finding it came from.
 
@@ -93,10 +110,10 @@ anything that changed.
 
 ### L8. On approval — record
 
-Edit `review-findings.json` (Edit tool), only the `state` and `resolution` of handled findings:
+Edit `review-findings.json` (Edit tool), only the `state` and `resolution` of handled findings, and the `fix` record of an undone fix:
 fix → `fixed`; push-back → `dismissed`; clarify → stays `open` unless the user decided at the pause.
-Add the don't-flag lines the user accepted. Nothing else is written, and the code edits stay
-uncommitted.
+A fix the user undid at the pause loses its `fix` record too. Add the don't-flag lines the user
+accepted. Nothing else is written, and the code edits stay uncommitted.
 
 ### L9. Summary
 

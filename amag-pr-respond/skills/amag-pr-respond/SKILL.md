@@ -146,6 +146,16 @@ code helps every future reader.
   verification is impractical (e.g. the classic C++ link), do what is feasible and record exactly
   what was and wasn't verified — it goes in the pause table, never silently omitted.
 - Draft the reply: `Fixed in <hash>, <one sentence on what changed>.`
+- **Review the fixes before the pause.** A fix is new code, and nothing else reads it before it is
+  pushed. `PRR` = amag-pr-review's installed skill directory (the most recently modified
+  `~/.claude/plugins/cache/*/amag-pr-review/*/skills/amag-pr-review`). Write `fixes.md` in the
+  scratchpad: per fix commit, a `## Comment <root id>: <path>:<line>` heading, the comment's text,
+  then `git show --format= <hash>` in a diff fence. Dispatch one `amag-pr-review:pr-review-reader`
+  with `$PRR/references/prompts/fix-review.md`: `SKILL_DIR` = `$PRR`, `CHECKLIST_FILES` =
+  `$PRR/references/dimensions/correctness.md` plus the language file for each touched file,
+  `REPOS` = the worktree, `FIXES_FILE` = that file, `OUT_FILE` = `fix-review.json` beside it.
+  Each `defect` or `incomplete`: rework it as a further commit (the reply cites both hashes) and
+  review the reworked fixes once more. Every verdict goes in the pause table.
 
 ### 7. Retro — teach amag-pr-review what it missed
 
@@ -159,16 +169,27 @@ missed, and land the lesson where the next review reads it.
 
 **Miss analysis — answer these in order for each counted defect, before editing anything:**
 
-1. **Did amag-pr-review see this code?** Find the commits amag-pr-review last reviewed (its PR state's
+1. **Did one of our own fixes write this code?** A fix amag-pr-review suggested and someone applied, or
+   a fix an earlier amag-pr-respond run committed, is code the review wrote, so a defect in it is a
+   **bad fix** even though the review never saw it in a diff. Check both:
+   - `node $PRR/scripts/local-findings.mjs provenance <worktree> <repo> <path> <from> <to> <ticketDir>/review-findings.json <ticketDir>/review-findings.prev.json`
+     over the commented lines (`<ticketDir>` = the worktree's parent folder). Each hit names the
+     finding whose recorded fix added those lines.
+   - `git blame -L <from>,<to>` on the same lines: a commit that an earlier reply of ours on this PR
+     cited as `Fixed in <hash>` is a bad fix from that run.
+
+   A bad fix takes the "our own fix introduced it" row of the table below, then goes on to question 4
+   as well: the fix-review pass reads the same checklists, so a missing checklist line is a second gap.
+2. **Did amag-pr-review see this code?** Find the commits amag-pr-review last reviewed (its PR state's
    `reviewedCommit`, or the head it ran on). If the defect arrived later, or amag-pr-review never ran on
    that version, it isn't a miss: record "not reviewed" and change nothing.
-2. **Was it raised and then lost?** Look for a candidate or finding on the same code that verify
+3. **Was it raised and then lost?** Look for a candidate or finding on the same code that verify
    dropped or downgraded, or recheck upheld. If so, the cause is that step's reason: name it (e.g.
    "treated a test added in the same change as proof of intent") and fix the rule in
    `references/prompts/verify.md` or `recheck.md` that allowed it.
-3. **Otherwise it was never raised:** pick the row in the table below.
+4. **Otherwise it was never raised:** pick the row in the table below.
 
-Record each answer in a miss table (defect | seen by amag-pr-review? | raised then lost? | cause | change)
+Record each answer in a miss table (defect | from our fix? | seen by amag-pr-review? | raised then lost? | cause | change)
 for the pause and the summary.
 
 Edit amag-pr-review where a change lasts: the `amag-pr-review/skills/amag-pr-review` folder of a
@@ -186,6 +207,7 @@ class of defect so you sharpen an existing line instead of adding a near-duplica
 | A line already covers it concretely | Nothing; report "covered, reviewer missed it" (the same report across several PRs points at the prompts, not the checklists) |
 | A `## Don't flag` line or severity rule in `references/severity.md` would suppress it | Narrow that line so it no longer covers this case |
 | The evidence lived where amag-pr-review never looks (a repo missing from `SIBLING_REPOS`, an undetected file type, a linked Jira issue, a file its scripts filter out) | Pipeline change in amag-pr-review's `SKILL.md` or `scripts/`, see below. Before claiming one, check that the filter applies on the path this PR's size takes through amag-pr-review's step 5 |
+| Our own suggested or applied fix introduced it (question 1) | Add one bullet to `references/fixes.md`'s `## Don't suggest`, naming the class of wrong fix. If a line there already covers it concretely, sharpen `references/prompts/fix-review.md` instead: the fix-review pass had the rule and passed the fix |
 | Needs knowledge outside the code, ticket and repo (product intent, one reviewer's taste, a customer setup) | Nothing; say so in the summary |
 
 A defect can match several rows: act on each. When both files fit, the language file wins if the trigger or the fix is a language or framework
@@ -230,6 +252,7 @@ Show the user, in the terminal:
 - each reply exactly as it will post, header included:
   `node scripts/bb.mjs preview <header flags>` with the draft on stdin (step 9 has the flags)
 - the combined diff of all fix commits (`git diff origin/<source-branch>..HEAD`)
+- the fix-review verdict per fix, and for each one that isn't `ok`, what was reworked or why it stands
 - the step-7 retro: the miss table, then each amag-pr-review line added or rewritten, quoted with its
   file (old text too for a rewrite), plus any script change and its suite result. The user may
   veto a line here; `git revert` its retro commit and push the revert.
@@ -300,6 +323,7 @@ Quote them rather than showing `git diff`: the touched file may already carry th
 - The HARD-GATE above: nothing about the PR goes outward before pause approval.
 - The retro (step 7) runs before the pause, never after posting: a run that stops at the pause
   must still have taught amag-pr-review.
+- Every fix commit goes through the fix-review pass (step 6) before the pause.
 - Retro changes to amag-pr-review are committed and pushed to `main` in step 7, before the pause;
   only the files the retro touched.
 - Lines written into amag-pr-review are generic: no project, repo, subsystem, file, ticket or PR names.
