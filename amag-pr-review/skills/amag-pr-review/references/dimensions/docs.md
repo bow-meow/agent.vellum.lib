@@ -12,8 +12,10 @@ check each claim against the code wherever it lives, not only the code next to i
   validation): they must agree with each other and with the code.
 - Unchanged sentences the change makes false: absolute claims ("never asks without the flag", "X is
   unchanged", "is always an error", "never writes Y") in the docs files the change touches and the
-  README of each changed project. Test each against the new code, including code in a shared library
-  the claim's subject also uses.
+  README of each changed project, and code comments in or next to a changed hunk that justify what the
+  change removed or replaced (a comment explaining a hint, guard or workaround that is now gone, or
+  pointing at another comment that is). Test each against the new code, including code in a shared
+  library the claim's subject also uses.
 - Doc comments promising a property the body doesn't provide: de-duplicated, ordered, thread-safe,
   "only for diagnostics" on a helper whose result now gates an action, an overload's exception list
   shorter than the one it delegates to.
