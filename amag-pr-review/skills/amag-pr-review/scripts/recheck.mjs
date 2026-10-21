@@ -2,11 +2,22 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CONFIDENCES, SEVERITIES } from './comment.mjs';
 
 const BLOCKING = new Set(['High', 'Medium']);
 const RANK = { High: 0, Medium: 1, Low: 2, 'Low/nit': 3, Info: 4 };
 
 const worst = cands => cands.reduce((a, c) => (a && RANK[a] <= RANK[c.severity] ? a : c.severity), null);
+
+// Verify re-checked the finding, so its rating wins over the reviewers'. The reason travels with
+// whichever rating is used, since a medium finding posts it.
+export function confidenceOf(f, srcs = []) {
+  for (const s of [f, ...srcs]) {
+    const c = String(s.confidence ?? '').trim().toLowerCase();
+    if (CONFIDENCES.includes(c)) return { confidence: c, reason: String(s.confidence_reason ?? '').trim() };
+  }
+  return { confidence: null, reason: '' };
+}
 
 // Verify cites candidates by id alone, so two files sharing an id would silently resolve to the wrong one.
 export function indexById(candidates) {
@@ -18,7 +29,8 @@ export function indexById(candidates) {
   return byId;
 }
 
-// A blocking candidate that verify dropped, graded below blocking, or never accounted for at all.
+// A blocking candidate that verify dropped, graded below blocking, or never accounted for at all, and
+// any finding verify confirmed at low confidence: nothing is posted until it's confirmed or dropped.
 export function contested(verified, candidates) {
   const byId = indexById(candidates);
   const out = [];
@@ -26,6 +38,11 @@ export function contested(verified, candidates) {
   for (const f of verified.findings) {
     const srcs = (f.sources ?? []).map(id => byId.get(id)).filter(Boolean);
     srcs.forEach(c => seen.add(c.id));
+    const { confidence, reason } = confidenceOf(f, srcs);
+    if (f.verdict === 'confirmed' && confidence === 'low') {
+      out.push({ id: f.id, kind: 'unconfirmed', candidates: srcs, verdict: f.verdict, severity: f.severity, reason });
+      continue;
+    }
     const from = worst(srcs);
     if (!BLOCKING.has(from)) continue;
     if (f.verdict === 'confirmed' && BLOCKING.has(f.severity)) continue;
@@ -38,10 +55,15 @@ export function contested(verified, candidates) {
   return out;
 }
 
-function checkOverturn(r) {
+function checkFinding(r, severities) {
   const f = r.finding;
-  if (!f || f.verdict !== 'confirmed' || !BLOCKING.has(f.severity) || !f.issue || !f.match)
-    throw new Error(`overturn of ${r.id} needs a confirmed High/Medium finding with issue and match`);
+  if (!f || f.verdict !== 'confirmed' || !severities.includes(f.severity) || !f.issue || !f.match)
+    throw new Error(`${r.decision} of ${r.id} needs a confirmed ${severities.join('/')} finding with issue and match`);
+  const { confidence, reason } = confidenceOf(f);
+  if (confidence !== 'high' && confidence !== 'medium')
+    throw new Error(`${r.decision} of ${r.id} needs high or medium confidence: confirm it or drop it`);
+  if (confidence === 'medium' && !reason)
+    throw new Error(`${r.decision} of ${r.id} is medium confidence with no confidence_reason saying what isn't confirmed`);
 }
 
 export function apply(verified, decisions, contestedList) {
@@ -52,9 +74,20 @@ export function apply(verified, decisions, contestedList) {
     const c = pending.get(r.id);
     if (!c) throw new Error(`recheck decision for ${r.id}, which was not contested`);
     pending.delete(r.id);
+    if (c.kind === 'unconfirmed') {
+      const i = findings.findIndex(f => f.id === c.id);
+      if (r.decision === 'drop') {
+        findings[i] = { ...findings[i], verdict: 'dropped', unconfirmed: true, reason: r.reason ?? '' };
+        continue;
+      }
+      if (r.decision !== 'confirm') throw new Error(`decision for unconfirmed ${r.id} must be confirm or drop`);
+      checkFinding(r, SEVERITIES);
+      findings[i] = { ...r.finding, recheck: r.reason ?? '', id: c.id, sources: findings[i].sources };
+      continue;
+    }
     if (r.decision === 'uphold') continue;
     if (r.decision !== 'overturn') throw new Error(`decision for ${r.id} must be uphold or overturn`);
-    checkOverturn(r);
+    checkFinding(r, [...BLOCKING]);
     const restored = { ...r.finding, recheck: r.reason ?? '' };
     if (c.kind === 'omitted') {
       findings.push({ ...restored, id: `r${++n}`, sources: [c.id] });

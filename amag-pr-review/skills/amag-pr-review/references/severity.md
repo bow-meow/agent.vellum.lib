@@ -43,7 +43,7 @@ concrete failure → Low.
 
 ## Comment layout
 
-A posted comment is exactly three parts:
+A posted comment is three parts, or four at medium confidence:
 
 1. Header line: `<emoji> **<change needed | note>** · 🤖 AI:<MODEL> · 🔎 <reviewer> · 🎯 <confidence> confidence · 🪙 ~<n> tokens`.
    The reviewer is the agent whose candidate became the finding, taken from the candidate id prefix
@@ -53,7 +53,9 @@ A posted comment is exactly three parts:
    findings it raised, plus an even share of verify, recheck and any reviewer with no finding. The
    comments add up to the summary's total. It's left out when usage wasn't recorded.
 2. The issue: 1-2 sentences. What's wrong, where, and what it causes.
-3. `**Fix:** ` plus the suggested fix: one sentence, or a short code snippet. Left out only for an
+3. Medium confidence only: `**Not confirmed:** ` plus the finding's `confidence_reason`, the one thing
+   that kept it from high.
+4. `**Fix:** ` plus the suggested fix: one sentence, or a short code snippet. Left out only for an
    Info finding with nothing to change.
 
 ```
@@ -74,9 +76,11 @@ would be (severity). Every candidate and every verified finding carries one:
   and its callers, and nothing in the change, the ticket or its comments already accounts for it.
 - **medium**: the evidence is in the code, but the outcome depends on something not confirmed: runtime
   config, a caller or consumer outside the worktree, server or library behaviour, or author intent the
-  ticket and PR don't settle.
+  ticket and PR don't settle. `confidence_reason` names that thing, and the comment posts it.
 - **low**: plausible from the code, not confirmed. A High/Medium finding at low confidence goes to
-  verify like any other; it isn't downgraded for that alone.
+  verify like any other; it isn't downgraded for that alone. Low is never posted: recheck chases what
+  kept it low, then confirms it at high or medium or drops it, and `factcheck.mjs` refuses one that
+  got past.
 
 Reviewers and verify supply `issue` and `fix` as two separate fields with no header. One finding per
 comment. A reply into someone's thread says only the new part.

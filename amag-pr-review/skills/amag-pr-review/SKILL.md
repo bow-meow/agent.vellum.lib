@@ -238,8 +238,8 @@ Fill [references/prompts/verify.md](references/prompts/verify.md): `CANDIDATE_FI
 state saved; show the raw candidates in the terminal).
 
 **Recheck** what verify took off the blocking list (dropped, downgraded below Medium, or never
-mentioned), since one agent told to disprove is the only thing standing between a real defect and an
-approval:
+mentioned), as one disproving agent is all that stands between a defect and an approval, and what it
+confirmed at low confidence, which never posts:
 
 ```bash
 node $S/scripts/recheck.mjs contested $W/verified.json $W/cand-*.json > $W/contested.json
@@ -256,8 +256,8 @@ cp $W/verified.json $W/verified-orig.json
 node $S/scripts/recheck.mjs apply $W/verified-orig.json $W/recheck.json $W/contested.json > $W/verified.json
 ```
 
-`apply` exits 1 if a contested item has no decision or an overturn isn't a confirmed High/Medium
-finding: re-dispatch once with the error, then treat it as a failed recheck.
+`apply` exits 1 if a contested item has no decision or a decision breaks recheck.md's rules:
+re-dispatch once with the error, then treat it as a failed recheck.
 
 Then fact-check the humanized text against the reviewers' own wording and build every body:
 
@@ -265,8 +265,7 @@ Then fact-check the humanized text against the reviewers' own wording and build 
 node $S/scripts/factcheck.mjs build $W/verified.json $W/cand-*.json --out $W --usage $W/usage.json > $W/factcheck.json
 ```
 
-This writes `$W/body-<id>.txt` per confirmed finding in the layout from severity.md (header with the
-reviewer and the finding's share of the run's tokens, issue, `**Fix:**`), from the verifier's text when `use` is `final`, else
+This writes `$W/body-<id>.txt` per confirmed finding in the layout from severity.md, from the verifier's text when `use` is `final`, else
 the reviewer's. Each entry's `reviewers` and `confidence` fill the Reviewer and Confidence columns of
 the terminal table. Without `usage.json`, drop `--usage` and the header omits tokens. An entry with a
 non-empty `style` list still has an AI tell: edit that body file to clear it (same facts, same header),
@@ -359,6 +358,7 @@ Local mode: `rm -rf $W` only; the ticket worktree is never touched by the review
 ...
 Dropped by verify (n): <id: one-line reason>, ...   (High/Medium ones: "upheld by recheck")
 Overturned by recheck (n): <id: what verify got wrong>, or none
+Unconfirmed, not posted (n): <id: what recheck sought>, or none
 Already raised by others: <finding → author>
 Terminal-only: <unanchorable / uncertain ticket-fit findings>
 Closed by a human: <previous findings step 2 closed; for an author reply, its gist>

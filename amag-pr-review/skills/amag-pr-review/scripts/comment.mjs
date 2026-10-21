@@ -47,9 +47,10 @@ export const isOurs = text => parseHeader(text) !== null;
 
 export const stripHeader = text => String(text ?? '').replace(HEADER_RE, '').replace(LEGACY_RE, '').trim();
 
-export function formatComment({ status, model, tokens = null, reviewers = [], confidence = null, issue, fix }) {
+export function formatComment({ status, model, tokens = null, reviewers = [], confidence = null, issue, unconfirmed = '', fix }) {
   if (!STATUSES.includes(status)) throw new Error(`unknown status "${status}"`);
   const parts = [header(status, model, tokens, reviewers, confidence), String(issue ?? '').trim()];
+  if (unconfirmed && unconfirmed.trim()) parts.push(`**Not confirmed:** ${unconfirmed.trim()}`);
   if (fix && fix.trim()) parts.push(`**Fix:** ${fix.trim()}`);
   return parts.join('\n\n');
 }

@@ -125,16 +125,40 @@ test('build names each reviewer behind a merged finding once, in source order', 
 });
 
 test('build puts verify\'s confidence in the header, between the reviewers and the tokens', () => {
-  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['correctness-1'], issue: 'Rename it.', fix: '', confidence: 'medium' }] };
-  const [e] = build(verified, [{ id: 'correctness-1', issue: 'Rename it.', fix: '', confidence: 'high' }], 'Opus 5.5', { correctness: 50000, verify: 1500 });
-  assert.equal(e.confidence, 'medium');
-  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness · 🎯 medium confidence · 🪙 ~52k tokens\n\n'));
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['correctness-1'], issue: 'Rename it.', fix: '', confidence: 'high' }] };
+  const [e] = build(verified, [{ id: 'correctness-1', issue: 'Rename it.', fix: '', confidence: 'medium' }], 'Opus 5.5', { correctness: 50000, verify: 1500 });
+  assert.equal(e.confidence, 'high');
+  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness · 🎯 high confidence · 🪙 ~52k tokens\n\n'));
 });
 
-test('build falls back to the first source reviewer\'s confidence, and leaves it out when there is none', () => {
-  const cands = [{ id: 'correctness-1', issue: 'Rename it.', fix: '' }, { id: 'security-1', confidence: 'low' }];
+test('a medium finding posts what was not confirmed between the issue and the fix', () => {
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Medium', sources: ['c-1'], issue: 'Import throws on ownerless badges.',
+    fix: 'Skip them.', confidence: 'medium', confidence_reason: 'Whether the import can run before owner sync.' }] };
+  const [e] = build(verified, [{ id: 'c-1', issue: 'Import throws on ownerless badges.', fix: 'Skip them.' }], 'Opus 5.5');
+  assert.equal(e.body, '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 c · 🎯 medium confidence\n\nImport throws on ownerless badges.\n\n'
+    + '**Not confirmed:** Whether the import can run before owner sync.\n\n**Fix:** Skip them.');
+});
+
+test('a high finding posts no not-confirmed line, even with a reason', () => {
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Medium', sources: ['c-1'], issue: 'i', fix: 'f',
+    confidence: 'high', confidence_reason: 'traced the caller at a.cs:3' }] };
+  assert.doesNotMatch(build(verified, [{ id: 'c-1', issue: 'i', fix: 'f' }], 'Opus 5.5')[0].body, /Not confirmed/);
+});
+
+test('build refuses a low finding, which recheck should have settled, and a medium one with no reason', () => {
+  const at = (confidence, confidence_reason) => ({ findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['c-1'], issue: 'i', fix: '', confidence, confidence_reason }] });
+  const cands = [{ id: 'c-1', issue: 'i', fix: '' }];
+  assert.throws(() => build(at('low'), cands, 'Opus 5.5'), /low confidence: run recheck/);
+  assert.throws(() => build(at('medium'), cands, 'Opus 5.5'), /confidence_reason/);
+  assert.throws(() => build(at(undefined), [{ ...cands[0], confidence: 'low' }], 'Opus 5.5'), /low confidence/);
+});
+
+test('build falls back to the first source reviewer\'s confidence and its reason, and leaves it out when there is none', () => {
+  const cands = [{ id: 'correctness-1', issue: 'Rename it.', fix: '' }, { id: 'security-1', confidence: 'medium', confidence_reason: 'the public name' }];
   const merged = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low/nit', sources: ['correctness-1', 'security-1'], issue: 'Rename it.', fix: '' }] };
-  assert.equal(build(merged, cands, 'Opus 5.5')[0].confidence, 'low');
+  const [m] = build(merged, cands, 'Opus 5.5');
+  assert.equal(m.confidence, 'medium');
+  assert.match(m.body, /\*\*Not confirmed:\*\* the public name/);
   const bogus = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low/nit', sources: ['correctness-1'], issue: 'Rename it.', fix: '', confidence: 'certain' }] };
   const [e] = build(bogus, cands, 'Opus 5.5');
   assert.equal(e.confidence, null);

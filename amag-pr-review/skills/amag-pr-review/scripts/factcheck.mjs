@@ -2,8 +2,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CONFIDENCES, formatComment, readModel, statusOf, stripHeader, styleIssues } from './comment.mjs';
-import { indexById } from './recheck.mjs';
+import { formatComment, readModel, statusOf, stripHeader, styleIssues } from './comment.mjs';
+import { confidenceOf, indexById } from './recheck.mjs';
 
 const CERTAIN = /\b(will|always|never|must|cannot|can't|won't|guaranteed)\b/gi;
 const HEDGE = /\b(might|may|could|possibly|perhaps|potentially|probably|likely|seems?)\b/gi;
@@ -51,14 +51,14 @@ export function buildPairs(verified, candidates) {
       const final = side(f.issue, f.fix);
       const draft = src ? (src.issue != null ? side(src.issue, src.fix) : side(src.comment, '')) : final;
       const srcs = (f.sources ?? []).map(id => byId.get(id)).filter(Boolean);
-      return { id: f.id, status: statusOf(f.severity), confidence: confidenceOf(f, srcs), draft, final, fixRewritten: !!f.fix_rewritten };
+      const { confidence, reason } = confidenceOf(f, srcs);
+      // Recheck confirms or drops every low one, so one here means that step was skipped.
+      if (confidence === 'low') throw new Error(`${f.id} is low confidence: run recheck to confirm or drop it before building`);
+      if (confidence === 'medium' && !reason) throw new Error(`${f.id} is medium confidence with no confidence_reason saying what isn't confirmed`);
+      return { id: f.id, status: statusOf(f.severity), confidence, unconfirmed: confidence === 'medium' ? reason : '',
+        draft, final, fixRewritten: !!f.fix_rewritten };
     });
 }
-
-// Verify re-checked the finding, so its rating wins over the reviewers'.
-const confidenceOf = (f, srcs) => [f.confidence, ...srcs.map(s => s.confidence)]
-  .map(c => String(c ?? '').trim().toLowerCase())
-  .find(c => CONFIDENCES.includes(c)) ?? null;
 
 const reviewerOf = candidateId => candidateId.replace(/-\d+$/, '');
 
@@ -84,7 +84,7 @@ export function build(verified, candidates, model, usage = null) {
   const pairs = buildPairs(verified, candidates);
   const reviewersById = new Map(pairs.map(({ id }) => [id, [...new Set(sourcesById.get(id).map(reviewerOf))]]));
   const tokensById = estimateTokens(reviewersById, usage);
-  return pairs.map(({ id, status, confidence, draft, final, fixRewritten }) => {
+  return pairs.map(({ id, status, confidence, unconfirmed, draft, final, fixRewritten }) => {
     // A fix verify corrected drops the wrong fix's identifiers by design, so only the issue's facts are
     // held to the draft; falling back to the draft fix would post the fix verify rejected.
     const r = fixRewritten ? factCheck(draft.issue, final.text) : factCheck(draft.text, final.text);
@@ -92,7 +92,7 @@ export function build(verified, candidates, model, usage = null) {
     const chosen = r.ok ? final : fixRewritten ? { issue: draft.issue, fix: final.fix } : draft;
     const reviewers = reviewersById.get(id);
     const tokens = tokensById.get(id) ?? null;
-    const body = formatComment({ status, model, tokens, reviewers, confidence, issue: chosen.issue, fix: chosen.fix });
+    const body = formatComment({ status, model, tokens, reviewers, confidence, issue: chosen.issue, unconfirmed, fix: chosen.fix });
     return { id, status, use, tokens, reviewers, confidence, missing: r.missing, certaintyDropped: r.certaintyDropped, style: styleIssues(body), body };
   });
 }
@@ -111,7 +111,9 @@ if (invoked === fileURLToPath(import.meta.url).toLowerCase()) {
   }
   const cands = candFiles.flatMap(f => JSON.parse(readFileSync(f, 'utf8')));
   const usage = usageFile ? JSON.parse(readFileSync(usageFile, 'utf8')) : null;
-  const out = build(JSON.parse(readFileSync(verifiedFile, 'utf8')), cands, readModel(), usage);
+  let out;
+  try { out = build(JSON.parse(readFileSync(verifiedFile, 'utf8')), cands, readModel(), usage); }
+  catch (e) { console.error(`factcheck.mjs: ${e.message}`); process.exit(1); }
   if (outDir) for (const e of out) writeFileSync(join(outDir, `body-${e.id}.txt`), e.body);
   console.log(JSON.stringify(out, null, 2));
 }
