@@ -267,7 +267,7 @@ node $S/scripts/factcheck.mjs build $W/verified.json $W/cand-*.json --out $W --u
 
 This writes `$W/body-<id>.txt` per confirmed finding in the layout from severity.md, from the verifier's text when `use` is `final`, else
 the reviewer's. Each entry's `reviewers` and `confidence` fill the Reviewer and Confidence columns of
-the terminal table. Without `usage.json`, drop `--usage` and the header omits tokens. An entry with a
+the terminal table. Without `usage.json`, drop `--usage` and tokens are `null`. An entry with a
 non-empty `style` list still has an AI tell: edit that body file to clear it (same facts, same header),
 then post it.
 
@@ -315,14 +315,19 @@ plus the previous state's `dropped` entries still in `dropped-previous.json`. Wr
 
 ## 10. Cleanup (after step 9, and always after errors)
 
+First append the run to the tuning log (`calibrate.mjs` reads it later; dry runs too). PR mode, with
+comma-separated finding ids: what the user posted, declined and had edited, and `<id>=<commentId>`
+per posted comment. Local mode: key `local-$TICKET_KEY`, `--mode local --ticket $TICKET_KEY`.
+
 ```bash
 . /c/repos/ai-review/.work/<ws>-<repo>-PR<id>/env.sh
+node $S/scripts/runlog.mjs append $WS-$REPO-PR$PR $W --pr $WS/$REPO/$PR --head "$HEAD_SHA" --posted <ids> --declined <ids> --edited <ids> --comments <id=commentId,...>
 [ -n "$PROGRESS_ID" ] && node $S/scripts/bb.mjs delete $WS $REPO $PR $PROGRESS_ID
 git -C $AR/$REPO worktree remove --force $WT || { rm -rf $WT; git -C $AR/$REPO worktree prune; }
 rm -rf $W
 ```
 
-Local mode: `rm -rf $W` only; the ticket worktree is never touched by the review, and
+Local mode: the log line, then `rm -rf $W` only; the ticket worktree is never touched by the review, and
 `review-findings.json` stays in the ticket folder.
 `$AR/.deps` is kept in both modes: a published version never changes, so later reviews reuse it.
 

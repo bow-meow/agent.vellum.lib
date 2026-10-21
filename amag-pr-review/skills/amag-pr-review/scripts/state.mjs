@@ -39,9 +39,8 @@ export function saveState(path, state) {
   renameSync(path + '.tmp', path);
 }
 
-
 // Bitbucket's parent is the comment replied to, not the thread root, so a reply to a reply has to be walked up.
-function threadRoots(values) {
+export function threadRoots(values) {
   const byId = new Map(values.map(c => [c.id, c]));
   const roots = new Map();
   const rootOf = c => {

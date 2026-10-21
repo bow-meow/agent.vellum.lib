@@ -55,7 +55,7 @@ export function buildPairs(verified, candidates) {
       // Recheck confirms or drops every low one, so one here means that step was skipped.
       if (confidence === 'low') throw new Error(`${f.id} is low confidence: run recheck to confirm or drop it before building`);
       if (confidence === 'medium' && !reason) throw new Error(`${f.id} is medium confidence with no confidence_reason saying what isn't confirmed`);
-      return { id: f.id, status: statusOf(f.severity), confidence, unconfirmed: confidence === 'medium' ? reason : '',
+      return { id: f.id, status: statusOf(f.severity), confidence, confidenceReason: reason, unconfirmed: confidence === 'medium' ? reason : '',
         draft, final, fixRewritten: !!f.fix_rewritten };
     });
 }
@@ -84,7 +84,7 @@ export function build(verified, candidates, model, usage = null) {
   const pairs = buildPairs(verified, candidates);
   const reviewersById = new Map(pairs.map(({ id }) => [id, [...new Set(sourcesById.get(id).map(reviewerOf))]]));
   const tokensById = estimateTokens(reviewersById, usage);
-  return pairs.map(({ id, status, confidence, unconfirmed, draft, final, fixRewritten }) => {
+  return pairs.map(({ id, status, confidence, confidenceReason, unconfirmed, draft, final, fixRewritten }) => {
     // A fix verify corrected drops the wrong fix's identifiers by design, so only the issue's facts are
     // held to the draft; falling back to the draft fix would post the fix verify rejected.
     const r = fixRewritten ? factCheck(draft.issue, final.text) : factCheck(draft.text, final.text);
@@ -92,8 +92,8 @@ export function build(verified, candidates, model, usage = null) {
     const chosen = r.ok ? final : fixRewritten ? { issue: draft.issue, fix: final.fix } : draft;
     const reviewers = reviewersById.get(id);
     const tokens = tokensById.get(id) ?? null;
-    const body = formatComment({ status, model, tokens, reviewers, confidence, issue: chosen.issue, unconfirmed, fix: chosen.fix });
-    return { id, status, use, tokens, reviewers, confidence, missing: r.missing, certaintyDropped: r.certaintyDropped, style: styleIssues(body), body };
+    const body = formatComment({ status, model, reviewers, issue: chosen.issue, unconfirmed, fix: chosen.fix });
+    return { id, status, use, tokens, reviewers, confidence, confidenceReason, missing: r.missing, certaintyDropped: r.certaintyDropped, style: styleIssues(body), body };
   });
 }
 

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { header, formatComment, parseHeader, isOurs, stripHeader, styleIssues, followup, readModel, formatTokens, progress, isProgress, localTimestamp, statusOf } from '../comment.mjs';
+import { header, formatComment, parseHeader, isOurs, stripHeader, styleIssues, followup, readModel, progress, isProgress, localTimestamp, statusOf } from '../comment.mjs';
 
 const script = fileURLToPath(new URL('../comment.mjs', import.meta.url));
 
@@ -12,33 +12,21 @@ test('statusOf makes every severity but Info a change, and Info a note', () => {
   assert.throws(() => statusOf('blocking'), /severity/);
 });
 
-test('header is status emoji and label, then the model, then the token estimate', () => {
-  assert.equal(header('change', 'Opus 5.5', 51234), '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🪙 ~51k tokens');
+test('header is status emoji and label, then the model, then the reviewers', () => {
   assert.equal(header('change', 'Opus 5.5'), '🟠 **change needed** · 🤖 AI:Opus 5.5');
-  assert.equal(header('note', 'Opus 5.5', 900), '🔵 **note** · 🤖 AI:Opus 5.5 · 🪙 ~900 tokens');
+  assert.equal(header('note', 'Opus 5.5', []), '🔵 **note** · 🤖 AI:Opus 5.5');
+  assert.equal(header('change', 'Opus 5.5', ['correctness']), '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness');
+  assert.equal(header('change', 'Opus 5.5', ['correctness', 'concurrency-races']), '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness + concurrency-races');
 });
 
-test('header names the reviewers that raised the finding, between the model and the tokens', () => {
-  assert.equal(header('change', 'Opus 5.5', 51234, ['correctness']), '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness · 🪙 ~51k tokens');
-  assert.equal(header('change', 'Opus 5.5', null, ['correctness', 'concurrency-races']), '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness + concurrency-races');
-  assert.equal(header('note', 'Opus 5.5', null, []), '🔵 **note** · 🤖 AI:Opus 5.5');
-});
-
-test('header puts the confidence between the reviewers and the tokens', () => {
-  assert.equal(header('change', 'Opus 5.5', 51234, ['correctness'], 'high'), '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness · 🎯 high confidence · 🪙 ~51k tokens');
-  assert.equal(header('change', 'Opus 5.5', null, [], 'low'), '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🎯 low confidence');
-  assert.equal(formatComment({ status: 'note', model: 'Opus 5.5', reviewers: ['c'], confidence: 'medium', issue: 'x' }), '🔵 **note** · 🤖 AI:Opus 5.5 · 🔎 c · 🎯 medium confidence\n\nx');
-});
-
-test('formatTokens rounds to a short estimate', () => {
-  assert.equal(formatTokens(999), '~999');
-  assert.equal(formatTokens(51499), '~51k');
-  assert.equal(formatTokens(1250000), '~1.3M');
+test('formatComment leaves confidence and tokens out of the header', () => {
+  const body = formatComment({ status: 'change', model: 'Opus 5.5', reviewers: ['c'], confidence: 'high', tokens: 42000, issue: 'x' });
+  assert.equal(body, '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 c\n\nx');
 });
 
 test('formatComment puts the issue and the fix on their own paragraphs under the header', () => {
-  const body = formatComment({ status: 'change', model: 'Opus 5.5', tokens: 42000, issue: 'Two saves race on BADGE_ID.', fix: 'Add a unique index.' });
-  assert.equal(body, '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🪙 ~42k tokens\n\nTwo saves race on BADGE_ID.\n\n**Fix:** Add a unique index.');
+  const body = formatComment({ status: 'change', model: 'Opus 5.5', issue: 'Two saves race on BADGE_ID.', fix: 'Add a unique index.' });
+  assert.equal(body, '🟠 **change needed** · 🤖 AI:Opus 5.5\n\nTwo saves race on BADGE_ID.\n\n**Fix:** Add a unique index.');
 });
 
 test('formatComment leaves out the fix line when there is no fix', () => {

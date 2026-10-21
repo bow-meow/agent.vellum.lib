@@ -45,13 +45,13 @@ concrete failure → Low.
 
 A posted comment is three parts, or four at medium confidence:
 
-1. Header line: `<emoji> **<change needed | note>** · 🤖 AI:<MODEL> · 🔎 <reviewer> · 🎯 <confidence> confidence · 🪙 ~<n> tokens`.
+1. Header line: `<emoji> **<change needed | note>** · 🤖 AI:<MODEL> · 🔎 <reviewer>`.
    The reviewer is the agent whose candidate became the finding, taken from the candidate id prefix
    (`correctness-2` → `correctness`); a finding verify merged from several reviewers lists each once,
-   joined by ` + `. The confidence is verify's (recheck's on an overturn), else the reviewer's; see
-   below. The token figure is the finding's share of the run: each reviewer's tokens split over the
-   findings it raised, plus an even share of verify, recheck and any reviewer with no finding. The
-   comments add up to the summary's total. It's left out when usage wasn't recorded.
+   joined by ` + `. Confidence and tokens aren't posted. The terminal table shows them, and the run
+   log (`runlog.mjs`, under `C:\repos\ai-review\.log`) keeps them with every finding for tuning.
+   A finding's tokens are its share of the run: each reviewer's tokens split over the findings it
+   raised, plus an even share of verify, recheck and any reviewer with no finding.
 2. The issue: 1-2 sentences. What's wrong, where, and what it causes.
 3. Medium confidence only: `**Not confirmed:** ` plus the finding's `confidence_reason`, the one thing
    that kept it from high.
@@ -59,7 +59,7 @@ A posted comment is three parts, or four at medium confidence:
    Info finding with nothing to change.
 
 ```
-🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 tests-design · 🎯 high confidence · 🪙 ~51k tokens
+🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 tests-design
 
 The parity tokens sit on plain `html`, but the new doc says library `:root` blocks outrank it. A pin
 bump that sets any of these tokens in `:root` would silently win over the parity value.

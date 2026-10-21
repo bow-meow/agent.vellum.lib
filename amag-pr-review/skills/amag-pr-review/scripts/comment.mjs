@@ -24,17 +24,10 @@ const HEADER_RE = new RegExp(`^\\s*(?:\\S+ )?\\*\\*(${S})\\*\\* · (?:🤖 )?AI:
 // Comments posted before the header format; still ours, so incremental re-review keeps tracking them.
 const LEGACY_RE = new RegExp(`^\\s*\\[(${OLD_STATUSES.join('|')}), AI:([^\\]]+)\\]`);
 
-export function formatTokens(n) {
-  if (n >= 1e6) return `~${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `~${Math.round(n / 1e3)}k`;
-  return `~${Math.round(n)}`;
-}
-
-export function header(status, model, tokens = null, reviewers = [], confidence = null) {
+// Confidence and tokens stay out of the posted header; the run log keeps them.
+export function header(status, model, reviewers = []) {
   const parts = [`${EMOJI[status]} **${LABEL[status]}**`, `🤖 AI:${model}`];
   if (reviewers.length) parts.push(`🔎 ${reviewers.join(' + ')}`);
-  if (confidence) parts.push(`🎯 ${confidence} confidence`);
-  if (tokens != null) parts.push(`🪙 ${formatTokens(tokens)} tokens`);
   return parts.join(' · ');
 }
 
@@ -47,9 +40,9 @@ export const isOurs = text => parseHeader(text) !== null;
 
 export const stripHeader = text => String(text ?? '').replace(HEADER_RE, '').replace(LEGACY_RE, '').trim();
 
-export function formatComment({ status, model, tokens = null, reviewers = [], confidence = null, issue, unconfirmed = '', fix }) {
+export function formatComment({ status, model, reviewers = [], issue, unconfirmed = '', fix }) {
   if (!STATUSES.includes(status)) throw new Error(`unknown status "${status}"`);
-  const parts = [header(status, model, tokens, reviewers, confidence), String(issue ?? '').trim()];
+  const parts = [header(status, model, reviewers), String(issue ?? '').trim()];
   if (unconfirmed && unconfirmed.trim()) parts.push(`**Not confirmed:** ${unconfirmed.trim()}`);
   if (fix && fix.trim()) parts.push(`**Fix:** ${fix.trim()}`);
   return parts.join('\n\n');

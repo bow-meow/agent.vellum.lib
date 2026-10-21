@@ -109,11 +109,11 @@ test('build puts each finding\'s attributed share in its header', () => {
   assert.deepEqual(out.map(e => e.tokens), [120000, 80000]);
 });
 
-test('build puts the estimate in the header when usage is given', () => {
+test('build records the token estimate but keeps it out of the header', () => {
   const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['correctness-1'], issue: 'Rename it.', fix: '' }] };
   const [e] = build(verified, [{ id: 'correctness-1', issue: 'Rename it.', fix: '' }], 'Opus 5.5', { correctness: 50000, verify: 1500 });
   assert.equal(e.tokens, 51500);
-  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness · 🪙 ~52k tokens\n\n'));
+  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness\n\n'));
 });
 
 test('build names each reviewer behind a merged finding once, in source order', () => {
@@ -124,18 +124,19 @@ test('build names each reviewer behind a merged finding once, in source order', 
   assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness + security\n\n'));
 });
 
-test('build puts verify\'s confidence in the header, between the reviewers and the tokens', () => {
-  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['correctness-1'], issue: 'Rename it.', fix: '', confidence: 'high' }] };
+test('build takes verify\'s confidence and reason over the reviewer\'s, and keeps them out of the header', () => {
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['correctness-1'], issue: 'Rename it.', fix: '',
+    confidence: 'high', confidence_reason: 'traced both callers' }] };
   const [e] = build(verified, [{ id: 'correctness-1', issue: 'Rename it.', fix: '', confidence: 'medium' }], 'Opus 5.5', { correctness: 50000, verify: 1500 });
-  assert.equal(e.confidence, 'high');
-  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness · 🎯 high confidence · 🪙 ~52k tokens\n\n'));
+  assert.deepEqual([e.confidence, e.confidenceReason], ['high', 'traced both callers']);
+  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness\n\n'));
 });
 
 test('a medium finding posts what was not confirmed between the issue and the fix', () => {
   const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Medium', sources: ['c-1'], issue: 'Import throws on ownerless badges.',
     fix: 'Skip them.', confidence: 'medium', confidence_reason: 'Whether the import can run before owner sync.' }] };
   const [e] = build(verified, [{ id: 'c-1', issue: 'Import throws on ownerless badges.', fix: 'Skip them.' }], 'Opus 5.5');
-  assert.equal(e.body, '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 c · 🎯 medium confidence\n\nImport throws on ownerless badges.\n\n'
+  assert.equal(e.body, '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 c\n\nImport throws on ownerless badges.\n\n'
     + '**Not confirmed:** Whether the import can run before owner sync.\n\n**Fix:** Skip them.');
 });
 
@@ -173,7 +174,7 @@ test('CLI build --out writes one body file per finding', () => {
   assert.equal(out[0].id, 'f1');
   writeFileSync(join(dir, 'usage.json'), JSON.stringify({ c: 3000, verify: 1000 }));
   execFileSync('node', [script, 'build', join(dir, 'verified.json'), join(dir, 'cand-x.json'), '--out', dir, '--usage', join(dir, 'usage.json')]);
-  assert.match(readFileSync(join(dir, 'body-f1.txt'), 'utf8'), /^🔵 \*\*note\*\* · 🤖 AI:.+ · 🔎 c · 🪙 ~4k tokens\n\nScope creep\.$/);
+  assert.match(readFileSync(join(dir, 'body-f1.txt'), 'utf8'), /^🔵 \*\*note\*\* · 🤖 AI:.+ · 🔎 c\n\nScope creep\.$/);
 });
 
 test('a fix verify corrected is posted, though it drops the wrong fix\'s identifiers', () => {
