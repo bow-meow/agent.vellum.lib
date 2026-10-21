@@ -182,3 +182,7 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
   nothing.
 - "Reimplements helper X" when the wrapped call already goes through X one layer down (the callee is
   itself wrapped). Trace the callee before flagging; swapping X in would double-wrap.
+- A time or count cap on a drain that deliberately runs to completion so queued items are neither
+  stranded nor overtaken by newer ones. Ask for a cap only if the items it leaves behind still end up
+  somewhere they'll be delivered, in order. (Seen on symmetryclassic SYM-10359: capping the inline drain
+  of a conditional-command outbox would strand the leftovers, and new direct sends would overtake them.)
