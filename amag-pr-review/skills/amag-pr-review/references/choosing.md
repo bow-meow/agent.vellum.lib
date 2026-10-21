@@ -58,13 +58,13 @@ the user answers. No answer this session means nothing more happens to the PR.
     reply it to its comment id; then, **only if the finding has no `parentId`** (it started its own
     thread) and isn't `authorResolved`, `node $S/scripts/bb.mjs resolve $WS $REPO $PR <comment_id>`.
     A finding that was a reply in someone else's thread is never resolved.
-  - `still-applies`: `node $S/scripts/comment.mjs followup still-applies "<its severity>" <line> > $W/body-still-<comment_id>.txt`,
+  - `still-applies`: `node $S/scripts/comment.mjs followup still-applies <line> > $W/body-still-<comment_id>.txt`,
     reply it to its comment id.
   - `reopen`: `node $S/scripts/bb.mjs reopen $WS $REPO $PR <thread root id>` (its `parentId`, else its
     comment id), then the `still-applies` reply above at verify's `line`, or
     `needs-reply` in its place for a Low or Low/nit.
   - `withdraw` / `answer`: write the reply text to `$W/pushback-<comment_id>.txt` with the Write tool,
-    then `node $S/scripts/comment.mjs followup conceded|disputed "<its severity>" < $W/pushback-<comment_id>.txt > $W/body-pushback-<comment_id>.txt`
+    then `node $S/scripts/comment.mjs followup conceded|disputed < $W/pushback-<comment_id>.txt > $W/body-pushback-<comment_id>.txt`
     and reply it to its comment id. `withdraw` then resolves under the same rule as `fixed`;
     `answer` on an `authorResolved` one reopens first, as for `reopen`.
 - Record each post's returned `id`/`link`. A failed post goes in the failures list; don't retry it

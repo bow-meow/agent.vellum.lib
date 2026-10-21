@@ -38,9 +38,9 @@ test('classify: an author resolve is a push-back with a reply after ours, and ta
   assert.equal(classify(1, at('OPEN', [ours(1, { resolution: { user: other } })])), 'closed by reviewer');
 });
 
-test('classify: our "Fixed in" reply is found under the footer-style header too', () => {
-  const newFixed = reply(2, 1, me, '🔵 **note**\n\nFixed in `abc12345`.\n\n_AI review · Opus 5.5_');
-  assert.equal(classify(1, at('OPEN', [ours(1), newFixed])), 'fixed');
+test('classify: our "Fixed in" reply is found in every style it was posted in', () => {
+  for (const raw of ['**Fixed** in `abc12345`.\n\n_AI review · Opus 5.5_', '🔵 **note**\n\nFixed in `abc12345`.\n\n_AI review · Opus 5.5_'])
+    assert.equal(classify(1, at('OPEN', [ours(1), reply(2, 1, me, raw)])), 'fixed', raw);
 });
 
 test('classify: our own resolve after conceding still counts as the author pushing back', () => {

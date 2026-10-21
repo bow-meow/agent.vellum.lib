@@ -20,10 +20,10 @@ test('areaOf takes the first known name, a dimension or a reviewer, and falls ba
   assert.deepEqual(areaOf(), ['🔎', 'Review']);
 });
 
-test('header is the area icon, the area and the status; a follow-up has the status alone', () => {
+test('header is the area icon, the area and the status, with a plain review as the fallback', () => {
   assert.equal(header('change', ['🧪', 'Tests']), '🧪 **Tests · change needed**');
   assert.equal(header('note', ['📄', 'Docs']), '📄 **Docs · note**');
-  assert.equal(header('note'), '🔵 **note**');
+  assert.equal(header('note'), '🔎 **Review · note**');
   assert.equal(footer('Opus 5.5'), '_AI review · Opus 5.5_');
 });
 
@@ -40,13 +40,13 @@ test('formatComment leaves confidence, tokens and reviewer names out of the comm
 });
 
 test('formatComment drops the parts it has no text for', () => {
-  assert.equal(formatComment({ status: 'change', model: 'm', issue: 'i', impact: 'b', fix: '  ' }), '🟠 **change needed**\n\n**Issue:** i  \n**Impact:** b\n\n_AI review · m_');
+  assert.equal(formatComment({ status: 'change', model: 'm', issue: 'i', impact: 'b', fix: '  ' }), '🔎 **Review · change needed**\n\n**Issue:** i  \n**Impact:** b\n\n_AI review · m_');
 });
 
 test('formatComment puts a multi-line part, such as a code snippet, below its label', () => {
   const fix = 'Guard it:\n```cs\nif (x == null) return;\n```';
   assert.equal(formatComment({ status: 'change', model: 'm', issue: 'i', impact: 'b', fix }),
-    `🟠 **change needed**\n\n**Issue:** i  \n**Impact:** b\n\n**Fix:**\n\n${fix}\n\n_AI review · m_`);
+    `🔎 **Review · change needed**\n\n**Issue:** i  \n**Impact:** b\n\n**Fix:**\n\n${fix}\n\n_AI review · m_`);
 });
 
 test('formatComment leaves a note or follow-up unlabelled', () => {
@@ -62,9 +62,16 @@ test('parseHeader reads the current header with its footer, and stripHeader remo
   const body = formatComment({ status: 'change', model: 'Opus 5.5', area: ['🧪', 'Tests'], issue: 'i', impact: 'b' });
   assert.deepEqual(parseHeader(body), { status: 'change', model: 'Opus 5.5', area: 'Tests' });
   assert.equal(stripHeader(body), '**Issue:** i  \n**Impact:** b');
+});
+
+test('a follow-up is ours by its opening words and footer, and keeps those words when stripped', () => {
   const fixed = followup('fixed', { model: 'Opus 5.5', sha: 'abcdef1234' });
   assert.deepEqual(parseHeader(fixed), { status: 'note', model: 'Opus 5.5', area: null });
-  assert.equal(stripHeader(fixed), 'Fixed in `abcdef12`.');
+  assert.equal(stripHeader(fixed), '**Fixed** in `abcdef12`.');
+  assert.equal(parseHeader(followup('disputed', { model: 'm', text: 'x' })).status, 'change');
+  assert.equal(isOurs('**Fixed** in abc, thanks!'), false, 'a human reply without our footer');
+  // Follow-ups posted under the dot header before this layout.
+  assert.equal(isOurs('🔵 **note**\n\nFixed in `abc12345`.\n\n_AI review · Opus 5.5_'), true);
 });
 
 test('a look-alike header without our footer is not ours', () => {
@@ -93,11 +100,11 @@ test('styleIssues flags em dashes and chatbot phrases but ignores code spans', (
   assert.ok(got.includes('"could potentially"'));
 });
 
-test('followup builds the fixed, still-applies and needs-reply replies', () => {
-  assert.equal(followup('fixed', { model: 'Opus 5.5', sha: '6276fe0b144e647b' }), '🔵 **note**\n\nFixed in `6276fe0b`.' + FOOT);
-  assert.equal(followup('still-applies', { model: 'Opus 5.5', severity: 'Medium', line: 130 }), '🟠 **change needed**\n\nStill applies at L130.' + FOOT);
-  assert.equal(followup('needs-reply', { model: 'Opus 5.5', severity: 'Low/nit', line: 7 }),
-    "🟠 **change needed**\n\nStill applies at L7. If you're leaving it as it is, reply here with why and resolve it again." + FOOT);
+test('followup builds the fixed, still-applies and needs-reply replies as one sentence and the footer', () => {
+  assert.equal(followup('fixed', { model: 'Opus 5.5', sha: '6276fe0b144e647b' }), '**Fixed** in `6276fe0b`.' + FOOT);
+  assert.equal(followup('still-applies', { model: 'Opus 5.5', line: 130 }), '**Still applies** at L130.' + FOOT);
+  assert.equal(followup('needs-reply', { model: 'Opus 5.5', line: 7 }),
+    "**Still applies** at L7. If you're leaving it as it is, reply here with why and resolve it again." + FOOT);
 });
 
 test('readModel takes the MODEL line from severity.md', () => {
@@ -105,18 +112,18 @@ test('readModel takes the MODEL line from severity.md', () => {
 });
 
 test('CLI followup prints a body ready to redirect into bb.mjs', () => {
-  const out = execFileSync('node', [script, 'followup', 'still-applies', 'Low', '42'], { encoding: 'utf8' });
-  assert.match(out, /^🟠 \*\*change needed\*\*\n\nStill applies at L42\.\n\n_AI review · .+_$/);
+  const out = execFileSync('node', [script, 'followup', 'still-applies', '42'], { encoding: 'utf8' });
+  assert.match(out, /^\*\*Still applies\*\* at L42\.\n\n_AI review · .+_$/);
 });
 
-test('a conceded reply is a note and a disputed one keeps the finding\'s status, both from text on stdin', () => {
-  assert.equal(followup('conceded', { model: 'Opus 5.5', severity: 'High', text: 'Fair point: `Save` is only called under the lock.' }),
-    '🔵 **note**\n\nFair point: `Save` is only called under the lock.' + FOOT);
-  assert.equal(followup('disputed', { model: 'Opus 5.5', severity: 'Medium', text: 'The import job calls it without the lock.' }),
-    '🟠 **change needed**\n\nThe import job calls it without the lock.' + FOOT);
-  assert.throws(() => followup('conceded', { model: 'm', severity: 'Low', text: '  ' }), /reply text/);
-  const out = execFileSync('node', [script, 'followup', 'disputed', 'Low'], { input: 'It still `throws` at L9.', encoding: 'utf8' });
-  assert.match(out, /^🟠 \*\*change needed\*\*\n\nIt still `throws` at L9\.\n\n_AI review · .+_$/);
+test('a conceded reply opens with "Fair point" and a disputed one with "Still a problem", text from stdin', () => {
+  assert.equal(followup('conceded', { model: 'Opus 5.5', text: '`Save` is only called under the lock.' }),
+    '**Fair point:** `Save` is only called under the lock.' + FOOT);
+  assert.equal(followup('disputed', { model: 'Opus 5.5', text: 'The import job calls it without the lock.' }),
+    '**Still a problem:** The import job calls it without the lock.' + FOOT);
+  assert.throws(() => followup('conceded', { model: 'm', text: '  ' }), /reply text/);
+  const out = execFileSync('node', [script, 'followup', 'disputed'], { input: 'It still `throws` at L9.', encoding: 'utf8' });
+  assert.match(out, /^\*\*Still a problem:\*\* It still `throws` at L9\.\n\n_AI review · .+_$/);
 });
 
 test('progress notice says when the review started, with the same footer', () => {

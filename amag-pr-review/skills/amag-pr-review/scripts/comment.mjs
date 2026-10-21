@@ -3,9 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const EMOJI = { change: '🟠', note: '🔵' };
 const LABEL = { change: 'change needed', note: 'note' };
-export const STATUSES = Object.keys(EMOJI);
+export const STATUSES = Object.keys(LABEL);
 export const CONFIDENCES = ['high', 'medium', 'low'];
 export const SEVERITIES = ['High', 'Medium', 'Low', 'Low/nit', 'Info'];
 
@@ -37,8 +36,11 @@ const OLD_HEADER_RE = new RegExp(`^\\s*(?:\\S+ )?\\*\\*(${S})\\*\\* · (?:🤖 )
 // Comments posted before the header format; still ours, so incremental re-review keeps tracking them.
 const LEGACY_RE = new RegExp(`^\\s*\\[(${OLD_STATUSES.join('|')}), AI:([^\\]]+)\\]`);
 
-export function header(status, area = null) {
-  if (!area) return `${EMOJI[status]} **${LABEL[status]}**`;
+// A follow-up in one of our threads has no header: the opening words say what happened.
+const REPLY_STATUS = { Fixed: 'note', 'Still applies': 'change', 'Fair point:': 'note', 'Still a problem:': 'change' };
+const REPLY_RE = new RegExp(`^\\s*\\*\\*(${Object.keys(REPLY_STATUS).join('|')})\\*\\*`);
+
+export function header(status, area = NO_AREA) {
   const [icon, name] = area;
   return `${icon} **${name} · ${LABEL[status]}**`;
 }
@@ -47,24 +49,29 @@ export const footer = model => `_AI review · ${model}_`;
 
 export function parseHeader(text) {
   const s = String(text ?? '');
-  const h = s.match(HEAD_RE), f = s.match(FOOTER_RE);
-  if (h && f) return { status: fromLabel(h[2]), model: f[1].trim(), area: h[1] ?? null };
+  const f = s.match(FOOTER_RE);
+  const h = f && s.match(HEAD_RE);
+  if (h) return { status: fromLabel(h[2]), model: f[1].trim(), area: h[1] ?? null };
+  const r = f && s.match(REPLY_RE);
+  if (r) return { status: REPLY_STATUS[r[1]], model: f[1].trim(), area: null };
   const m = s.match(OLD_HEADER_RE) ?? s.match(LEGACY_RE);
   return m ? { status: fromLabel(m[1]), model: m[2].trim(), area: null } : null;
 }
 
 export const isOurs = text => parseHeader(text) !== null;
 
+// A follow-up keeps its opening words: they're the message, not a header.
 export function stripHeader(text) {
   const s = String(text ?? '');
-  if (HEAD_RE.test(s) && FOOTER_RE.test(s)) return s.replace(HEAD_RE, '').replace(FOOTER_RE, '').trim();
+  if (FOOTER_RE.test(s) && HEAD_RE.test(s)) return s.replace(HEAD_RE, '').replace(FOOTER_RE, '').trim();
+  if (FOOTER_RE.test(s) && REPLY_RE.test(s)) return s.replace(FOOTER_RE, '').trim();
   return s.replace(OLD_HEADER_RE, '').replace(LEGACY_RE, '').trim();
 }
 
 // Two trailing spaces are Markdown's hard break: a bare newline would run the labelled lines together.
 const HARD_BREAK = '  \n';
 
-export function formatComment({ status, model, area = null, issue, impact = '', unconfirmed = '', fix = '' }) {
+export function formatComment({ status, model, area = NO_AREA, issue, impact = '', unconfirmed = '', fix = '' }) {
   if (!STATUSES.includes(status)) throw new Error(`unknown status "${status}"`);
   const head = header(status, area);
   const foot = footer(model);
@@ -105,16 +112,15 @@ export function readModel(severityFile = fileURLToPath(new URL('../references/se
   return m[1].trim();
 }
 
-export function followup(kind, { model, sha, severity, line, text }) {
-  if (kind === 'fixed') return formatComment({ status: 'note', model, issue: `Fixed in \`${String(sha).slice(0, 8)}\`.` });
-  if (kind === 'still-applies') return formatComment({ status: statusOf(severity), model, issue: `Still applies at L${line}.` });
-  if (kind === 'needs-reply')
-    return formatComment({ status: statusOf(severity), model,
-      issue: `Still applies at L${line}. If you're leaving it as it is, reply here with why and resolve it again.` });
+export function followup(kind, { model, sha, line, text }) {
+  const say = sentence => `${sentence}\n\n${footer(model)}`;
+  if (kind === 'fixed') return say(`**Fixed** in \`${String(sha).slice(0, 8)}\`.`);
+  if (kind === 'still-applies') return say(`**Still applies** at L${line}.`);
+  if (kind === 'needs-reply') return say(`**Still applies** at L${line}. If you're leaving it as it is, reply here with why and resolve it again.`);
   if (kind === 'conceded' || kind === 'disputed') {
-    if (!String(text ?? '').trim()) throw new Error(`${kind} needs the reply text on stdin`);
-    // A conceded finding asks for nothing any more; a disputed one still does.
-    return formatComment({ status: kind === 'conceded' ? 'note' : statusOf(severity), model, issue: text });
+    const t = String(text ?? '').trim();
+    if (!t) throw new Error(`${kind} needs the reply text on stdin`);
+    return say(`${kind === 'conceded' ? '**Fair point:**' : '**Still a problem:**'} ${t}`);
   }
   throw new Error(`unknown followup "${kind}"`);
 }
@@ -138,14 +144,14 @@ export const isProgress = text => PROGRESS_RE.test(String(text ?? ''));
 
 const invoked = process.argv[1] && resolve(process.argv[1]).toLowerCase();
 if (invoked === fileURLToPath(import.meta.url).toLowerCase()) {
-  const [cmd, kind, a, b] = process.argv.slice(2);
-  const usage = 'usage: comment.mjs followup fixed <sha> | comment.mjs followup still-applies|needs-reply <severity> <line>'
-    + ' | comment.mjs followup conceded|disputed <severity>   (reply text on stdin) | comment.mjs progress';
+  const [cmd, kind, a] = process.argv.slice(2);
+  const usage = 'usage: comment.mjs followup fixed <sha> | comment.mjs followup still-applies|needs-reply <line>'
+    + ' | comment.mjs followup conceded|disputed   (reply text on stdin) | comment.mjs progress';
   const model = readModel();
   if (cmd === 'progress') { process.stdout.write(progress({ model })); process.exit(0); }
   if (cmd !== 'followup' || !kind) { console.error(usage); process.exit(2); }
   try {
     const text = kind === 'conceded' || kind === 'disputed' ? readFileSync(0, 'utf8') : undefined;
-    process.stdout.write(kind === 'fixed' ? followup('fixed', { model, sha: a }) : followup(kind, { model, severity: a, line: b, text }));
+    process.stdout.write(followup(kind, { model, sha: a, line: a, text }));
   } catch (e) { console.error(`${e.message}\n${usage}`); process.exit(2); }
 }

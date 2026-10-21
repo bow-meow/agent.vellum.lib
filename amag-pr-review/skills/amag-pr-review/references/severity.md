@@ -6,19 +6,21 @@ MODEL = Opus 5.5
 
 | Severity | Status | Header | Blocks approval |
 |---|---|---|---|
-| High, Medium, Low, Low/nit | `change` | 🟠 **change needed** | yes |
-| Info | `note` | 🔵 **note** | no |
+| High, Medium, Low, Low/nit | `change` | `<area icon> **<Area> · change needed**` | yes |
+| Info | `note` | `<area icon> **<Area> · note**` | no |
 
 Severity is internal. It drives verify's gate, recheck, ordering and the incremental rules, but the
 author only sees whether a change is needed. Every change is expected to be addressed, by a fix or a
 reply saying why not, so raise a Low/nit only when it's worth that round trip.
 
 `scripts/factcheck.mjs` builds every posted body from the severity, `issue`, `impact` and `fix`; nobody types the
-header or footer. The "Fixed in" / "Still applies" follow-ups and push-back replies (`scripts/comment.mjs
-followup`) have the status alone in their header (`🔵 **note**`) and the same footer. Comments posted
-before this layout used a `🤖 AI:<model>` header, a `[status, AI:model]` prefix, a plain
-`**status** · AI:model` header, or one of the retired statuses (`critical`, `blocking`, `suggestion`,
-`nit`, `info`); all are recognised as ours. A header without our footer is not.
+header or footer. A follow-up in one of our threads (`scripts/comment.mjs followup`) has no header: one
+sentence opening with what happened, then the same footer. `**Fixed** in <sha>.`, `**Still applies** at
+L<n>.`, `**Fair point:** <verify's reply>` for a conceded push-back, `**Still a problem:** <verify's
+reply>` for a disputed one. Comments posted before this layout used a dot header (`🔵 **note**`), a
+`🤖 AI:<model>` header, a `[status, AI:model]` prefix, a plain `**status** · AI:model` header, or one
+of the retired statuses (`critical`, `blocking`, `suggestion`, `nit`, `info`); all are recognised as
+ours. A header or opening without our footer is not.
 The in-progress notice (`comment.mjs progress`) is `⏳ **Review in progress**`, a start timestamp and
 the footer; it isn't a finding, and `split-comments` keeps it out of both comment lists.
 

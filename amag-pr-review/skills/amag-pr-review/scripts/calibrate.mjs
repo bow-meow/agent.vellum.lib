@@ -14,7 +14,7 @@ const FINAL_PR_STATES = new Set(['MERGED', 'DECLINED', 'SUPERSEDED']);
 const OPEN_CACHE_MS = 60 * 60 * 1000;
 export const OUTCOMES = ['fixed', 'author says fixed', 'resolved by author', 'pushed back', 'closed by reviewer', 'ignored', 'deleted', 'pending'];
 
-// Authors answer by hand ("👍 Fixed in 9c7fd8b: …", "Done") or through amag-pr-respond ("✅ **fixed** · …").
+// Authors answer by hand ("👍 Fixed in 9c7fd8b: …", "Done") or through amag-pr-respond ("✅ **fixed**").
 const SAYS_FIXED = /^\W*(?:\*\*)?(?:fixed|done|addressed|updated|changed it|good catch,? fixed)\b/i;
 export const saysFixed = raw => SAYS_FIXED.test(String(raw ?? '').trim());
 
@@ -43,7 +43,7 @@ export function classify(commentId, { pr, values }) {
   const roots = threadRoots(values);
   const thread = values.filter(c => !c.deleted && roots.get(c.id) === roots.get(commentId));
   const after = thread.filter(c => c.id > commentId);
-  if (after.some(c => isOurs(c.content?.raw) && /^Fixed in\b/.test(stripHeader(c.content?.raw)))) return 'fixed';
+  if (after.some(c => isOurs(c.content?.raw) && /^(?:\*\*)?Fixed(?:\*\*)? in\b/.test(stripHeader(c.content?.raw)))) return 'fixed';
   const authorId = pr.author?.account_id ?? null;
   const fromAuthor = authorId == null ? [] : after.filter(c => c.user?.account_id === authorId);
   if (fromAuthor.length && saysFixed(fromAuthor.at(-1).content?.raw)) return 'author says fixed';
