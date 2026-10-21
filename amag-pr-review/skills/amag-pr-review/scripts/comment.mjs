@@ -39,12 +39,23 @@ export const isOurs = text => parseHeader(text) !== null;
 
 export const stripHeader = text => String(text ?? '').replace(HEADER_RE, '').replace(LEGACY_RE, '').trim();
 
-export function formatComment({ status, model, reviewers = [], issue, unconfirmed = '', fix }) {
+// Two trailing spaces are Markdown's hard break: a bare newline would run the labelled lines together.
+const HARD_BREAK = '  \n';
+
+export function formatComment({ status, model, reviewers = [], issue, impact = '', unconfirmed = '', fix = '' }) {
   if (!STATUSES.includes(status)) throw new Error(`unknown status "${status}"`);
-  const parts = [header(status, model, reviewers), String(issue ?? '').trim()];
-  if (unconfirmed && unconfirmed.trim()) parts.push(`**Not confirmed:** ${unconfirmed.trim()}`);
-  if (fix && fix.trim()) parts.push(`**Fix:** ${fix.trim()}`);
-  return parts.join('\n\n');
+  const head = header(status, model, reviewers);
+  const text = v => String(v ?? '').trim();
+  const labelled = [['Impact', impact], ['Not confirmed', unconfirmed], ['Fix', fix]].filter(([, v]) => text(v));
+  // A note or a follow-up reply is a single statement, so it goes in without labels.
+  if (!labelled.length) return `${head}\n\n${text(issue)}`;
+  // A code block has to start its own line, so a multi-line part drops below its label.
+  const parts = [['Issue', issue], ...labelled].map(([label, v]) => {
+    const t = text(v);
+    return t.includes('\n') ? { block: true, s: `**${label}:**\n\n${t}` } : { block: false, s: `**${label}:** ${t}` };
+  });
+  const body = parts.reduce((acc, p, i) => (i === 0 ? p.s : acc + (p.block || parts[i - 1].block ? '\n\n' : HARD_BREAK) + p.s), '');
+  return `${head}\n\n${body}`;
 }
 
 const PHRASES = [

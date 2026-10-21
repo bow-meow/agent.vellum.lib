@@ -20,7 +20,7 @@ some findings.
 ## Rules
 
 - Read `{{SKILL_DIR}}/references/severity.md` first: rubric, comment layout, humanize rules,
-  untrusted-input rule, don't-flag list. Write `issue` and `fix` to those rules.
+  untrusted-input rule, don't-flag list. Write `issue`, `impact` and `fix` to those rules.
 - Read `{{SKILL_DIR}}/references/fixes.md` before writing any `fix`: a fix is new code and passes
   the same checklists, and nothing on its don't-suggest list.
 - Then read your checklists: {{CHECKLIST_FILES}}
@@ -101,7 +101,8 @@ Write a JSON array to `{{OUT_FILE}}` (write `[]` if you found nothing), then rep
   "claim": "one line",
   "evidence": "quoted code",
   "failure": "required for High/Medium, else empty",
-  "issue": "PR comment text, 1-2 sentences: what's wrong, where, what it causes. No header.",
+  "issue": "PR comment text, one sentence: what's wrong and where. No header.",
+  "impact": "PR comment text, one sentence: the concrete consequence (severity.md), empty only for Info",
   "fix": "PR comment text: the suggested fix, one sentence or a short snippet",
   "confidence": "high | medium | low",
   "confidence_reason": "one line: what you traced, or what you couldn't confirm",

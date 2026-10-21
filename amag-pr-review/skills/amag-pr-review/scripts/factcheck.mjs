@@ -35,9 +35,9 @@ export function factCheck(original, rewritten) {
   return { ok: missing.length === 0 && !certaintyDropped, missing, certaintyDropped };
 }
 
-const side = (issue, fix) => {
-  const i = String(issue ?? '').trim(), f = String(fix ?? '').trim();
-  return { issue: i, fix: f, text: f ? `${i}\n${f}` : i };
+const side = (issue, impact, fix) => {
+  const [i, m, f] = [issue, impact, fix].map(v => String(v ?? '').trim());
+  return { issue: i, impact: m, fix: f, claim: [i, m].filter(Boolean).join('\n'), text: [i, m, f].filter(Boolean).join('\n') };
 };
 
 // The draft comes from the reviewer's own wording, not the verifier's copy of it, so a verifier that
@@ -48,10 +48,11 @@ export function buildPairs(verified, candidates) {
     .filter(f => f.verdict === 'confirmed' && (f.issue || f.fix))
     .map(f => {
       const src = (f.sources ?? []).map(id => byId.get(id)).find(Boolean);
-      const final = side(f.issue, f.fix);
-      const draft = src ? (src.issue != null ? side(src.issue, src.fix) : side(src.comment, '')) : final;
+      const final = side(f.issue, f.impact, f.fix);
+      const draft = src ? (src.issue != null ? side(src.issue, src.impact, src.fix) : side(src.comment, '', '')) : final;
       const srcs = (f.sources ?? []).map(id => byId.get(id)).filter(Boolean);
       const { confidence, reason } = confidenceOf(f, srcs);
+      if (statusOf(f.severity) === 'change' && !final.impact) throw new Error(`${f.id} asks for a change but has no impact saying what breaks`);
       // Recheck confirms or drops every low one, so one here means that step was skipped.
       if (confidence === 'low') throw new Error(`${f.id} is low confidence: run recheck to confirm or drop it before building`);
       if (confidence === 'medium' && !reason) throw new Error(`${f.id} is medium confidence with no confidence_reason saying what isn't confirmed`);
@@ -87,12 +88,14 @@ export function build(verified, candidates, model, usage = null) {
   return pairs.map(({ id, status, confidence, confidenceReason, unconfirmed, draft, final, fixRewritten }) => {
     // A fix verify corrected drops the wrong fix's identifiers by design, so only the issue's facts are
     // held to the draft; falling back to the draft fix would post the fix verify rejected.
-    const r = fixRewritten ? factCheck(draft.issue, final.text) : factCheck(draft.text, final.text);
+    const r = fixRewritten ? factCheck(draft.claim, final.text) : factCheck(draft.text, final.text);
     const use = r.ok ? 'final' : 'draft';
-    const chosen = r.ok ? final : fixRewritten ? { issue: draft.issue, fix: final.fix } : draft;
+    // A draft with no impact (an older reviewer's) keeps verify's, which build already required.
+    const keep = d => ({ ...d, impact: d.impact || final.impact });
+    const chosen = r.ok ? final : fixRewritten ? { ...keep(draft), fix: final.fix } : keep(draft);
     const reviewers = reviewersById.get(id);
     const tokens = tokensById.get(id) ?? null;
-    const body = formatComment({ status, model, reviewers, issue: chosen.issue, unconfirmed, fix: chosen.fix });
+    const body = formatComment({ status, model, reviewers, issue: chosen.issue, impact: chosen.impact, unconfirmed, fix: chosen.fix });
     return { id, status, use, tokens, reviewers, confidence, confidenceReason, missing: r.missing, certaintyDropped: r.certaintyDropped, style: styleIssues(body), body };
   });
 }

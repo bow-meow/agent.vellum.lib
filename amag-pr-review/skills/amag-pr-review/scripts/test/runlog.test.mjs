@@ -10,7 +10,7 @@ import { logEntry, logPath, parseArgs, runContext, skillVersion } from '../runlo
 const script = fileURLToPath(new URL('../runlog.mjs', import.meta.url));
 
 const verified = { findings: [
-  { id: 'f1', verdict: 'confirmed', severity: 'Medium', dimension: 'correctness', sources: ['correctness-1'], path: 'a.cs', line: 3, match: 'new', claim: 'race on save' },
+  { id: 'f1', verdict: 'confirmed', severity: 'Medium', dimension: 'correctness', sources: ['correctness-1'], path: 'a.cs', line: 3, match: 'new', claim: 'race on save', impact: 'two saves keep one row' },
   { id: 'f2', verdict: 'confirmed', severity: 'Low/nit', sources: ['tests-design-2'], path: 'b.cs', line: 9, match: 'new' },
   { id: 'f3', verdict: 'dropped', severity: 'Low', sources: ['sql-1', 'sql-2'], reason: 'index exists', confidence: 'high', confidence_reason: 'saw IX_A' },
   { id: 'f4', verdict: 'dropped', unconfirmed: true, severity: 'Low', sources: ['security-1'], reason: 'no caller found' },
@@ -28,7 +28,7 @@ test('logEntry keeps every finding with what the header leaves out, the pick, th
   assert.deepEqual(e.findings.map(f => [f.id, f.verdict, f.confidence, f.posted, f.edited, f.commentId]), [
     ['f1', 'confirmed', 'medium', true, true, 555], ['f2', 'confirmed', 'high', false, false, null],
     ['f3', 'dropped', 'high', null, false, null], ['f4', 'dropped', null, null, false, null]]);
-  assert.deepEqual([e.findings[0].claim, e.findings[0].confidenceReason, e.findings[0].tokens], ['race on save', 'whether sync runs first', 4000]);
+  assert.deepEqual([e.findings[0].claim, e.findings[0].impact, e.findings[0].confidenceReason, e.findings[0].tokens], ['race on save', 'two saves keep one row', 'whether sync runs first', 4000]);
   assert.deepEqual([e.findings[2].reviewers, e.findings[2].reason, e.findings[2].confidenceReason], [['sql'], 'index exists', 'saw IX_A']);
   assert.equal(e.findings[3].unconfirmed, true);
   assert.equal(e.findings[0].reason, null);

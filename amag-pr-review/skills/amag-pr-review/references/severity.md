@@ -13,7 +13,7 @@ Severity is internal. It drives verify's gate, recheck, ordering and the increme
 author only sees whether a change is needed. Every change is expected to be addressed, by a fix or a
 reply saying why not, so raise a Low/nit only when it's worth that round trip.
 
-`scripts/factcheck.mjs` builds every posted body from the severity, `issue` and `fix`; nobody types the
+`scripts/factcheck.mjs` builds every posted body from the severity, `issue`, `impact` and `fix`; nobody types the
 header. Replies into a thread and the "Fixed in" / "Still applies" follow-ups (`scripts/comment.mjs
 followup`) use the same layout without the token part. Comments posted before this layout used a
 `[status, AI:model]` prefix, a plain `**status** · AI:model` header, or one of the retired statuses
@@ -33,6 +33,10 @@ and a start timestamp; it isn't a finding, and `split-comments` keeps it out of 
   the code looks fixed: the gap is real today and the failure is the reported bug returning unnoticed.
   A test that runs at a layer the bug can't reach (a bare element where the bug needs the binding, a
   mock standing in for the part that broke) doesn't count as coverage.
+  Also Medium: a missing test whose regression would hit the risk the change exists to manage (a
+  stale build in a build-skipping change, a lost message in a retry change, a wrong total in a
+  billing change). Grade a missing test by the impact of the regression it would let through, not
+  as a test nicety.
 - **Low**: improves correctness margin, clarity or performance; nothing breaks today.
 - **Low/nit**: style, naming, comment noise.
 - **Info**: worth knowing, not worth changing: scope creep, a cross-repo dependency satisfied by a
@@ -43,7 +47,9 @@ concrete failure → Low.
 
 ## Comment layout
 
-A posted comment is three parts, or four at medium confidence:
+A posted comment is the header, then labelled lines, one per part, each label beside its text
+(`formatComment` joins them with Markdown hard breaks). A note or a follow-up reply is one unlabelled
+sentence under the header.
 
 1. Header line: `<emoji> **<change needed | note>** · 🤖 AI:<MODEL> · 🔎 <reviewer>`.
    The reviewer is the agent whose candidate became the finding, taken from the candidate id prefix
@@ -52,19 +58,23 @@ A posted comment is three parts, or four at medium confidence:
    log (`runlog.mjs`, under `C:\repos\ai-review\.log`) keeps them with every finding for tuning.
    A finding's tokens are its share of the run: each reviewer's tokens split over the findings it
    raised, plus an even share of verify, recheck and any reviewer with no finding.
-2. The issue: 1-2 sentences. What's wrong, where, and what it causes.
-3. Medium confidence only: `**Not confirmed:** ` plus the finding's `confidence_reason`, the one thing
+2. `**Issue:**` the defect only: what's wrong and where, one sentence. Not what it causes.
+3. `**Impact:**` one sentence naming a concrete consequence: who or what breaks, and when. For a
+   missing or weak test, the regression it would let through unnoticed, not "coverage is lower".
+   "Could cause bugs", "hurts maintainability" and "may confuse readers" name nothing: say which
+   reader is misled into what, or which change breaks. Required on every change-needed finding
+   (`factcheck.mjs` refuses one without it); a note leaves it out.
+4. Medium confidence only: `**Not confirmed:**` plus the finding's `confidence_reason`, the one thing
    that kept it from high.
-4. `**Fix:** ` plus the suggested fix: one sentence, or a short code snippet. Left out only for an
-   Info finding with nothing to change.
+5. `**Fix:**` the suggested fix: one sentence, or a short code snippet (a snippet drops below its
+   label). Left out only for an Info finding with nothing to change.
 
 ```
 🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 tests-design
 
-The parity tokens sit on plain `html`, but the new doc says library `:root` blocks outrank it. A pin
-bump that sets any of these tokens in `:root` would silently win over the parity value.
-
-**Fix:** declare the token block on `html:root`, like the autocomplete/option block in styles.scss.
+**Issue:** `Find` drops an import whose expanded path doesn't exist, and no import test uses `$(ProjectDir)` or `$(Configuration)`.
+**Impact:** edits to a property sheet imported that way never rebuild the row, so the build keeps stale output.
+**Fix:** add a test importing `$(ProjectDir)$(Configuration).$(Platform).props` and assert the file is returned.
 ```
 
 ## Confidence
@@ -82,7 +92,7 @@ would be (severity). Every candidate and every verified finding carries one:
   kept it low, then confirms it at high or medium or drops it, and `factcheck.mjs` refuses one that
   got past.
 
-Reviewers and verify supply `issue` and `fix` as two separate fields with no header. One finding per
+Reviewers and verify supply `issue`, `impact` and `fix` as separate fields with no header. One finding per
 comment. A reply into someone's thread says only the new part.
 
 ## Humanize rules (reviewers draft with them; verify applies them to the final text)

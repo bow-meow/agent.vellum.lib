@@ -54,7 +54,7 @@ export function logEntry({ key, mode, pr = null, ticket = null, head = null, ski
     return {
       id: f.id, verdict: f.verdict, unconfirmed: !!f.unconfirmed, severity: f.severity ?? null, status: b?.status ?? null,
       dimension: f.dimension ?? null, reviewers: b?.reviewers ?? [...new Set((f.sources ?? []).map(s => s.replace(/-\d+$/, '')))],
-      repo: f.repo ?? null, path: f.path ?? null, line: f.line ?? null, match: f.match ?? null, claim: f.claim ?? null,
+      repo: f.repo ?? null, path: f.path ?? null, line: f.line ?? null, match: f.match ?? null, claim: f.claim ?? null, impact: f.impact ?? null,
       confidence, confidenceReason: reason, tokens: b?.tokens ?? null,
       reason: f.verdict === 'confirmed' ? null : f.reason ?? null, recheck: f.recheck ?? null,
       posted: posted.includes(f.id) ? true : declined.includes(f.id) ? false : null,

@@ -269,7 +269,8 @@ This writes `$W/body-<id>.txt` per confirmed finding in the layout from severity
 the reviewer's. Each entry's `reviewers` and `confidence` fill the Reviewer and Confidence columns of
 the terminal table. Without `usage.json`, drop `--usage` and tokens are `null`. An entry with a
 non-empty `style` list still has an AI tell: edit that body file to clear it (same facts, same header),
-then post it.
+then post it. `build` exits 1 on a finding severity.md forbids (no impact, low or unexplained medium
+confidence): send verify back once with the error, then treat it as a failed verify.
 
 **Local mode**: save the confirmed findings next to the ticket's worktrees, so they outlive this
 session and `pr-respond <TICKET>` can work through them later:

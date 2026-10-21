@@ -24,12 +24,24 @@ test('formatComment leaves confidence and tokens out of the header', () => {
   assert.equal(body, '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 c\n\nx');
 });
 
-test('formatComment puts the issue and the fix on their own paragraphs under the header', () => {
-  const body = formatComment({ status: 'change', model: 'Opus 5.5', issue: 'Two saves race on BADGE_ID.', fix: 'Add a unique index.' });
-  assert.equal(body, '🟠 **change needed** · 🤖 AI:Opus 5.5\n\nTwo saves race on BADGE_ID.\n\n**Fix:** Add a unique index.');
+test('formatComment puts Issue, Impact, Not confirmed and Fix on labelled lines joined by hard breaks', () => {
+  const body = formatComment({ status: 'change', model: 'Opus 5.5', issue: 'Two saves race on BADGE_ID.',
+    impact: 'Two badges end up with the same id.', unconfirmed: 'Whether imports run in parallel.', fix: 'Add a unique index.' });
+  assert.equal(body, '🟠 **change needed** · 🤖 AI:Opus 5.5\n\n**Issue:** Two saves race on BADGE_ID.  \n'
+    + '**Impact:** Two badges end up with the same id.  \n**Not confirmed:** Whether imports run in parallel.  \n**Fix:** Add a unique index.');
 });
 
-test('formatComment leaves out the fix line when there is no fix', () => {
+test('formatComment drops the parts it has no text for', () => {
+  assert.equal(formatComment({ status: 'change', model: 'm', issue: 'i', impact: 'b', fix: '  ' }), '🟠 **change needed** · 🤖 AI:m\n\n**Issue:** i  \n**Impact:** b');
+});
+
+test('formatComment puts a multi-line part, such as a code snippet, below its label', () => {
+  const fix = 'Guard it:\n```cs\nif (x == null) return;\n```';
+  assert.equal(formatComment({ status: 'change', model: 'm', issue: 'i', impact: 'b', fix }),
+    `🟠 **change needed** · 🤖 AI:m\n\n**Issue:** i  \n**Impact:** b\n\n**Fix:**\n\n${fix}`);
+});
+
+test('formatComment leaves a note or follow-up unlabelled', () => {
   assert.equal(formatComment({ status: 'note', model: 'Opus 5.5', issue: 'Scope creep.' }), '🔵 **note** · 🤖 AI:Opus 5.5\n\nScope creep.');
 });
 
