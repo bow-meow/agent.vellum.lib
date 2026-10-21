@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDiff, placeAnchor, isGenerated, stats, splitDiff } from '../anchors.mjs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseDiff, placeAnchor, inScope, isGenerated, stats, splitDiff } from '../anchors.mjs';
 
 const basic = [
   'diff --git a/src/A.cs b/src/A.cs',
@@ -16,6 +21,22 @@ const basic = [
   ' line14',
   '',
 ].join('\n');
+
+test('inScope holds an anchor to the re-review slices, and place --scope flags one outside them', () => {
+  const slice = ['diff --git a/src/A.cs b/src/A.cs', '--- a/src/A.cs', '+++ b/src/A.cs', '@@ -0,0 +12,1 @@', '+new12', ''].join('\n');
+  const scope = parseDiff(slice);
+  assert.equal(inScope(scope, { path: 'src/A.cs', side: 'new', line: 12 }), true);
+  assert.equal(inScope(scope, { path: 'src/A.cs', side: 'new', line: 14 }), false);
+  assert.equal(inScope(scope, { path: 'other.cs', side: 'new', line: 1 }), false);
+  const dir = mkdtempSync(join(tmpdir(), 'anch-'));
+  writeFileSync(join(dir, 'pr.diff'), basic);
+  writeFileSync(join(dir, 'scope.diff'), slice);
+  writeFileSync(join(dir, 'f.json'), JSON.stringify([{ id: 'a', path: 'src/A.cs', line: 12 }, { id: 'b', path: 'src/A.cs', line: 14 }, { id: 'c', path: 'src/A.cs', line: 40 }]));
+  const script = fileURLToPath(new URL('../anchors.mjs', import.meta.url));
+  const run = extra => JSON.parse(execFileSync('node', [script, 'place', join(dir, 'pr.diff'), join(dir, 'f.json'), ...extra], { encoding: 'utf8' }));
+  assert.deepEqual(run(['--scope', join(dir, 'scope.diff')]).map(p => [p.id, p.outOfScope ?? null]), [['a', false], ['b', true], ['c', null]]);
+  assert.equal(run([]).some(p => 'outOfScope' in p), false, 'without --scope, nothing is flagged');
+});
 
 test('context and added lines are anchorable on the new side', () => {
   const f = parseDiff(basic).get('src/A.cs');

@@ -285,8 +285,8 @@ It prints `[{n, id, status, path, line}]`. `n` is the finding's number in the te
 ## 7. PR mode: the user chooses what to post (skip entirely on `--dry-run`)
 
 Anchors first: write confirmed `new` findings (not `terminal_only`) as `[{id, path, line, side}]` to
-`$W/to-place.json`, run `node $S/scripts/anchors.mjs place $W/bb.diff $W/to-place.json`.
-`anchor: null` → terminal-only.
+`$W/to-place.json`, run `node $S/scripts/anchors.mjs place $W/bb.diff $W/to-place.json`, adding
+`--scope $W/context.diff` on a re-review. `anchor: null` → terminal-only; `outOfScope` → choosing.md.
 
 Then read [references/choosing.md](references/choosing.md) and follow it. **Nothing but the
 in-progress notice is posted until the user picks**: every finding, every follow-up on a previous

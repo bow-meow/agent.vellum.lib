@@ -13,6 +13,9 @@ what they already know. (Bitbucket Cloud's API has no likes or reactions, so a r
 silent signal.)
 
 1. Findings: confirmed `new` with an anchor, and `reply`, in table order (change needed and notes).
+   On a re-review, one whose anchor `outOfScope` (not in a slice changed since the last review) is
+   numbered in its own group, "Outside this round's changes", after the others. It's code an earlier
+   review passed, so "post all" and ranges leave it out: it posts only when named by its number.
 2. Follow-ups on previous findings, from verify's re-check:
    - `still-applies` with `codeChanged: true`: a "Still applies" reply.
    - `authorResolved` and `still-applies`, with no author reply: reopen, plus a reply.

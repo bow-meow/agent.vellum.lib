@@ -89,6 +89,10 @@ export function parseDiff(text) {
   return new Map(all.map(f => [f.path, f]));
 }
 
+// On a re-review the anchor has to sit in what the reviewers were given (delta.mjs's slices): a
+// finding anchored anywhere else is about code an earlier review already passed.
+export const inScope = (scope, anchor) => placeAnchor(scope, anchor) !== null;
+
 export function placeAnchor(files, { path, line, side = 'new' }) {
   const f = files.get(path);
   if (!f || f.binary) return null;
@@ -134,8 +138,13 @@ export function splitDiff(files, maxChanged) {
 function main([cmd, ...a]) {
   const files = a[0] ? parseDiff(readFileSync(a[0], 'utf8')) : null;
   if (cmd === 'stats' && a.length === 1) return stats(files);
-  if (cmd === 'place' && a.length === 2)
-    return JSON.parse(readFileSync(a[1], 'utf8')).map(f => ({ ...f, anchor: placeAnchor(files, f) }));
+  if (cmd === 'place' && (a.length === 2 || (a.length === 4 && a[2] === '--scope'))) {
+    const scope = a[3] ? parseDiff(readFileSync(a[3], 'utf8')) : null;
+    return JSON.parse(readFileSync(a[1], 'utf8')).map(f => {
+      const anchor = placeAnchor(files, f);
+      return scope && anchor ? { ...f, anchor, outOfScope: !inScope(scope, anchor) } : { ...f, anchor };
+    });
+  }
   if (cmd === 'split' && a.length === 3) {
     mkdirSync(a[1], { recursive: true });
     return splitDiff(files, Number(a[2])).map((c, i) => {
@@ -144,7 +153,7 @@ function main([cmd, ...a]) {
       return { file, files: c.files, changed: c.changed };
     });
   }
-  console.error('usage: anchors.mjs stats <diff> | place <diff> <findings.json> | split <diff> <out-dir> <maxChanged>');
+  console.error('usage: anchors.mjs stats <diff> | place <diff> <findings.json> [--scope <re-review diff>] | split <diff> <out-dir> <maxChanged>');
   process.exit(2);
 }
 
