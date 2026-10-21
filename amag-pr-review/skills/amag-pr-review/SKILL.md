@@ -303,7 +303,7 @@ again.
 
 After the user's last answer (the approval y/n, or the pick on a hold). Declined items: choosing.md step 4.
 For every posted finding and every still-open previous finding: `commentId`, `parentId` (the thread
-root for a `reply`, else `null`), `path`, `line`, `side`, `severity`, `status: 'open'`, and
+root for a `reply`, else `null`), `path`, `line`, `side`, `severity`, `status: 'open'`, `pushbackSeen`, and
 `fingerprint` from `node $S/scripts/state.mjs fingerprint "$WT/<path>" <line>` (new side only; `null`
 for old side). Previous `fixed` → `status: 'fixed'`. `reviewedCommit` = `HEAD_SHA`, except when any
 post failed: then keep the previous `reviewedCommit` (or omit it on a first run) so the failed
@@ -316,12 +316,13 @@ plus the previous state's `dropped` entries still in `dropped-previous.json`. Wr
 ## 10. Cleanup (after step 9, and always after errors)
 
 First append the run to the tuning log (`calibrate.mjs` reads it later; dry runs too). PR mode, with
-comma-separated finding ids: what the user posted, declined and had edited, and `<id>=<commentId>`
-per posted comment. Local mode: key `local-$TICKET_KEY`, `--mode local --ticket $TICKET_KEY`.
+comma-separated finding ids (`c<comment_id>` for previous ones): what the user posted, declined, had
+edited or flipped, and `<id>=<commentId>` per posted comment. Local mode: key
+`local-$TICKET_KEY`, `--mode local --ticket $TICKET_KEY`.
 
 ```bash
 . /c/repos/ai-review/.work/<ws>-<repo>-PR<id>/env.sh
-node $S/scripts/runlog.mjs append $WS-$REPO-PR$PR $W --pr $WS/$REPO/$PR --head "$HEAD_SHA" --posted <ids> --declined <ids> --edited <ids> --comments <id=commentId,...>
+node $S/scripts/runlog.mjs append $WS-$REPO-PR$PR $W --pr $WS/$REPO/$PR --head "$HEAD_SHA" --posted <ids> --declined <ids> --edited <ids> --flipped <ids> --comments <id=commentId,...>
 [ -n "$PROGRESS_ID" ] && node $S/scripts/bb.mjs delete $WS $REPO $PR $PROGRESS_ID
 git -C $AR/$REPO worktree remove --force $WT || { rm -rf $WT; git -C $AR/$REPO worktree prune; }
 rm -rf $W

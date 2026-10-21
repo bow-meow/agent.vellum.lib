@@ -45,7 +45,7 @@ test('ours = my account AND the AI tag; deleted comments dropped', () => {
   const { ours, others } = splitComments(values, 'me');
   assert.deepEqual(ours.map(c => c.id), [1, 5, 6]);
   assert.deepEqual(others.map(c => c.id), [2, 3]);
-  assert.deepEqual(ours[1], { id: 5, parent: null, path: 'b.cs', line: 9, side: 'old', author: 'Me', raw: '[info, AI:Opus 5.5] old', resolved: true, resolvedBy: 'author', outdated: true, authorReplied: false });
+  assert.deepEqual(ours[1], { id: 5, parent: null, path: 'b.cs', line: 9, side: 'old', author: 'Me', raw: '[info, AI:Opus 5.5] old', resolved: true, resolvedBy: 'author', outdated: true, authorReplied: false, authorReplies: [] });
   assert.equal(ours[0].resolvedBy, null);
   assert.equal(others[1].parent, 1);
 });
@@ -65,6 +65,7 @@ test('authorReplied is set when the PR author posted later anywhere in the threa
   const { ours } = splitComments(values, 'me', 'author');
   assert.deepEqual(ours.map(c => [c.id, c.authorReplied]), [[10, true], [21, false], [30, false]]);
   assert.deepEqual(splitComments(values, 'me').ours.map(c => c.authorReplied), [false, false, false]);
+  assert.deepEqual(ours[0].authorReplies, [{ id: 12, raw: 'keeping it, matches the API name' }]);
 });
 
 test('locateFingerprint finds moved code, prefers the nearest match, and misses changed code', () => {

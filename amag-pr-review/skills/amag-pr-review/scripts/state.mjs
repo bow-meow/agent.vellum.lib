@@ -58,8 +58,9 @@ export function splitComments(values, meAccountId, authorAccountId = null) {
   const ours = [], others = [], progress = [];
   const roots = threadRoots(values);
   // Comment ids only grow, so a higher id in the same thread was posted after ours.
-  const authorRepliedAfter = id => authorAccountId != null && values.some(o =>
-    !o.deleted && o.user?.account_id === authorAccountId && o.id > id && roots.get(o.id) === roots.get(id));
+  const authorRepliesAfter = id => authorAccountId == null ? [] : values
+    .filter(o => !o.deleted && o.user?.account_id === authorAccountId && o.id > id && roots.get(o.id) === roots.get(id))
+    .map(o => ({ id: o.id, raw: o.content?.raw ?? '' }));
   for (const c of values) {
     if (c.deleted) continue;
     if (c.user?.account_id === meAccountId && isProgress(c.content?.raw)) { progress.push(c.id); continue; }
@@ -76,8 +77,10 @@ export function splitComments(values, meAccountId, authorAccountId = null) {
       resolvedBy: c.resolution?.user?.account_id ?? null,
       outdated: Boolean(inl?.outdated),
     };
-    if (c.user?.account_id === meAccountId && isOurs(item.raw)) ours.push({ ...item, authorReplied: authorRepliedAfter(c.id) });
-    else others.push(item);
+    if (c.user?.account_id === meAccountId && isOurs(item.raw)) {
+      const authorReplies = authorRepliesAfter(c.id);
+      ours.push({ ...item, authorReplied: authorReplies.length > 0, authorReplies });
+    } else others.push(item);
   }
   return { ours, others, progress };
 }

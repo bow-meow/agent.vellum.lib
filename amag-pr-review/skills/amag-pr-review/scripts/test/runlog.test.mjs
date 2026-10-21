@@ -34,6 +34,18 @@ test('logEntry keeps every finding with what the header leaves out, the pick, th
   assert.equal(e.findings[0].reason, null);
 });
 
+test('logEntry keeps the re-check verdict of each previous finding and its pick, by c<commentId>', () => {
+  const v = { findings: [], previous: [
+    { comment_id: 70, status: 'conceded', codeChanged: false, note: 'author is right: guarded in caller' },
+    { comment_id: 71, status: 'disputed', codeChanged: false, note: 'still unguarded on import' },
+    { comment_id: 72, status: 'still-applies', codeChanged: false },
+  ] };
+  const e = logEntry({ key: 'k', mode: 'pr', verified: v, built: [], posted: ['c70', 'c71'], declined: [], edited: ['c70'], flipped: ['c71'] });
+  assert.deepEqual(e.previous.map(p => [p.commentId, p.status, p.posted, p.edited, p.flipped]),
+    [[70, 'conceded', true, true, false], [71, 'disputed', true, false, true], [72, 'still-applies', null, false, false]]);
+  assert.deepEqual(logEntry({ key: 'k', mode: 'local', verified: { findings: [] }, built: [] }).previous, []);
+});
+
 test('runContext reads the reviewers, chunks, diff size and recheck load from the work dir', () => {
   const w = mkdtempSync(join(tmpdir(), 'rc-'));
   for (const f of ['cand-correctness-1.json', 'cand-correctness-2.json', 'cand-ticket-fit.json', 'cov-correctness.json']) writeFileSync(join(w, f), '[]');

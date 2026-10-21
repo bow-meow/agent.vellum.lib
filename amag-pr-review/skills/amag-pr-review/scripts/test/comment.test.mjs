@@ -84,6 +84,16 @@ test('CLI followup prints a body ready to redirect into bb.mjs', () => {
   assert.match(out, /^🟠 \*\*change needed\*\* · 🤖 AI:.+\n\nStill applies at L42\.$/);
 });
 
+test('a conceded reply is a note and a disputed one keeps the finding\'s status, both from text on stdin', () => {
+  assert.equal(followup('conceded', { model: 'Opus 5.5', severity: 'High', text: 'Fair point: `Save` is only called under the lock.' }),
+    '🔵 **note** · 🤖 AI:Opus 5.5\n\nFair point: `Save` is only called under the lock.');
+  assert.equal(followup('disputed', { model: 'Opus 5.5', severity: 'Medium', text: 'The import job calls it without the lock.' }),
+    '🟠 **change needed** · 🤖 AI:Opus 5.5\n\nThe import job calls it without the lock.');
+  assert.throws(() => followup('conceded', { model: 'm', severity: 'Low', text: '  ' }), /reply text/);
+  const out = execFileSync('node', [script, 'followup', 'disputed', 'Low'], { input: 'It still `throws` at L9.', encoding: 'utf8' });
+  assert.match(out, /^🟠 \*\*change needed\*\* · 🤖 AI:.+\n\nIt still `throws` at L9\.$/);
+});
+
 test('progress notice keeps only the status and model in its header and says when the review started', () => {
   const at = new Date(2026, 9, 2, 9, 5);
   const body = progress({ model: 'Opus 5.5', at });

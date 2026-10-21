@@ -38,6 +38,26 @@ test('classify: an author resolve is a push-back with a reply after ours, and ta
   assert.equal(classify(1, at('OPEN', [ours(1, { resolution: { user: other } })])), 'closed by reviewer');
 });
 
+test('classify: our own resolve after conceding still counts as the author pushing back', () => {
+  const t = [ours(1, { resolution: { user: me } }), reply(2, 1, author, 'It is guarded in the caller'), reply(3, 2, me, '🔵 **note** · 🤖 AI:Opus 5.5\n\nFair point.')];
+  assert.equal(classify(1, at('OPEN', t)), 'pushed back');
+});
+
+test('analyse counts conceded and disputed push-backs by the reviewer that raised them, and your overrides', () => {
+  const first = entry([f('f1', { commentId: 10, reviewers: ['sql'] }), f('f2', { commentId: 11 })]);
+  const later = entry([], { previous: [
+    { commentId: 10, status: 'conceded', posted: true, flipped: true },
+    { commentId: 11, status: 'disputed', posted: true, flipped: true },
+    { commentId: 99, status: 'conceded', posted: true },
+    { commentId: 11, status: 'still-applies', posted: null },
+  ] });
+  const a = analyse([first, later], new Map());
+  assert.deepEqual(a.pushbacks.get('sql'), { conceded: 1, disputed: 0, keptByYou: 1, withdrawnByYou: 0 });
+  assert.deepEqual(a.pushbacks.get('correctness'), { conceded: 0, disputed: 1, keptByYou: 0, withdrawnByYou: 1 });
+  assert.equal(a.pushbacks.get('unknown').conceded, 1);
+  assert.match(report(a), /## Push-backs on re-review/);
+});
+
 test('classify: resolution sits on the thread root when our finding was a reply', () => {
   const values = [reply(1, 0, other, 'human comment'), ours(2, { parent: { id: 1 } }), reply(3, 2, author, 'no')];
   values[0] = { ...values[0], parent: undefined, resolution: { user: author } };

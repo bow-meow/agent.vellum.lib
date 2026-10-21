@@ -71,12 +71,17 @@ export function readModel(severityFile = fileURLToPath(new URL('../references/se
   return m[1].trim();
 }
 
-export function followup(kind, { model, sha, severity, line }) {
+export function followup(kind, { model, sha, severity, line, text }) {
   if (kind === 'fixed') return formatComment({ status: 'note', model, issue: `Fixed in \`${String(sha).slice(0, 8)}\`.` });
   if (kind === 'still-applies') return formatComment({ status: statusOf(severity), model, issue: `Still applies at L${line}.` });
   if (kind === 'needs-reply')
     return formatComment({ status: statusOf(severity), model,
       issue: `Still applies at L${line}. If you're leaving it as it is, reply here with why and resolve it again.` });
+  if (kind === 'conceded' || kind === 'disputed') {
+    if (!String(text ?? '').trim()) throw new Error(`${kind} needs the reply text on stdin`);
+    // A conceded finding asks for nothing any more; a disputed one still does.
+    return formatComment({ status: kind === 'conceded' ? 'note' : statusOf(severity), model, issue: text });
+  }
   throw new Error(`unknown followup "${kind}"`);
 }
 
@@ -99,11 +104,13 @@ export const isProgress = text => PROGRESS_RE.test(String(text ?? ''));
 const invoked = process.argv[1] && resolve(process.argv[1]).toLowerCase();
 if (invoked === fileURLToPath(import.meta.url).toLowerCase()) {
   const [cmd, kind, a, b] = process.argv.slice(2);
-  const usage = 'usage: comment.mjs followup fixed <sha> | comment.mjs followup still-applies|needs-reply <severity> <line> | comment.mjs progress';
+  const usage = 'usage: comment.mjs followup fixed <sha> | comment.mjs followup still-applies|needs-reply <severity> <line>'
+    + ' | comment.mjs followup conceded|disputed <severity>   (reply text on stdin) | comment.mjs progress';
   const model = readModel();
   if (cmd === 'progress') { process.stdout.write(progress({ model })); process.exit(0); }
   if (cmd !== 'followup' || !kind) { console.error(usage); process.exit(2); }
   try {
-    process.stdout.write(kind === 'fixed' ? followup('fixed', { model, sha: a }) : followup(kind, { model, severity: a, line: b }));
+    const text = kind === 'conceded' || kind === 'disputed' ? readFileSync(0, 'utf8') : undefined;
+    process.stdout.write(kind === 'fixed' ? followup('fixed', { model, sha: a }) : followup(kind, { model, severity: a, line: b, text }));
   } catch (e) { console.error(`${e.message}\n${usage}`); process.exit(2); }
 }

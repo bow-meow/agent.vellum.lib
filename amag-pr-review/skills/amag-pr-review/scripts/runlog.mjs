@@ -46,7 +46,7 @@ export function runContext(w) {
 }
 
 export function logEntry({ key, mode, pr = null, ticket = null, head = null, skill, run, verified, built, usage = null,
-  posted = [], declined = [], edited = [], comments = {}, now = new Date() }) {
+  posted = [], declined = [], edited = [], flipped = [], comments = {}, now = new Date() }) {
   const builtById = new Map(built.map(b => [b.id, b]));
   const findings = (verified.findings ?? []).map(f => {
     const b = builtById.get(f.id);
@@ -61,8 +61,14 @@ export function logEntry({ key, mode, pr = null, ticket = null, head = null, ski
       edited: edited.includes(f.id), commentId: comments[f.id] ?? null,
     };
   });
+  // Previous findings are picked as c<commentId>, since they have no finding id in this run.
+  const pick = id => (posted.includes(id) ? true : declined.includes(id) ? false : null);
+  const previous = (verified.previous ?? []).map(p => ({
+    commentId: p.comment_id ?? null, status: p.status ?? null, codeChanged: p.codeChanged ?? null,
+    note: p.note ?? null, posted: pick(`c${p.comment_id}`), edited: edited.includes(`c${p.comment_id}`), flipped: flipped.includes(`c${p.comment_id}`),
+  }));
   const totalTokens = usage ? Object.values(usage).reduce((s, n) => s + (Number(n) || 0), 0) : null;
-  return { v: LOG_VERSION, at: now.toISOString(), key, mode, pr, ticket, head, skill, run, usage, totalTokens, findings };
+  return { v: LOG_VERSION, at: now.toISOString(), key, mode, pr, ticket, head, skill, run, usage, totalTokens, findings, previous };
 }
 
 export function appendLog(path, entry) {
@@ -75,7 +81,7 @@ const list = v => String(v ?? '').split(',').map(s => s.trim()).filter(Boolean);
 export function parseArgs(args) {
   const [cmd, key, w, ...rest] = args;
   if (cmd !== 'append' || !key || !w) return null;
-  const o = { key, w, mode: 'pr', pr: null, ticket: null, head: null, posted: [], declined: [], edited: [], comments: {} };
+  const o = { key, w, mode: 'pr', pr: null, ticket: null, head: null, posted: [], declined: [], edited: [], flipped: [], comments: {} };
   for (let i = 0; i < rest.length; i += 2) {
     const [flag, v] = [rest[i], rest[i + 1]];
     if (v === undefined) throw new Error(`${flag} needs a value`);
@@ -87,7 +93,7 @@ export function parseArgs(args) {
     }
     else if (flag === '--ticket') o.ticket = v || null;
     else if (flag === '--head') o.head = v || null;
-    else if (['--posted', '--declined', '--edited'].includes(flag)) o[flag.slice(2)] = list(v);
+    else if (['--posted', '--declined', '--edited', '--flipped'].includes(flag)) o[flag.slice(2)] = list(v);
     else if (flag === '--comments') {
       for (const pair of list(v)) {
         const [id, cid] = pair.split('=');
@@ -104,7 +110,7 @@ export function parseArgs(args) {
 const invoked = process.argv[1] && resolve(process.argv[1]).toLowerCase();
 if (invoked === fileURLToPath(import.meta.url).toLowerCase()) {
   const usage = 'usage: runlog.mjs append <key> <work-dir> [--mode pr|local] [--pr <ws>/<repo>/<id>] [--ticket <KEY>] [--head <sha>]\n'
-    + '         [--posted f1,f2] [--declined f3] [--edited f2] [--comments f1=<commentId>,f2=<commentId>]';
+    + '         [--posted f1,f2] [--declined f3] [--edited f2] [--flipped c70,c71] [--comments f1=<commentId>,f2=<commentId>]';
   let o;
   try { o = parseArgs(process.argv.slice(2)); } catch (e) { console.error(`runlog.mjs: ${e.message}\n${usage}`); process.exit(2); }
   if (!o) { console.error(usage); process.exit(2); }

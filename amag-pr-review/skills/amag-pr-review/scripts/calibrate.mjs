@@ -50,9 +50,10 @@ export function classify(commentId, { pr, values }) {
   const authorReplied = fromAuthor.length > 0;
   const root = byId.get(roots.get(commentId)) ?? ours;
   if (root.resolution) {
+    // We resolve our own thread when we concede, so who resolved it matters only without an author reply.
+    if (authorReplied) return 'pushed back';
     const by = root.resolution.user?.account_id ?? null;
-    if (by === null || by === authorId) return authorReplied ? 'pushed back' : 'resolved by author';
-    return 'closed by reviewer';
+    return by === null || by === authorId ? 'resolved by author' : 'closed by reviewer';
   }
   if (!FINAL_PR_STATES.has(pr.state)) return 'pending';
   return authorReplied ? 'pushed back' : 'ignored';
@@ -105,6 +106,7 @@ export function analyse(entries, outcomesByComment) {
     bySeverity: group(posted, f => f.severity ?? 'unknown'),
     picks: pickTable(shown),
     verdicts: verdictTable(all),
+    pushbacks: pushbackTable(entries),
     cost: {
       medianPerRun: median(perRun.map(e => e.totalTokens)),
       medianPer100Lines: median(perRun.filter(e => e.run?.changed > 0).map(e => Math.round((100 * e.totalTokens) / e.run.changed))),
@@ -121,6 +123,25 @@ function pickTable(shown) {
     if (f.posted) t.posted++; else t.declined++;
     if (f.edited) t.edited++;
     out.set(r, t);
+  }
+  return out;
+}
+
+// A re-check knows the comment, not who raised it, so the reviewer comes from the run that posted it.
+function pushbackTable(entries) {
+  const raisedBy = new Map();
+  for (const e of entries) for (const f of e.findings ?? []) if (f.commentId != null && !raisedBy.has(f.commentId)) raisedBy.set(f.commentId, f);
+  const out = new Map();
+  for (const e of entries) for (const p of e.previous ?? []) {
+    if (p.status !== 'conceded' && p.status !== 'disputed') continue;
+    const f = raisedBy.get(p.commentId);
+    for (const r of f?.reviewers?.length ? f.reviewers : ['unknown']) {
+      const t = out.get(r) ?? { conceded: 0, disputed: 0, keptByYou: 0, withdrawnByYou: 0 };
+      t[p.status]++;
+      if (p.status === 'conceded' && (p.flipped || p.posted === false)) t.keptByYou++;
+      if (p.status === 'disputed' && p.flipped) t.withdrawnByYou++;
+      out.set(r, t);
+    }
   }
   return out;
 }
@@ -166,6 +187,11 @@ export function report(a, { bad = 0, unreachable = [] } = {}) {
     lines.push(row(['reviewer', 'shown', 'posted', 'declined', 'edited', 'declined %']), row(['---', '---:', '---:', '---:', '---:', '---:']),
       ...sortedEntries(a.picks).map(([k, t]) => row([k, t.shown, t.posted, t.declined, t.edited, pct(t.declined, t.shown)])), '');
   } else lines.push('No PR runs with picks yet.', '');
+  lines.push('## Push-backs on re-review', '');
+  if (a.pushbacks.size) {
+    lines.push(row(['reviewer', 'conceded', 'disputed', 'conceded, you kept it', 'disputed, you withdrew it']), row(['---', '---:', '---:', '---:', '---:']),
+      ...sortedEntries(a.pushbacks).map(([k, t]) => row([k, t.conceded, t.disputed, t.keptByYou, t.withdrawnByYou])), '');
+  } else lines.push('No push-backs judged yet.', '');
   lines.push('## Verify and recheck verdicts', '',
     row(['reviewer', 'confirmed', 'dropped', 'unconfirmed', 'kept %']), row(['---', '---:', '---:', '---:', '---:']),
     ...sortedEntries(a.verdicts).map(([k, t]) => row([k, t.confirmed, t.dropped, t.unconfirmed, pct(t.confirmed, t.confirmed + t.dropped + t.unconfirmed)])), '');
