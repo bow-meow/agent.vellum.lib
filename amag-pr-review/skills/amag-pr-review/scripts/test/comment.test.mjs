@@ -65,11 +65,11 @@ test('parseHeader reads the current header with its footer, and stripHeader remo
 });
 
 test('a follow-up is ours by its opening words and footer, and keeps those words when stripped', () => {
-  const fixed = followup('fixed', { model: 'Opus 5.5', sha: 'abcdef1234' });
-  assert.deepEqual(parseHeader(fixed), { status: 'note', model: 'Opus 5.5', area: null });
-  assert.equal(stripHeader(fixed), '**Fixed** in `abcdef12`.');
+  const still = followup('still-applies', { model: 'Opus 5.5', line: 9 });
+  assert.deepEqual(parseHeader(still), { status: 'change', model: 'Opus 5.5', area: null });
+  assert.equal(stripHeader(still), '**Still applies** at L9.');
   assert.equal(parseHeader(followup('disputed', { model: 'm', text: 'x' })).status, 'change');
-  assert.equal(isOurs('**Fixed** in abc, thanks!'), false, 'a human reply without our footer');
+  assert.equal(isOurs('**Still applies** here too, I think'), false, 'a human reply without our footer');
   // Follow-ups posted under the dot header before this layout.
   assert.equal(isOurs('🔵 **note**\n\nFixed in `abc12345`.\n\n_AI review · Opus 5.5_'), true);
 });
@@ -100,8 +100,8 @@ test('styleIssues flags em dashes and chatbot phrases but ignores code spans', (
   assert.ok(got.includes('"could potentially"'));
 });
 
-test('followup builds the fixed, still-applies and needs-reply replies as one sentence and the footer', () => {
-  assert.equal(followup('fixed', { model: 'Opus 5.5', sha: '6276fe0b144e647b' }), '**Fixed** in `6276fe0b`.' + FOOT);
+test('followup builds the still-applies and needs-reply replies as one sentence and the footer, and no agreement replies', () => {
+  for (const kind of ['fixed', 'conceded']) assert.throws(() => followup(kind, { model: 'm' }), /unknown followup/);
   assert.equal(followup('still-applies', { model: 'Opus 5.5', line: 130 }), '**Still applies** at L130.' + FOOT);
   assert.equal(followup('needs-reply', { model: 'Opus 5.5', line: 7 }),
     "**Still applies** at L7. If you're leaving it as it is, reply here with why and resolve it again." + FOOT);
@@ -116,12 +116,10 @@ test('CLI followup prints a body ready to redirect into bb.mjs', () => {
   assert.match(out, /^\*\*Still applies\*\* at L42\.\n\n_AI review · .+_$/);
 });
 
-test('a conceded reply opens with "Fair point" and a disputed one with "Still a problem", text from stdin', () => {
-  assert.equal(followup('conceded', { model: 'Opus 5.5', text: '`Save` is only called under the lock.' }),
-    '**Fair point:** `Save` is only called under the lock.' + FOOT);
+test('a disputed reply opens with "Still a problem", text from stdin', () => {
   assert.equal(followup('disputed', { model: 'Opus 5.5', text: 'The import job calls it without the lock.' }),
     '**Still a problem:** The import job calls it without the lock.' + FOOT);
-  assert.throws(() => followup('conceded', { model: 'm', text: '  ' }), /reply text/);
+  assert.throws(() => followup('disputed', { model: 'm', text: '  ' }), /reply text/);
   const out = execFileSync('node', [script, 'followup', 'disputed'], { input: 'It still `throws` at L9.', encoding: 'utf8' });
   assert.match(out, /^\*\*Still a problem:\*\* It still `throws` at L9\.\n\n_AI review · .+_$/);
 });

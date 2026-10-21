@@ -19,7 +19,7 @@ function repo() {
 }
 
 test('a re-review keeps the PR hunks changed since the last review, not earlier ones or base-branch merges', () => {
-  const { git, write, commit } = repo();
+  const { dir, git, write, commit } = repo();
   const a = lines(200), b = lines(50);
   write('a.cs', a); write('b.cs', b); write('c.cs', lines(30));
   commit('base');
@@ -42,12 +42,35 @@ test('a re-review keeps the PR hunks changed since the last review, not earlier 
   const pr = git('diff', '-U3', mb, 'HEAD');
   const since = git('diff', '-U0', reviewed, 'HEAD');
   const { text, kept } = filterDelta(pr, since);
-  assert.deepEqual(kept, [{ path: 'a.cs', hunks: 2, of: 3 }]);
+  assert.deepEqual(kept.map(k => [k.path, k.hunks, k.of]), [['a.cs', 2, 3]]);
   assert.match(text, /\+second round change, not reviewed yet/);
   assert.match(text, /-line 101 of the file/);
   assert.doesNotMatch(text, /first round change/);
   assert.doesNotMatch(text, /a change on main/);
   assert.doesNotMatch(text, /b\.cs|c\.cs/);
+  writeFileSync(join(dir, 'slice.diff'), text);
+  git('apply', '-R', '--check', 'slice.diff');
+});
+
+test('a file the PR adds keeps only the slices around lines changed since, and the result still applies', () => {
+  const { dir, git, write, commit } = repo();
+  write('base.cs', lines(5));
+  commit('base');
+  git('checkout', '-q', '-b', 'feature');
+  const added = lines(300);
+  write('New.cs', added);
+  const reviewed = commit('round 1 adds a file');
+  added[40] = 'edited near the top';
+  added[250] = 'edited near the bottom';
+  write('New.cs', added);
+  commit('round 2');
+  const mb = git('merge-base', 'main', 'HEAD').trim();
+  const { text, kept } = filterDelta(git('diff', '-U3', mb, 'HEAD'), git('diff', '-U0', reviewed, 'HEAD'));
+  assert.deepEqual(kept, [{ path: 'New.cs', hunks: 2, of: 1, changed: 14 }]);
+  assert.match(text, /^@@ -0,0 \+38,7 @@$/m);
+  assert.match(text, /\+edited near the top/);
+  assert.doesNotMatch(text, /line 150 of the file/);
+  assert.equal(parseHunks(text)[0].hunks.length, 2, 'the slices parse back as hunks');
 });
 
 test('nothing changed since the last review gives an empty diff', () => {

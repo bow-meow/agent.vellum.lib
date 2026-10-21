@@ -9,18 +9,17 @@ Read from SKILL.md step 2 when `state-prev.json` is not `null`, or when it is `n
   `null` (a reviewer or I resolved it; we only resolve our own when `fixed` or conceded, which state
   already records), is **closed**: not blocking, not re-reviewed, listed in the terminal as "closed
   by a human". So is a resolved Info finding, whoever resolved it: a note asks for nothing.
-- **Low or Low/nit the author replied to** (`authorReplied: true`, resolved or not): **closed**. The
-  reply is their reason for leaving it, and declining a Low with a reason is their call. Listed in
-  the terminal as "closed by the author with a reply", and not saved in state, like any closed one.
 - **Resolved by the author** (`resolvedBy` is `AUTHOR_ID`, or `null` because Bitbucket didn't say
-  who) and not closed above: a Low or Low/nit with no reply, or any High/Medium. Resolving is not
-  fixing, and the author would otherwise clear their own findings, so it isn't closed. Mark it
-  `authorResolved` and treat it like any other open previous finding below. When a Low or Low/nit one
-  is reopened, its follow-up is `comment.mjs followup needs-reply`, which tells the author that a reply
-  with their reason closes it.
-- **Push-back on a High/Medium**: its `authorReplies` in `comments-ours.json` with an id above the
+  who). Resolving is not fixing, and the author would otherwise clear their own findings, so it isn't
+  closed. Mark it `authorResolved` and treat it like any other open previous finding below. When a Low
+  or Low/nit one with no reply is reopened, its follow-up is `comment.mjs followup needs-reply`, which
+  tells the author that a reply with their reason is enough.
+- **Author replies, at any severity**: its `authorReplies` in `comments-ours.json` with an id above the
   state's `pushbackSeen` (0 when absent) are new. Copy those into its re-check entry below; verify
-  judges them. Older ones were already settled with the user on an earlier run.
+  judges them, a Low's included: a reply saying "fixed" is checked like any fix, and a decline is
+  weighed by verify.md step 5. A reply doesn't close a finding on its own, since a Low can turn out to
+  be the risk the change exists to manage. Older replies were already settled with the user on an
+  earlier run.
 - Every remaining previous finding is re-checked by verify, whether its code changed or not: a fix
   can land elsewhere (a guard in a caller, a config default). For each one with a `fingerprint`,
   locate it at head: `node $S/scripts/state.mjs locate "$WT/<path>" <fingerprint> <line>` → `{line}`.

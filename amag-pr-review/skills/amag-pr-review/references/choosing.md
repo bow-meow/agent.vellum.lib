@@ -7,29 +7,34 @@ posted without asking; it stays up until cleanup.
 
 Number every item that would write to the PR, in this order:
 
+We write only when we disagree. Agreeing with the author, whether their fix holds or their push-back
+does, is shown by resolving the thread and nothing else: a "fixed" or "fair point" reply tells them
+what they already know. (Bitbucket Cloud's API has no likes or reactions, so a resolve is the only
+silent signal.)
+
 1. Findings: confirmed `new` with an anchor, and `reply`, in table order (change needed and notes).
 2. Follow-ups on previous findings, from verify's re-check:
-   - `fixed`: a "Fixed in" reply, plus resolve when it's our own thread and not `authorResolved`.
    - `still-applies` with `codeChanged: true`: a "Still applies" reply.
-   - `authorResolved` and `still-applies`: reopen, plus a reply.
-3. Push-backs, from the same re-check. Show each with the author's point in a line and verify's
-   draft `reply` under the table:
-   - `conceded` (Post as `withdraw`): our reply saying they're right, plus resolve when it's our own
-     thread and still open. The finding is withdrawn.
-   - `disputed` (Post as `answer`): our reply answering their point, plus reopen when it's
-     `authorResolved`. The finding stays open.
+   - `authorResolved` and `still-applies`, with no author reply: reopen, plus a reply.
+3. Push-backs the re-check disputes (Post as `answer`), with the author's point in a line and verify's
+   draft `reply` under the table: our reply answering their point, plus reopen when it's
+   `authorResolved`. The finding stays open.
+4. Agreements (Post as `resolve`): a `fixed` or `conceded` finding whose thread is our own (no
+   `parentId`) and still open. Resolve it, no reply. A conceded one is withdrawn.
 
-Not numbered, because nothing would be posted: `already-raised`, `ours-previous`, terminal-only, and
-previous findings that are `still-applies` with `codeChanged: false` and their thread still open:
-nothing moved, so a reply would only repeat the comment. List those under the table as "Still open
-from the last review".
+Not numbered, because nothing would be posted: `already-raised`, `ours-previous`, terminal-only,
+previous findings that are `still-applies` with `codeChanged: false` and their thread still open
+(nothing moved, so a reply would only repeat the comment; list them under the table as "Still open
+from the last review"), and agreements whose thread is already resolved or isn't ours to resolve.
+List those as "Settled, nothing to post": fixed ones by count, conceded ones one line each with the
+author's reason. `flip N` works on a conceded one by its listed number, to answer it instead.
 
 Each group is numbered in table order, continuing from the one before. Under the push-backs, list
 each conceded one's `pattern` as a suggestion for the don't-flag list, `R1. <line> (from 4)`, when
 verify gave one.
 
-Show the step 11 table with these numbers, its Post as column filled (`new`, `reply`, `fixed`,
-`still applies`, `reopen`, `withdraw`, `answer`), then the decision posting everything would lead to,
+Show the step 11 table with these numbers, its Post as column filled (`new`, `reply`,
+`still applies`, `reopen`, `answer`, `resolve`), then the decision posting everything would lead to,
 then ask:
 
 `Which should I post? ("post 1,3", "post all", "post all but 2", "edit 2: <what to change>", "flip 4", "rule R1", "none")`
@@ -41,32 +46,29 @@ the user answers. No answer this session means nothing more happens to the PR.
 
 - `edit N`: rewrite `$W/body-<id>.txt` as asked, keeping the header and the humanize rules in
   severity.md. Show the new body and ask again.
-- `flip N` on a push-back: the user overrules verify. `withdraw` becomes `answer` and the reverse,
-  and a flipped item's `R` suggestion is withdrawn with it. Draft the new reply from verify's `note`
-  and the author's point, by the same rules as verify.md step 5. For `withdraw` → `answer`, verify's
-  note backs the author, so the argument has to come from the user: ask them what still fails rather
-  than inventing one. Show the draft and ask again for that item.
+- `flip N` on a push-back: the user overrules verify. A conceded one becomes `answer`, and its `R`
+  suggestion is withdrawn with it: verify's note backs the author, so the argument has to come from
+  the user. Ask them what still fails rather than inventing one, draft the reply from that by the rules
+  in verify.md step 5, show it and ask again for that item. A disputed one becomes an agreement:
+  `resolve` if it's our own open thread, else nothing to post.
 - `rule R1`: add that line to the don't-flag list in `references/severity.md`, as the rule in
-  SKILL.md's "Rules that always apply" says for a finding the user calls wrong. Only for an item left
-  as `withdraw`.
+  SKILL.md's "Rules that always apply" says for a finding the user calls wrong. Only for a conceded
+  item left conceded.
 - Anything you can't map to numbers, or that contradicts another part of the answer: ask. Don't guess.
 - Items picked plainly post now; an `edit` or `flip` item waits for its own confirmation.
 - Post the chosen items in parallel (independent calls), each from its body file:
   - `new`: `node $S/scripts/bb.mjs comment $WS $REPO $PR "<path>" <side> <line> < $W/body-<id>.txt`
   - `reply`: `node $S/scripts/bb.mjs reply $WS $REPO $PR <parent_id> < $W/body-<id>.txt`
-  - `fixed`: `node $S/scripts/comment.mjs followup fixed $HEAD_SHA > $W/body-fixed-<comment_id>.txt`,
-    reply it to its comment id; then, **only if the finding has no `parentId`** (it started its own
-    thread) and isn't `authorResolved`, `node $S/scripts/bb.mjs resolve $WS $REPO $PR <comment_id>`.
-    A finding that was a reply in someone else's thread is never resolved.
   - `still-applies`: `node $S/scripts/comment.mjs followup still-applies <line> > $W/body-still-<comment_id>.txt`,
     reply it to its comment id.
   - `reopen`: `node $S/scripts/bb.mjs reopen $WS $REPO $PR <thread root id>` (its `parentId`, else its
     comment id), then the `still-applies` reply above at verify's `line`, or
     `needs-reply` in its place for a Low or Low/nit.
-  - `withdraw` / `answer`: write the reply text to `$W/pushback-<comment_id>.txt` with the Write tool,
-    then `node $S/scripts/comment.mjs followup conceded|disputed < $W/pushback-<comment_id>.txt > $W/body-pushback-<comment_id>.txt`
-    and reply it to its comment id. `withdraw` then resolves under the same rule as `fixed`;
-    `answer` on an `authorResolved` one reopens first, as for `reopen`.
+  - `answer`: write the reply text to `$W/pushback-<comment_id>.txt` with the Write tool, then
+    `node $S/scripts/comment.mjs followup disputed < $W/pushback-<comment_id>.txt > $W/body-pushback-<comment_id>.txt`
+    and reply it to its comment id; on an `authorResolved` one, reopen first, as for `reopen`.
+  - `resolve`: `node $S/scripts/bb.mjs resolve $WS $REPO $PR <comment_id>`. Never on a thread we
+    didn't start: a finding that was a reply in someone else's thread is never resolved.
 - Record each post's returned `id`/`link`. A failed post goes in the failures list; don't retry it
   into a duplicate.
 
@@ -92,12 +94,12 @@ Only when the PR is open and not mine. Open findings = the `change` findings jus
 
 - New finding → `dropped`, reason `User chose not to post`, plus their reason if they gave one, so
   verify keeps that verdict next time unless the code it rests on changes.
-- `fixed` → saved as `status: 'fixed'` all the same: the code is fixed.
+- `fixed`, resolved or not → saved as `status: 'fixed'`: the code is fixed.
 - `still-applies` → stays `open`: its thread is still on the PR.
 - `reopen` → not saved, like a thread a human closed: the user accepted the author's resolve.
-- `withdraw` posted → not saved as open. It goes to `dropped`, reason `Conceded to the author:` plus
-  verify's `note`, so the same finding isn't raised again on this PR.
-- `withdraw` declined → the user keeps the finding: it stays `open`.
+- A conceded finding, resolved or settled without a post → not saved as open. It goes to `dropped`,
+  reason `Conceded to the author:` plus verify's `note`, so the same finding isn't raised again on
+  this PR. Its `resolve` declined → the user keeps the finding: it stays `open`.
 - `answer`, posted or declined → stays `open`.
 
 Every push-back that stays open is saved with `pushbackSeen` = the id of the author's latest reply,

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { analyse, cacheUsable, classify, fetchThreads, loadEntries, outcomes, prsOf, report, saysFixed } from '../calibrate.mjs';
+import { analyse, cacheUsable, classify, fetchThreads, loadEntries, myAccountId, outcomes, prsOf, report, saysFixed } from '../calibrate.mjs';
 
 const me = { account_id: 'me' };
 const author = { account_id: 'author' };
@@ -38,9 +38,34 @@ test('classify: an author resolve is a push-back with a reply after ours, and ta
   assert.equal(classify(1, at('OPEN', [ours(1, { resolution: { user: other } })])), 'closed by reviewer');
 });
 
-test('classify: our "Fixed in" reply is found in every style it was posted in', () => {
-  for (const raw of ['**Fixed** in `abc12345`.\n\n_AI review · Opus 5.5_', '🔵 **note**\n\nFixed in `abc12345`.\n\n_AI review · Opus 5.5_'])
-    assert.equal(classify(1, at('OPEN', [ours(1), reply(2, 1, me, raw)])), 'fixed', raw);
+test('classify: an older "Fixed in" reply of ours is still found under the footer-style header', () => {
+  const raw = '🔵 **note**\n\nFixed in `abc12345`.\n\n_AI review · Opus 5.5_';
+  assert.equal(classify(1, at('OPEN', [ours(1), reply(2, 1, me, raw)])), 'fixed');
+});
+
+test('classify: a resolve by our account with no author reply is "closed by us", by anyone else "closed by reviewer"', () => {
+  const t = at('OPEN', [ours(1, { resolution: { user: me } })]);
+  assert.equal(classify(1, t, 'me'), 'closed by us');
+  assert.equal(classify(1, t), 'closed by reviewer', 'without our id, it can only be a reviewer');
+  assert.equal(classify(1, at('OPEN', [ours(1, { resolution: { user: other } })]), 'me'), 'closed by reviewer');
+});
+
+test('myAccountId caches the account so an offline run still knows it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cal-'));
+  assert.equal(await myAccountId(null, dir), null);
+  assert.equal(await myAccountId({ me: async () => ({ account_id: 'acc-1' }) }, dir), 'acc-1');
+  assert.equal(await myAccountId(null, dir, { offline: true }), 'acc-1');
+  assert.equal(await myAccountId({ me: async () => { throw new Error('403'); } }, dir), 'acc-1');
+});
+
+test('outcomes takes a later re-check verdict over the thread, since agreeing leaves no reply', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cal-'));
+  const first = entry([f('f1', { commentId: 10 }), f('f2', { commentId: 11 }), f('f3', { commentId: 12 })]);
+  const later = entry([], { previous: [{ commentId: 10, status: 'fixed' }, { commentId: 11, status: 'conceded' }, { commentId: 12, status: 'disputed' }] });
+  const silentResolve = { user: me };
+  const threads = new Map([[join(dir, '.cache', 'ws-r-PR1.json'), at('OPEN', [ours(10, { resolution: silentResolve }), ours(11, { resolution: silentResolve }), ours(12)])]]);
+  const o = outcomes([first, later], threads, dir);
+  assert.deepEqual([o.get(10), o.get(11), o.get(12)], ['fixed', 'pushed back', 'pending']);
 });
 
 test('classify: our own resolve after conceding still counts as the author pushing back', () => {

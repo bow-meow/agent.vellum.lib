@@ -12,7 +12,7 @@ import { threadRoots } from './state.mjs';
 export const MIN_SETTLED = 20;
 const FINAL_PR_STATES = new Set(['MERGED', 'DECLINED', 'SUPERSEDED']);
 const OPEN_CACHE_MS = 60 * 60 * 1000;
-export const OUTCOMES = ['fixed', 'author says fixed', 'resolved by author', 'pushed back', 'closed by reviewer', 'ignored', 'deleted', 'pending'];
+export const OUTCOMES = ['fixed', 'author says fixed', 'resolved by author', 'pushed back', 'closed by us', 'closed by reviewer', 'ignored', 'deleted', 'pending'];
 
 // Authors answer by hand ("👍 Fixed in 9c7fd8b: …", "Done") or through amag-pr-respond ("✅ **fixed**").
 const SAYS_FIXED = /^\W*(?:\*\*)?(?:fixed|done|addressed|updated|changed it|good catch,? fixed)\b/i;
@@ -36,7 +36,7 @@ export function loadEntries(dir, { since = null } = {}) {
 }
 
 // Ordered: our "Fixed in" reply beats everything, then the author's last word, then who resolved it.
-export function classify(commentId, { pr, values }) {
+export function classify(commentId, { pr, values }, meId = null) {
   const byId = new Map(values.map(c => [c.id, c]));
   const ours = byId.get(commentId);
   if (!ours || ours.deleted) return 'deleted';
@@ -53,7 +53,8 @@ export function classify(commentId, { pr, values }) {
     // We resolve our own thread when we concede, so who resolved it matters only without an author reply.
     if (authorReplied) return 'pushed back';
     const by = root.resolution.user?.account_id ?? null;
-    return by === null || by === authorId ? 'resolved by author' : 'closed by reviewer';
+    if (by === null || by === authorId) return 'resolved by author';
+    return meId != null && by === meId ? 'closed by us' : 'closed by reviewer';
   }
   if (!FINAL_PR_STATES.has(pr.state)) return 'pending';
   return authorReplied ? 'pushed back' : 'ignored';
@@ -235,6 +236,18 @@ export async function fetchThreads(client, prs, dir, { refresh = false, offline 
   return { threads: out, unreachable };
 }
 
+// Cached so an offline run can still tell our own resolves from other reviewers'.
+export async function myAccountId(client, dir, { offline = false } = {}) {
+  const file = join(dir, '.cache', 'me.json');
+  const cached = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')).account_id ?? null : null;
+  if (offline || !client) return cached;
+  try {
+    const id = (await client.me()).account_id ?? null;
+    if (id) { mkdirSync(join(dir, '.cache'), { recursive: true }); writeFileSync(file, JSON.stringify({ account_id: id })); }
+    return id ?? cached;
+  } catch { return cached; }
+}
+
 export function prsOf(entries) {
   const seen = new Map();
   for (const e of entries) if (e.mode === 'pr' && e.pr && (e.findings ?? []).some(f => f.commentId != null))
@@ -242,14 +255,20 @@ export function prsOf(entries) {
   return [...seen.values()];
 }
 
-export function outcomes(entries, threads, dir) {
+// A later run's re-check verdict beats what the thread shows: agreeing is a silent resolve now, so a
+// confirmed fix or an accepted push-back leaves no reply of ours to find.
+const FROM_RECHECK = { fixed: 'fixed', conceded: 'pushed back' };
+
+export function outcomes(entries, threads, dir, meId = null) {
   const out = new Map();
   for (const e of entries) {
     if (e.mode !== 'pr' || !e.pr) continue;
     const t = threads.get(cacheFile(dir, e.pr));
     if (!t) continue;
-    for (const f of e.findings ?? []) if (f.commentId != null) out.set(f.commentId, classify(f.commentId, t));
+    for (const f of e.findings ?? []) if (f.commentId != null) out.set(f.commentId, classify(f.commentId, t, meId));
   }
+  for (const e of entries) for (const p of e.previous ?? [])
+    if (FROM_RECHECK[p.status] && out.has(p.commentId) && out.get(p.commentId) !== 'deleted') out.set(p.commentId, FROM_RECHECK[p.status]);
   return out;
 }
 
@@ -268,7 +287,8 @@ if (invoked === fileURLToPath(import.meta.url).toLowerCase()) {
   const creds = flag('--offline') ? null : findCreds();
   const client = creds ? makeClient({ creds, accountId: findAccountId() }) : null;
   const { threads, unreachable } = await fetchThreads(client, prsOf(entries), dir, { refresh: flag('--refresh'), offline: flag('--offline') || !creds });
-  const a = analyse(entries, outcomes(entries, threads, dir));
+  const meId = await myAccountId(client, dir, { offline: flag('--offline') || !creds });
+  const a = analyse(entries, outcomes(entries, threads, dir, meId));
   if (flag('--json')) {
     const plain = JSON.parse(JSON.stringify(a, (k, v) => (v instanceof Map ? Object.fromEntries(v) : v)));
     console.log(JSON.stringify({ ...plain, bad, unreachable }, null, 2));

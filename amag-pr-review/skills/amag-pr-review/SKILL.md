@@ -348,7 +348,7 @@ Overturned by recheck (n): <id: what verify got wrong>, or none
 Unconfirmed, not posted (n): <id: what recheck sought>, or none
 Already raised by others: <finding → author>
 Terminal-only: <unanchorable / uncertain ticket-fit findings>
-Closed by a human: <previous findings step 2 closed; for an author reply, its gist>
+Closed by a human: <previous findings step 2 closed>   Accepted push-backs: <conceded Lows, reply gist>
 Reopened: <author-resolved findings that still apply, or none>
 Uncovered: <dimensions, or none>   Ticket: <key or "none found">   Incremental: <yes, since <sha>: kept hunks per file | last reviewed commit gone: full re-review | no>
 Packages: <name@version fetched, name@version: error, or none>

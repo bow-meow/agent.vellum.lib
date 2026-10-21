@@ -37,7 +37,7 @@ const OLD_HEADER_RE = new RegExp(`^\\s*(?:\\S+ )?\\*\\*(${S})\\*\\* · (?:🤖 )
 const LEGACY_RE = new RegExp(`^\\s*\\[(${OLD_STATUSES.join('|')}), AI:([^\\]]+)\\]`);
 
 // A follow-up in one of our threads has no header: the opening words say what happened.
-const REPLY_STATUS = { Fixed: 'note', 'Still applies': 'change', 'Fair point:': 'note', 'Still a problem:': 'change' };
+const REPLY_STATUS = { 'Still applies': 'change', 'Still a problem:': 'change' };
 const REPLY_RE = new RegExp(`^\\s*\\*\\*(${Object.keys(REPLY_STATUS).join('|')})\\*\\*`);
 
 export function header(status, area = NO_AREA) {
@@ -112,15 +112,15 @@ export function readModel(severityFile = fileURLToPath(new URL('../references/se
   return m[1].trim();
 }
 
-export function followup(kind, { model, sha, line, text }) {
+export function followup(kind, { model, line, text }) {
+  // Agreeing (a fix that holds, a push-back we accept) is a silent resolve, so only disagreement is worded.
   const say = sentence => `${sentence}\n\n${footer(model)}`;
-  if (kind === 'fixed') return say(`**Fixed** in \`${String(sha).slice(0, 8)}\`.`);
   if (kind === 'still-applies') return say(`**Still applies** at L${line}.`);
   if (kind === 'needs-reply') return say(`**Still applies** at L${line}. If you're leaving it as it is, reply here with why and resolve it again.`);
-  if (kind === 'conceded' || kind === 'disputed') {
+  if (kind === 'disputed') {
     const t = String(text ?? '').trim();
-    if (!t) throw new Error(`${kind} needs the reply text on stdin`);
-    return say(`${kind === 'conceded' ? '**Fair point:**' : '**Still a problem:**'} ${t}`);
+    if (!t) throw new Error('disputed needs the reply text on stdin');
+    return say(`**Still a problem:** ${t}`);
   }
   throw new Error(`unknown followup "${kind}"`);
 }
@@ -145,13 +145,13 @@ export const isProgress = text => PROGRESS_RE.test(String(text ?? ''));
 const invoked = process.argv[1] && resolve(process.argv[1]).toLowerCase();
 if (invoked === fileURLToPath(import.meta.url).toLowerCase()) {
   const [cmd, kind, a] = process.argv.slice(2);
-  const usage = 'usage: comment.mjs followup fixed <sha> | comment.mjs followup still-applies|needs-reply <line>'
-    + ' | comment.mjs followup conceded|disputed   (reply text on stdin) | comment.mjs progress';
+  const usage = 'usage: comment.mjs followup still-applies|needs-reply <line>'
+    + ' | comment.mjs followup disputed   (reply text on stdin) | comment.mjs progress';
   const model = readModel();
   if (cmd === 'progress') { process.stdout.write(progress({ model })); process.exit(0); }
   if (cmd !== 'followup' || !kind) { console.error(usage); process.exit(2); }
   try {
-    const text = kind === 'conceded' || kind === 'disputed' ? readFileSync(0, 'utf8') : undefined;
-    process.stdout.write(followup(kind, { model, sha: a, line: a, text }));
+    const text = kind === 'disputed' ? readFileSync(0, 'utf8') : undefined;
+    process.stdout.write(followup(kind, { model, line: a, text }));
   } catch (e) { console.error(`${e.message}\n${usage}`); process.exit(2); }
 }

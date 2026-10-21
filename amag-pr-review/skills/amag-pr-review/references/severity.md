@@ -14,10 +14,11 @@ author only sees whether a change is needed. Every change is expected to be addr
 reply saying why not, so raise a Low/nit only when it's worth that round trip.
 
 `scripts/factcheck.mjs` builds every posted body from the severity, `issue`, `impact` and `fix`; nobody types the
-header or footer. A follow-up in one of our threads (`scripts/comment.mjs followup`) has no header: one
-sentence opening with what happened, then the same footer. `**Fixed** in <sha>.`, `**Still applies** at
-L<n>.`, `**Fair point:** <verify's reply>` for a conceded push-back, `**Still a problem:** <verify's
-reply>` for a disputed one. Comments posted before this layout used a dot header (`🔵 **note**`), a
+header or footer. We only write in a thread to disagree: a fix that holds or a push-back we accept
+is a silent resolve (choosing.md). A follow-up (`scripts/comment.mjs followup`) has no header: one
+sentence opening with what happened, then the same footer. `**Still applies** at L<n>.` when the code
+changed and the finding stands, `**Still a problem:** <verify's reply>` answering a push-back.
+Comments posted before this layout used a dot header (`🔵 **note**`), a
 `🤖 AI:<model>` header, a `[status, AI:model]` prefix, a plain `**status** · AI:model` header, or one
 of the retired statuses (`critical`, `blocking`, `suggestion`, `nit`, `info`); all are recognised as
 ours. A header or opening without our footer is not.
