@@ -8,14 +8,15 @@ posted without asking; it stays up until cleanup.
 Number every item that would write to the PR, in this order:
 
 1. Findings: confirmed `new` with an anchor, and `reply`, in table order (change needed and notes).
-2. Follow-ups on previous findings:
+2. Follow-ups on previous findings, from verify's re-check:
    - `fixed`: a "Fixed in" reply, plus resolve when it's our own thread and not `authorResolved`.
-   - `still-applies`: a "Still applies" reply.
-   - `authorResolved` that still applies or is unchanged: reopen, plus a reply.
+   - `still-applies` with `codeChanged: true`: a "Still applies" reply.
+   - `authorResolved` and `still-applies`: reopen, plus a reply.
 
 Not numbered, because nothing would be posted: `already-raised`, `ours-previous`, terminal-only, and
-previous findings that are `unchanged` with their thread still open. List the last ones under the
-table as "Still open from the last review".
+previous findings that are `still-applies` with `codeChanged: false` and their thread still open:
+nothing moved, so a reply would only repeat the comment. List those under the table as "Still open
+from the last review".
 
 Show the step 11 table with these numbers, its Post as column filled (`new`, `reply`, `fixed`,
 `still applies`, `reopen`), then the decision posting everything would lead to, then ask:
@@ -40,7 +41,7 @@ the user answers. No answer this session means nothing more happens to the PR.
   - `still-applies`: `node $S/scripts/comment.mjs followup still-applies "<its severity>" <line> > $W/body-still-<comment_id>.txt`,
     reply it to its comment id.
   - `reopen`: `node $S/scripts/bb.mjs reopen $WS $REPO $PR <thread root id>` (its `parentId`, else its
-    comment id), then the `still-applies` reply above (for `unchanged`, at its located line), or
+    comment id), then the `still-applies` reply above at verify's `line`, or
     `needs-reply` in its place for a Low or Low/nit.
 - Record each post's returned `id`/`link`. A failed post goes in the failures list; don't retry it
   into a duplicate.

@@ -116,7 +116,7 @@ If `HEAD_SHA` doesn't start with `SRC_HASH`, the branch moved since the PR was f
 
 **Incremental scope**: if `state-prev.json` isn't `null`, or it is but `comments-ours.json` has
 top-level comments, read [references/incremental.md](references/incremental.md) and follow it before
-step 4: it decides which previous findings are closed, unchanged or re-checked, and the review scope.
+step 4: it decides which previous findings are closed or re-checked, and limits the review to what changed since.
 
 ## 3. Local mode: prepare
 
@@ -225,13 +225,13 @@ No reviewer counts as done until its coverage check passes or is recorded as unc
 
 ## 6. Verify (one agent)
 
-**Nothing to verify**: every `cand-*.json` is `[]` and there is no `previous-changed.json`. Skip this
+**Nothing to verify**: every `cand-*.json` is `[]` and there is no `previous-recheck.json`. Skip this
 step and step 7; there are no confirmed findings, and it isn't a verify failure. Go to step 8.
 
 Fill [references/prompts/verify.md](references/prompts/verify.md): `CANDIDATE_FILES` = all
 `$W/cand-*.json`; `DIFF_FILE`, `REPOS`, `SKILL_DIR` as above; `COMMENTS_OTHERS` =
 `$W/comments-others.json` (PR) or `none`; `OURS_PREVIOUS` = `$W/ours-previous.json` or `none`;
-`PREVIOUS_CHANGED` = `$W/previous-changed.json` or `none`; `DROPPED_PREVIOUS` =
+`PREVIOUS_RECHECK` = `$W/previous-recheck.json` or `none`; `DROPPED_PREVIOUS` =
 `$W/dropped-previous.json` or `none`; `SIBLINGS` = `$W/siblings.json`;
 `TICKET_KEY`; `TICKET_FILE` as for the reviewers; `HUMANIZER` = the humanizer skill's `SKILL.md`, or `none` if not installed; `OUT_FILE` =
 `$W/verified.json`. Dispatch; retry once on failure (second failure → no posting, no approval, no
@@ -348,7 +348,7 @@ Already raised by others: <finding → author>
 Terminal-only: <unanchorable / uncertain ticket-fit findings>
 Closed by a human: <previous findings step 2 closed; for an author reply, its gist>
 Reopened: <author-resolved findings that still apply, or none>
-Uncovered: <dimensions, or none>   Ticket: <key or "none found">   Incremental: <yes, since <sha> | rebased: full re-review | no>
+Uncovered: <dimensions, or none>   Ticket: <key or "none found">   Incremental: <yes, since <sha>: kept hunks per file | last reviewed commit gone: full re-review | no>
 Packages: <name@version fetched, name@version: error, or none>
 ```
 
