@@ -42,7 +42,6 @@ use `HEAD`). Keep the hash per repo.
 - Verdicts mean: **fix** (finding is right), **push-back** (finding is wrong; it becomes
   `dismissed`), **clarify** (it turns on a decision only the user can make; it stays `open` and the
   question goes in the pause table).
-- No token counts: nothing is posted, so there's no header to put them in.
 
 ### L5. Fix — SKILL.md step 6's code rules, but never commit
 

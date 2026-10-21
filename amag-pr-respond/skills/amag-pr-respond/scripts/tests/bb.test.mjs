@@ -12,28 +12,18 @@ function run(args, body = 'Fixed in abc123, renamed the flag.') {
   return spawnSync(process.execPath, [BB, ...args], { input: body, encoding: 'utf8', env });
 }
 
-test('preview puts the full header above the body', () => {
-  const r = run(['preview', '--verdict', 'fixed', '--model', 'Opus 5.5', '--confidence', 'high', '--tokens', '1200']);
+test('preview puts the verdict and model header above the body', () => {
+  const r = run(['preview', '--verdict', 'fixed', '--model', 'Opus 5.5']);
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(r.stdout, '✅ **fixed** · 🤖 AI:Opus 5.5 · 🎯 high confidence · 🪙 ~1k tokens\n\nFixed in abc123, renamed the flag.\n');
-});
-
-test('confidence and tokens are optional', () => {
-  const r = run(['preview', '--verdict', 'push-back', '--model', 'Opus 5.5']);
-  assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /^↩️ \*\*push-back\*\* · 🤖 AI:Opus 5\.5\n\n/);
-});
-
-test('token counts are rounded to k and M', () => {
-  assert.match(run(['preview', '--verdict', 'clarify', '--model', 'm', '--tokens', '999']).stdout, /🪙 ~999 tokens/);
-  assert.match(run(['preview', '--verdict', 'clarify', '--model', 'm', '--tokens', '2500000']).stdout, /🪙 ~2\.5M tokens/);
+  assert.equal(r.stdout, '✅ **fixed** · 🤖 AI:Opus 5.5\n\nFixed in abc123, renamed the flag.\n');
+  assert.match(run(['preview', '--verdict', 'push-back', '--model', 'Opus 5.5']).stdout, /^↩️ \*\*push-back\*\* · 🤖 AI:Opus 5\.5\n\n/);
 });
 
 for (const [name, args, message] of [
   ['an unknown verdict', ['--verdict', 'done', '--model', 'm'], /--verdict must be one of/],
   ['a missing model', ['--verdict', 'fixed'], /--model is required/],
-  ['an unknown confidence', ['--verdict', 'fixed', '--model', 'm', '--confidence', 'sure'], /--confidence must be one of/],
-  ['non-numeric tokens', ['--verdict', 'fixed', '--model', 'm', '--tokens', '1.5k'], /--tokens must be a whole number/],
+  ['confidence, which the header no longer carries', ['--verdict', 'fixed', '--model', 'm', '--confidence', 'high'], /unknown flag --confidence/],
+  ['tokens, which the header no longer carries', ['--verdict', 'fixed', '--model', 'm', '--tokens', '1200'], /unknown flag --tokens/],
   ['an unknown flag', ['--verdict', 'fixed', '--model', 'm', '--colour', 'red'], /unknown flag --colour/],
 ]) {
   test(`preview refuses ${name}`, () => {

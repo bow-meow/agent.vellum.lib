@@ -18,7 +18,6 @@
 //       Prints the reply exactly as `reply` would post it (body on stdin), posting nothing.
 //
 //   Header flags: --verdict fixed|push-back|clarify --model "<name>"
-//                 [--confidence high|medium|low] [--tokens <n>]
 //   The header mirrors pr-review's comment header. Its statuses differ from pr-review's, so
 //   pr-review never mistakes a reply for one of its own findings.
 
@@ -66,13 +65,6 @@ async function call(url, opts = {}) {
 }
 
 const VERDICT_EMOJI = { fixed: '✅', 'push-back': '↩️', clarify: '❓' };
-const CONFIDENCES = ['high', 'medium', 'low'];
-
-function formatTokens(n) {
-  if (n >= 1e6) return `~${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `~${Math.round(n / 1e3)}k`;
-  return `~${Math.round(n)}`;
-}
 
 function fail(msg) { console.error(`bb.mjs: ${msg}`); process.exit(2); }
 
@@ -88,21 +80,12 @@ function splitFlags(argv) {
   return { positional, flags };
 }
 
-function header({ verdict, model, confidence, tokens, ...rest }) {
+function header({ verdict, model, ...rest }) {
   const unknown = Object.keys(rest);
   if (unknown.length) fail(`unknown flag --${unknown[0]}`);
   if (!VERDICT_EMOJI[verdict]) fail(`--verdict must be one of ${Object.keys(VERDICT_EMOJI).join(', ')}`);
   if (!model?.trim()) fail('--model is required, e.g. --model "Opus 5.5"');
-  const parts = [`${VERDICT_EMOJI[verdict]} **${verdict}**`, `🤖 AI:${model.trim()}`];
-  if (confidence !== undefined) {
-    if (!CONFIDENCES.includes(confidence)) fail(`--confidence must be one of ${CONFIDENCES.join(', ')}`);
-    parts.push(`🎯 ${confidence} confidence`);
-  }
-  if (tokens !== undefined) {
-    if (!/^\d+$/.test(tokens)) fail('--tokens must be a whole number');
-    parts.push(`🪙 ${formatTokens(Number(tokens))} tokens`);
-  }
-  return parts.join(' · ');
+  return [`${VERDICT_EMOJI[verdict]} **${verdict}**`, `🤖 AI:${model.trim()}`].join(' · ');
 }
 
 function composeReply(flags) {
@@ -158,6 +141,6 @@ if (cmd === 'get' && args.length === 1) {
     '       bb.mjs reply <workspace> <repo_slug> <pr_id> <parent_comment_id> <header flags>  (body on stdin)\n' +
     '       bb.mjs edit <workspace> <repo_slug> <pr_id> <comment_id> <header flags>  (body on stdin)\n' +
     '       bb.mjs preview <header flags>  (body on stdin)\n' +
-    'header flags: --verdict fixed|push-back|clarify --model "<name>" [--confidence high|medium|low] [--tokens <n>]');
+    'header flags: --verdict fixed|push-back|clarify --model "<name>"');
   process.exit(2);
 }

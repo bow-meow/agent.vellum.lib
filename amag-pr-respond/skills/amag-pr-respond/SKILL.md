@@ -121,12 +121,10 @@ Verdict is one of:
 
 Every kept comment gets a verdict and a draft reply. None are silently dropped.
 
-Each verdict also gets a **confidence**, which goes in the reply header: **high** = traced in the
-code; **medium** = the evidence is in the code but the outcome rests on something unconfirmed
+Each verdict also gets a **confidence**, shown in the terminal table and not posted: **high** = traced
+in the code; **medium** = the evidence is in the code but the outcome rests on something unconfirmed
 (runtime config, a caller outside the worktree, library behaviour); **low** = plausible, not
-confirmed. When agents investigate, keep each one's `<subagent_tokens>` from its completion
-notification and split it evenly across its cluster's comments. Comments investigated inline have
-no token count, and their header leaves that part out.
+confirmed.
 
 **Misreading is a smell, not just a push-back.** When a reviewer misunderstood correct code, first
 ask whether the code invited the misreading — if a rename, an extracted variable, or a *why*
@@ -266,10 +264,9 @@ items; apply their changes and re-present anything that changed materially.
   unpushed hash is a broken promise. Push rejected (remote moved) → report and return to the user;
   never force-push.
 - Reply to each thread with the reply body on stdin:
-  `node scripts/bb.mjs reply <workspace> <repo_slug> <pr_id> <parent_comment_id> --verdict <v> --model "<m>" --confidence <c> [--tokens <n>]`.
+  `node scripts/bb.mjs reply <workspace> <repo_slug> <pr_id> <parent_comment_id> --verdict <v> --model "<m>"`.
   The parent is the thread's ROOT comment id. `<v>` is `fixed`, `push-back` or `clarify`; `<m>` is
-  the model this session runs as (e.g. `Opus 5.5`); `--tokens` only when step 5 has a count. The
-  script writes the header, in the same layout as amag-pr-review's comments, and refuses to post without
+  the model this session runs as (e.g. `Opus 5.5`). The script writes the header, in the same layout as amag-pr-review's comments, and refuses to post without
   one.
 
 **Reply craft** — the text under the header is ≤3 sentences (1–2 is better), permanent, and read

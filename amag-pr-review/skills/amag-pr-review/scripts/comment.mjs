@@ -24,7 +24,6 @@ const HEADER_RE = new RegExp(`^\\s*(?:\\S+ )?\\*\\*(${S})\\*\\* · (?:🤖 )?AI:
 // Comments posted before the header format; still ours, so incremental re-review keeps tracking them.
 const LEGACY_RE = new RegExp(`^\\s*\\[(${OLD_STATUSES.join('|')}), AI:([^\\]]+)\\]`);
 
-// Confidence and tokens stay out of the posted header; the run log keeps them.
 export function header(status, model, reviewers = []) {
   const parts = [`${EMOJI[status]} **${LABEL[status]}**`, `🤖 AI:${model}`];
   if (reviewers.length) parts.push(`🔎 ${reviewers.join(' + ')}`);
