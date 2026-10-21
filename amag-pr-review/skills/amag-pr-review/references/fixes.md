@@ -17,7 +17,3 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   choose (one that registers a formatter, provider or endpoint after configuration has bound): the
   configured choice is silently replaced. Suggest the form that fills the default only while the option
   is unset, and leaves the selection to configuration.
-- A query hint that forces an access method without naming the index (a bare seek hint) as the fix
-  for an unstable plan, when another index shares the predicate's leading key: the optimizer can
-  still seek the non-covering one and add a lookup. Name the covering index, once you've checked that
-  the fresh schema and every upgrade path create it under that name.
