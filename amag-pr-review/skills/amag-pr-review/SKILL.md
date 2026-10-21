@@ -61,7 +61,7 @@ Per PR (`WS`, `REPO`, `PR` from the URL, checked against `^[A-Za-z0-9._-]+$` and
 Shell variables don't survive between Bash calls, so every later block starts by sourcing `env.sh`.
 
 ```bash
-S=<this skill's base directory, POSIX>; W=/c/repos/ai-review/.work/$WS-$REPO-PR$PR; mkdir -p $W
+S=<this skill's base directory, POSIX>; W=/c/repos/ai-review/.work/$WS-$REPO-PR$PR; rm -rf $W; mkdir -p $W   # an unanswered run leaves $W behind
 node $S/scripts/bb.mjs get repositories/$WS/$REPO/pullrequests/$PR > $W/pr.json
 node $S/scripts/env.mjs pr $W/pr.json $WS $REPO $PR > $W/env.sh
 ```
@@ -281,47 +281,27 @@ node $S/scripts/local-findings.mjs save $W/verified.json $W/factcheck.json $TICK
 
 It prints `[{n, id, status, path, line}]`. `n` is the finding's number in the terminal table.
 
-## 7. PR mode: post (skip entirely on `--dry-run`)
+## 7. PR mode: the user chooses what to post (skip entirely on `--dry-run`)
 
-1. Anchors: write confirmed `new` findings (not `terminal_only`) as
-   `[{id, path, line, side}]` to `$W/to-place.json`, run
-   `node $S/scripts/anchors.mjs place $W/bb.diff $W/to-place.json`. `anchor: null` → terminal-only.
-2. Post in parallel (independent calls), each from its body file:
-   - `new` with anchor: `node $S/scripts/bb.mjs comment $WS $REPO $PR "<path>" <side> <line> < $W/body-<id>.txt`
-   - `reply`: `node $S/scripts/bb.mjs reply $WS $REPO $PR <parent_id> < $W/body-<id>.txt`
-   - `already-raised`, `ours-previous`: nothing.
-   - previous `fixed`: `node $S/scripts/comment.mjs followup fixed $HEAD_SHA > $W/body-fixed-<comment_id>.txt`,
-     reply it to its comment id; then, **only if the finding has no `parentId`** (it started its own
-     thread) and isn't `authorResolved` (already resolved), `node $S/scripts/bb.mjs resolve $WS $REPO $PR <comment_id>`.
-     A finding that was a reply in someone else's thread is never resolved.
-   - previous `still-applies`: `node $S/scripts/comment.mjs followup still-applies "<its severity>" <line> > $W/body-still-<comment_id>.txt`,
-     reply it to its comment id.
-   - previous `authorResolved` that is `still-applies` or `unchanged`: `node $S/scripts/bb.mjs reopen $WS $REPO $PR <thread root id>`
-     (its `parentId`, else its comment id), then the `still-applies` reply above (for `unchanged`, at
-     its located line), so the thread shows why it's open again; `needs-reply` in place of `still-applies` for a Low or Low/nit.
-3. Record each post's returned `id`/`link`; a failed post goes in the failures list (don't retry into
-   duplicates).
+Anchors first: write confirmed `new` findings (not `terminal_only`) as `[{id, path, line, side}]` to
+`$W/to-place.json`, run `node $S/scripts/anchors.mjs place $W/bb.diff $W/to-place.json`.
+`anchor: null` → terminal-only.
+
+Then read [references/choosing.md](references/choosing.md) and follow it. **Nothing but the
+in-progress notice is posted until the user picks**: every finding, every follow-up on a previous
+thread, and the approve or request-changes call wait for their answer.
 
 ## 8. PR mode: approval (skip on `--dry-run`)
 
-Open findings = every confirmed finding above Info (terminal-only included) + previous ones above
-Info with `still-applies` or `unchanged`, `authorResolved` included. Notes and step 2's closed
-findings don't count. Tooling problems = a failed post, an uncovered dimension, or verify or recheck failing. Only act
-when the PR is open and not mine. Decide in this order:
-- **Tooling problem**: hold, and say which step failed. It never approves, requests changes or
-  withdraws an earlier approval.
-- **Any open finding**: request changes. A single Low/nit finding is enough. If my state is
-  `approved`, first `node $S/scripts/bb.mjs unapprove $WS $REPO $PR`; then, unless it's already
-  `changes_requested`, `node $S/scripts/bb.mjs request-changes $WS $REPO $PR`.
-- **No open findings** (a review that found nothing, or only notes): approve. If my state is `changes_requested`,
-  first `node $S/scripts/bb.mjs unrequest-changes $WS $REPO $PR`; then, unless it's already
-  `approved`, `node $S/scripts/bb.mjs approve $WS $REPO $PR`.
+Proposed after posting, and done only on the user's yes: choosing.md step 3. A single posted Low/nit
+is enough to propose request changes. A tooling problem holds, without asking.
 
 ## 9. PR mode: save state (skip on `--dry-run`)
 
 **Skip entirely if verify or recheck failed or any dimension is uncovered**: the next run must review this code
 again.
 
+After the user's last answer (the approval y/n, or the pick on a hold). Declined items: choosing.md step 4.
 For every posted finding and every still-open previous finding: `commentId`, `parentId` (the thread
 root for a `reply`, else `null`), `path`, `line`, `side`, `severity`, `status: 'open'`, and
 `fingerprint` from `node $S/scripts/state.mjs fingerprint "$WT/<path>" <line>` (new side only; `null`
@@ -333,7 +313,7 @@ plus the previous state's `dropped` entries still in `dropped-previous.json`. Wr
 `{reviewedCommit, reviewedAt: <ISO now>, findings: [...], dropped: [...]}` to `$W/state.json` with the Write tool, then
 `node $S/scripts/state.mjs save $WS $REPO $PR < $W/state.json`.
 
-## 10. Cleanup (always, including after errors)
+## 10. Cleanup (after step 9, and always after errors)
 
 ```bash
 . /c/repos/ai-review/.work/<ws>-<repo>-PR<id>/env.sh
@@ -352,8 +332,8 @@ Local mode: `rm -rf $W` only; the ticket worktree is never touched by the review
 ## <PR #id: title | Local review: TICKET> · 🪙 ~<total>k tokens
 <2-3 sentence overview of what the change does>. Strengths: <one line>.
 
-| # | Status | Reviewer | Confidence | Where | Finding | Posted |
-|---|--------|----------|------------|-------|---------|--------|
+| # | Status | Reviewer | Confidence | Where | Finding | Post as |
+|---|--------|----------|------------|-------|---------|---------|
 | 1 | change needed | concurrency-races | high | path/File.cs:212 | check-then-insert on BADGE without unique constraint | new |
 ...
 Dropped by verify (n): <id: one-line reason>, ...   (High/Medium ones: "upheld by recheck")
@@ -373,9 +353,10 @@ verify, so don't present it as confirmed ("both reviewers confirmed X can't happ
 `<total>` = the sum of every value in `$W/usage.json` (all reviewers + verify), rounded to the
 nearest thousand; drop the `· 🪙` part if there is no `usage.json`.
 
-- **PR mode**, then: PR link; posted comment links; failures; decision line —
-  `Approved: <reason>` / `Changes requested: <open findings>` / `Holding: <failed step>` /
-  `Dry run: would <approve|request changes|hold>`. One block per PR.
+- **PR mode**, then: PR link and the pick question (choosing.md). After posting: comment links;
+  failures; decision line — `Approved: <reason>` / `Changes requested: <open findings>` /
+  `Holding: <failed step>` / `Left as <state>: you said no` / `Dry run: would <approve|request changes|hold>`.
+  One block per PR.
 - **Local mode**: number the table rows by each finding's `n`, then: `Saved to <TICKET_DIR>/review-findings.json.
   Which should I fix? (e.g. "fix 1,3", "fix all"; or later, "pr-respond <TICKET>")`. On
   an answer, follow step 12.
