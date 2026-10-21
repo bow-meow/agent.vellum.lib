@@ -95,15 +95,32 @@ const PHRASES = [
   'moreover,', 'crucial', 'delve', 'leverage', 'robust', 'seamless',
 ];
 
+// Word budgets per labelled line (severity.md). A code span counts as one word; a part that drops below
+// its label is a snippet and isn't counted.
+export const WORD_BUDGET = { Issue: 30, Impact: 20, 'Not confirmed': 15, Fix: 25 };
+const words = s => s.replace(/`[^`]*`/g, 'CODE').split(/\s+/).filter(Boolean).length;
+
+export function lengthIssues(text) {
+  const found = [];
+  for (const line of stripHeader(text).split(/\n/)) {
+    const m = line.match(/^\*\*(Issue|Impact|Not confirmed|Fix):\*\* (.+?)\s*$/);
+    if (!m) continue;
+    const n = words(m[2]);
+    if (n > WORD_BUDGET[m[1]]) found.push(`${m[1]} is ${n} words (budget ${WORD_BUDGET[m[1]]})`);
+  }
+  return found;
+}
+
 // Mechanical tells only; the verify agent does the judgement pass with the humanizer skill.
 export function styleIssues(text) {
   const prose = stripHeader(text).replace(/```[\s\S]*?```/g, ' ').replace(/`[^`]*`/g, ' ');
   const found = [];
   if (/—/.test(prose)) found.push('em dash');
   if (/\s–\s/.test(prose)) found.push('en dash used as a dash');
+  if (/\([^)]*\s[^)]*\)/.test(prose)) found.push('parenthetical aside');
   const lower = prose.toLowerCase();
   for (const p of PHRASES) if (lower.includes(p)) found.push(`"${p}"`);
-  return found;
+  return [...found, ...lengthIssues(text)];
 }
 
 export function readModel(severityFile = fileURLToPath(new URL('../references/severity.md', import.meta.url))) {

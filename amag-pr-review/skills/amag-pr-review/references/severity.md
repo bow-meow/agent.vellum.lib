@@ -74,6 +74,12 @@ note or a follow-up reply is one unlabelled sentence between header and footer.
 5. `**Fix:**` the suggested fix: one sentence, or a short code snippet (a snippet drops below its
    label). Left out only for an Info finding with nothing to change.
 
+Short and sweet: each part is one sentence within a word budget, a code span counting as one word.
+Issue 30, Impact 20, Not confirmed 15, Fix 25 (a snippet below its label isn't counted). Name the
+thing and say what goes wrong, not how the code gets there: the author can read the code. One
+example at most, never a list of variants; no parenthetical asides; no caveats about edge cases or
+rollout. `styleIssues` flags a part over budget and an aside in the same `style` list as an AI tell.
+
 ```
 🧪 **Tests · change needed**
 

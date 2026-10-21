@@ -92,6 +92,19 @@ test('parseHeader still reads every older header: the robot one, retired statuse
   assert.equal(isOurs('plain human comment'), false);
 });
 
+test('styleIssues flags a labelled line over its word budget, counting a code span as one word', () => {
+  const long = Array(31).fill('word').join(' ');
+  const body = formatComment({ status: 'change', model: 'm', issue: long, impact: 'short', fix: '`a very long code span with many words in it` only' });
+  assert.deepEqual(styleIssues(body), ['Issue is 31 words (budget 30)']);
+  const snippet = formatComment({ status: 'change', model: 'm', issue: 'i', impact: 'b', fix: `${long}\n\`\`\`cs\nx();\n\`\`\`` });
+  assert.deepEqual(styleIssues(snippet), [], 'a part below its label is a snippet and is not counted');
+});
+
+test('styleIssues flags a parenthetical aside in prose but not parentheses inside code', () => {
+  assert.deepEqual(styleIssues('It breaks (or a `..` spelling does) here.'), ['parenthetical aside']);
+  assert.deepEqual(styleIssues('Call `Find(path, cfg)` here.'), []);
+});
+
 test('styleIssues flags em dashes and chatbot phrases but ignores code spans', () => {
   assert.deepEqual(styleIssues('Use `a — b` here.'), []);
   const got = styleIssues('This could potentially break — hope this helps!');
