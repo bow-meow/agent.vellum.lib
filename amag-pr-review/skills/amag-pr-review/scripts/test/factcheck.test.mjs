@@ -81,11 +81,11 @@ test('build formats the body from whichever side passed, and lints its style', (
   ];
   const [a, b] = build(verified, cands, 'Opus 5.5');
   assert.equal(a.use, 'final');
-  assert.equal(a.body, '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 c\n\n**Issue:** Two saves race on BADGE_ID at line 212.  \n'
-    + '**Impact:** Saves fail.  \n**Fix:** Add a unique index.');
+  assert.equal(a.body, '🔎 **Review · change needed**\n\n**Issue:** Two saves race on BADGE_ID at line 212.  \n'
+    + '**Impact:** Saves fail.  \n**Fix:** Add a unique index.\n\n_AI review · Opus 5.5_');
   assert.deepEqual(a.style, []);
   assert.equal(b.use, 'draft');
-  assert.ok(b.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 c\n\n**Issue:** Rename `fooBar`'));
+  assert.ok(b.body.startsWith('🔎 **Review · change needed**\n\n**Issue:** Rename `fooBar`'));
   assert.match(b.body, /\*\*Impact:\*\* Saves fail\./, 'a draft without an impact keeps verify\'s');
   assert.ok(b.style.includes('em dash'));
 });
@@ -116,7 +116,7 @@ test('build records the token estimate but keeps it out of the header', () => {
   const verified = { findings: [{ id: 'f1', verdict: 'confirmed', impact: 'Saves fail.', severity: 'Low', sources: ['correctness-1'], issue: 'Rename it.', fix: '' }] };
   const [e] = build(verified, [{ id: 'correctness-1', issue: 'Rename it.', fix: '' }], 'Opus 5.5', { correctness: 50000, verify: 1500 });
   assert.equal(e.tokens, 51500);
-  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness\n\n'));
+  assert.ok(e.body.startsWith('🐛 **Correctness · change needed**\n\n'));
 });
 
 test('build names each reviewer behind a merged finding once, in source order', () => {
@@ -124,7 +124,7 @@ test('build names each reviewer behind a merged finding once, in source order', 
   const cands = [{ id: 'correctness-1', issue: 'Rename it.', fix: '' }, { id: 'security-2' }, { id: 'correctness-3' }];
   const [e] = build(verified, cands, 'Opus 5.5');
   assert.equal(e.reviewers.join(','), 'correctness,security');
-  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness + security\n\n'));
+  assert.ok(e.body.startsWith('🐛 **Correctness · change needed**\n\n'));
 });
 
 test('build takes verify\'s confidence and reason over the reviewer\'s, and keeps them out of the header', () => {
@@ -132,21 +132,28 @@ test('build takes verify\'s confidence and reason over the reviewer\'s, and keep
     confidence: 'high', confidence_reason: 'traced both callers' }] };
   const [e] = build(verified, [{ id: 'correctness-1', issue: 'Rename it.', fix: '', confidence: 'medium' }], 'Opus 5.5', { correctness: 50000, verify: 1500 });
   assert.deepEqual([e.confidence, e.confidenceReason], ['high', 'traced both callers']);
-  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness\n\n'));
+  assert.ok(e.body.startsWith('🐛 **Correctness · change needed**\n\n'));
 });
 
 test('a medium finding posts what was not confirmed between the issue and the fix', () => {
   const verified = { findings: [{ id: 'f1', verdict: 'confirmed', impact: 'Saves fail.', severity: 'Medium', sources: ['c-1'], issue: 'Import throws on ownerless badges.',
     fix: 'Skip them.', confidence: 'medium', confidence_reason: 'Whether the import can run before owner sync.' }] };
   const [e] = build(verified, [{ id: 'c-1', issue: 'Import throws on ownerless badges.', fix: 'Skip them.' }], 'Opus 5.5');
-  assert.equal(e.body, '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 c\n\n**Issue:** Import throws on ownerless badges.  \n'
-    + '**Impact:** Saves fail.  \n**Not confirmed:** Whether the import can run before owner sync.  \n**Fix:** Skip them.');
+  assert.equal(e.body, '🔎 **Review · change needed**\n\n**Issue:** Import throws on ownerless badges.  \n'
+    + '**Impact:** Saves fail.  \n**Not confirmed:** Whether the import can run before owner sync.  \n**Fix:** Skip them.\n\n_AI review · Opus 5.5_');
+});
+
+test('build names the area from the finding\'s dimension before the reviewer that raised it', () => {
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', impact: 'Blame churns.', severity: 'Low/nit', dimension: 'design-quality',
+    sources: ['tests-design-4'], issue: 'Line 1 loses its BOM.', fix: 'Restore it.' }] };
+  const [e] = build(verified, [{ id: 'tests-design-4', issue: 'Line 1 loses its BOM.', fix: 'Restore it.' }], 'Opus 5.5');
+  assert.ok(e.body.startsWith('🏗️ **Design · change needed**\n\n'));
 });
 
 test('build refuses a change finding with no impact, and lets a note go without one', () => {
   const at = severity => ({ findings: [{ id: 'f1', verdict: 'confirmed', severity, sources: ['c-1'], issue: 'Scope creep.', fix: '' }] });
   assert.throws(() => build(at('Low/nit'), [{ id: 'c-1', issue: 'Scope creep.' }], 'Opus 5.5'), /no impact/);
-  assert.equal(build(at('Info'), [{ id: 'c-1', issue: 'Scope creep.' }], 'Opus 5.5')[0].body, '🔵 **note** · 🤖 AI:Opus 5.5 · 🔎 c\n\nScope creep.');
+  assert.equal(build(at('Info'), [{ id: 'c-1', issue: 'Scope creep.' }], 'Opus 5.5')[0].body, '🔎 **Review · note**\n\nScope creep.\n\n_AI review · Opus 5.5_');
 });
 
 test('a high finding posts no not-confirmed line, even with a reason', () => {
@@ -172,7 +179,7 @@ test('build falls back to the first source reviewer\'s confidence and its reason
   const bogus = { findings: [{ id: 'f1', verdict: 'confirmed', impact: 'Saves fail.', severity: 'Low/nit', sources: ['correctness-1'], issue: 'Rename it.', fix: '', confidence: 'certain' }] };
   const [e] = build(bogus, cands, 'Opus 5.5');
   assert.equal(e.confidence, null);
-  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness\n\n'));
+  assert.ok(e.body.startsWith('🐛 **Correctness · change needed**\n\n'));
 });
 
 test('CLI build --out writes one body file per finding', () => {
@@ -183,7 +190,7 @@ test('CLI build --out writes one body file per finding', () => {
   assert.equal(out[0].id, 'f1');
   writeFileSync(join(dir, 'usage.json'), JSON.stringify({ c: 3000, verify: 1000 }));
   execFileSync('node', [script, 'build', join(dir, 'verified.json'), join(dir, 'cand-x.json'), '--out', dir, '--usage', join(dir, 'usage.json')]);
-  assert.match(readFileSync(join(dir, 'body-f1.txt'), 'utf8'), /^🔵 \*\*note\*\* · 🤖 AI:.+ · 🔎 c\n\nScope creep\.$/);
+  assert.match(readFileSync(join(dir, 'body-f1.txt'), 'utf8'), /^🔎 \*\*Review · note\*\*\n\nScope creep\.\n\n_AI review · .+_$/);
 });
 
 test('a fix verify corrected is posted, though it drops the wrong fix\'s identifiers', () => {

@@ -18,8 +18,8 @@
 //       Prints the reply exactly as `reply` would post it (body on stdin), posting nothing.
 //
 //   Header flags: --verdict fixed|push-back|clarify --model "<name>"
-//   The header mirrors pr-review's comment header. Its statuses differ from pr-review's, so
-//   pr-review never mistakes a reply for one of its own findings.
+//   The header and footer mirror pr-review's comments. The verdicts and the "AI reply" footer differ
+//   from pr-review's statuses and "AI review", so pr-review never mistakes a reply for one of its findings.
 
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -80,19 +80,20 @@ function splitFlags(argv) {
   return { positional, flags };
 }
 
-function header({ verdict, model, ...rest }) {
+function frame({ verdict, model, ...rest }) {
   const unknown = Object.keys(rest);
   if (unknown.length) fail(`unknown flag --${unknown[0]}`);
   if (!VERDICT_EMOJI[verdict]) fail(`--verdict must be one of ${Object.keys(VERDICT_EMOJI).join(', ')}`);
   if (!model?.trim()) fail('--model is required, e.g. --model "Opus 5.5"');
-  return [`${VERDICT_EMOJI[verdict]} **${verdict}**`, `🤖 AI:${model.trim()}`].join(' · ');
+  return { head: `${VERDICT_EMOJI[verdict]} **${verdict}**`, foot: `_AI reply · ${model.trim()}_` };
 }
 
 function composeReply(flags) {
   const body = readFileSync(0, 'utf8').trim();
   if (!body) fail('empty reply body on stdin');
-  if (/^\S+ \*\*[\w-]+\*\* · /.test(body)) fail('body already starts with a header; pass only the reply text');
-  return `${header(flags)}\n\n${body}`;
+  if (/^\S+ \*\*[\w -]+\*\*\s*(?:·|\n|$)/.test(body)) fail('body already starts with a header; pass only the reply text');
+  const { head, foot } = frame(flags);
+  return `${head}\n\n${body}\n\n${foot}`;
 }
 
 const [cmd, ...rawArgs] = process.argv.slice(2);

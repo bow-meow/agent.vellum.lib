@@ -14,12 +14,13 @@ author only sees whether a change is needed. Every change is expected to be addr
 reply saying why not, so raise a Low/nit only when it's worth that round trip.
 
 `scripts/factcheck.mjs` builds every posted body from the severity, `issue`, `impact` and `fix`; nobody types the
-header. Replies into a thread and the "Fixed in" / "Still applies" follow-ups (`scripts/comment.mjs
-followup`) use the same layout without the token part. Comments posted before this layout used a
-`[status, AI:model]` prefix, a plain `**status** · AI:model` header, or one of the retired statuses
-(`critical`, `blocking`, `suggestion`, `nit`, `info`); all are recognised as ours.
-The in-progress notice (`comment.mjs progress`) keeps only `⏳ **review in progress** · 🤖 AI:<MODEL>`
-and a start timestamp; it isn't a finding, and `split-comments` keeps it out of both comment lists.
+header or footer. The "Fixed in" / "Still applies" follow-ups and push-back replies (`scripts/comment.mjs
+followup`) have the status alone in their header (`🔵 **note**`) and the same footer. Comments posted
+before this layout used a `🤖 AI:<model>` header, a `[status, AI:model]` prefix, a plain
+`**status** · AI:model` header, or one of the retired statuses (`critical`, `blocking`, `suggestion`,
+`nit`, `info`); all are recognised as ours. A header without our footer is not.
+The in-progress notice (`comment.mjs progress`) is `⏳ **Review in progress**`, a start timestamp and
+the footer; it isn't a finding, and `split-comments` keeps it out of both comment lists.
 
 ## Rubric
 
@@ -48,14 +49,15 @@ concrete failure → Low.
 ## Comment layout
 
 A posted comment is the header, then labelled lines, one per part, each label beside its text
-(`formatComment` joins them with Markdown hard breaks). A note or a follow-up reply is one unlabelled
-sentence under the header.
+(`formatComment` joins them with Markdown hard breaks), then the footer `_AI review · <MODEL>_`. A
+note or a follow-up reply is one unlabelled sentence between header and footer.
 
-1. Header line: `<emoji> **<change needed | note>** · 🤖 AI:<MODEL> · 🔎 <reviewer>`.
-   The reviewer is the agent whose candidate became the finding, taken from the candidate id prefix
-   (`correctness-2` → `correctness`); a finding verify merged from several reviewers lists each once,
-   joined by ` + `. Confidence and tokens aren't posted. The terminal table shows them, and the run
-   log (`runlog.mjs`, under `C:\repos\ai-review\.log`) keeps them with every finding for tuning.
+1. Header line: `<icon> **<area> · <change needed | note>**`. The area comes from the finding's
+   `dimension` when it names a checklist (correctness 🐛, tests-history 🧪, design-quality 🏗️,
+   security 🔒, concurrency-races 🧵, resources-performance ⚡, sql 🗄️, docs 📄, styles 🎨,
+   ticket-fit 🎫), else from the first reviewer that raised it, else `🔎 Review`. Reviewer names,
+   confidence and tokens aren't posted. The terminal table shows them, and the run log
+   (`runlog.mjs`, under `C:\repos\ai-review\.log`) keeps them with every finding for tuning.
    A finding's tokens are its share of the run: each reviewer's tokens split over the findings it
    raised, plus an even share of verify, recheck and any reviewer with no finding.
 2. `**Issue:**` the defect only: what's wrong and where, one sentence. Not what it causes.
@@ -70,11 +72,13 @@ sentence under the header.
    label). Left out only for an Info finding with nothing to change.
 
 ```
-🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 tests-design
+🧪 **Tests · change needed**
 
 **Issue:** `Find` drops an import whose expanded path doesn't exist, and no import test uses `$(ProjectDir)` or `$(Configuration)`.
 **Impact:** edits to a property sheet imported that way never rebuild the row, so the build keeps stale output.
 **Fix:** add a test importing `$(ProjectDir)$(Configuration).$(Platform).props` and assert the file is returned.
+
+_AI review · Opus 5.5_
 ```
 
 ## Confidence

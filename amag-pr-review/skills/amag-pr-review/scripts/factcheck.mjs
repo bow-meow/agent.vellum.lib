@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { formatComment, readModel, statusOf, stripHeader, styleIssues } from './comment.mjs';
+import { areaOf, formatComment, readModel, statusOf, stripHeader, styleIssues } from './comment.mjs';
 import { confidenceOf, indexById } from './recheck.mjs';
 
 const CERTAIN = /\b(will|always|never|must|cannot|can't|won't|guaranteed)\b/gi;
@@ -56,7 +56,7 @@ export function buildPairs(verified, candidates) {
       // Recheck confirms or drops every low one, so one here means that step was skipped.
       if (confidence === 'low') throw new Error(`${f.id} is low confidence: run recheck to confirm or drop it before building`);
       if (confidence === 'medium' && !reason) throw new Error(`${f.id} is medium confidence with no confidence_reason saying what isn't confirmed`);
-      return { id: f.id, status: statusOf(f.severity), confidence, confidenceReason: reason, unconfirmed: confidence === 'medium' ? reason : '',
+      return { id: f.id, dimension: f.dimension ?? null, status: statusOf(f.severity), confidence, confidenceReason: reason, unconfirmed: confidence === 'medium' ? reason : '',
         draft, final, fixRewritten: !!f.fix_rewritten };
     });
 }
@@ -85,7 +85,7 @@ export function build(verified, candidates, model, usage = null) {
   const pairs = buildPairs(verified, candidates);
   const reviewersById = new Map(pairs.map(({ id }) => [id, [...new Set(sourcesById.get(id).map(reviewerOf))]]));
   const tokensById = estimateTokens(reviewersById, usage);
-  return pairs.map(({ id, status, confidence, confidenceReason, unconfirmed, draft, final, fixRewritten }) => {
+  return pairs.map(({ id, dimension, status, confidence, confidenceReason, unconfirmed, draft, final, fixRewritten }) => {
     // A fix verify corrected drops the wrong fix's identifiers by design, so only the issue's facts are
     // held to the draft; falling back to the draft fix would post the fix verify rejected.
     const r = fixRewritten ? factCheck(draft.claim, final.text) : factCheck(draft.text, final.text);
@@ -95,7 +95,8 @@ export function build(verified, candidates, model, usage = null) {
     const chosen = r.ok ? final : fixRewritten ? { ...keep(draft), fix: final.fix } : keep(draft);
     const reviewers = reviewersById.get(id);
     const tokens = tokensById.get(id) ?? null;
-    const body = formatComment({ status, model, reviewers, issue: chosen.issue, impact: chosen.impact, unconfirmed, fix: chosen.fix });
+    const area = areaOf(dimension, ...reviewers);
+    const body = formatComment({ status, model, area, issue: chosen.issue, impact: chosen.impact, unconfirmed, fix: chosen.fix });
     return { id, status, use, tokens, reviewers, confidence, confidenceReason, missing: r.missing, certaintyDropped: r.certaintyDropped, style: styleIssues(body), body };
   });
 }

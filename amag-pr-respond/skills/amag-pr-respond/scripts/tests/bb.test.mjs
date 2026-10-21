@@ -12,11 +12,11 @@ function run(args, body = 'Fixed in abc123, renamed the flag.') {
   return spawnSync(process.execPath, [BB, ...args], { input: body, encoding: 'utf8', env });
 }
 
-test('preview puts the verdict and model header above the body', () => {
+test('preview puts the verdict above the body and the AI reply footer below it', () => {
   const r = run(['preview', '--verdict', 'fixed', '--model', 'Opus 5.5']);
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(r.stdout, '✅ **fixed** · 🤖 AI:Opus 5.5\n\nFixed in abc123, renamed the flag.\n');
-  assert.match(run(['preview', '--verdict', 'push-back', '--model', 'Opus 5.5']).stdout, /^↩️ \*\*push-back\*\* · 🤖 AI:Opus 5\.5\n\n/);
+  assert.equal(r.stdout, '✅ **fixed**\n\nFixed in abc123, renamed the flag.\n\n_AI reply · Opus 5.5_\n');
+  assert.match(run(['preview', '--verdict', 'push-back', '--model', 'Opus 5.5']).stdout, /^↩️ \*\*push-back\*\*\n\n.+\n\n_AI reply · Opus 5\.5_\n$/);
 });
 
 for (const [name, args, message] of [
@@ -33,10 +33,13 @@ for (const [name, args, message] of [
   });
 }
 
-test('a body that already carries a header is refused', () => {
-  const r = run(['preview', '--verdict', 'fixed', '--model', 'm'], '✅ **fixed** · 🤖 AI:m\n\nFixed it.');
-  assert.equal(r.status, 2);
-  assert.match(r.stderr, /already starts with a header/);
+test('a body that already carries a header, old or new style, is refused', () => {
+  for (const body of ['✅ **fixed** · 🤖 AI:m\n\nFixed it.', '✅ **fixed**\n\nFixed it.', '↩️ **push-back**\n\nNo.']) {
+    const r = run(['preview', '--verdict', 'fixed', '--model', 'm'], body);
+    assert.equal(r.status, 2, body);
+    assert.match(r.stderr, /already starts with a header/);
+  }
+  assert.equal(run(['preview', '--verdict', 'fixed', '--model', 'm'], '**Done** in abc, thanks for the catch.').status, 0);
 });
 
 test('an empty body is refused', () => {

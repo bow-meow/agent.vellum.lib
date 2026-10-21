@@ -15,47 +15,70 @@ export function statusOf(severity) {
   return severity === 'Info' ? 'note' : 'change';
 }
 
+// Keyed by checklist dimension and by reviewer name, since a finding may carry either.
+const AREAS = {
+  correctness: ['🐛', 'Correctness'], 'tests-history': ['🧪', 'Tests'], 'tests-design': ['🧪', 'Tests'],
+  'design-quality': ['🏗️', 'Design'], security: ['🔒', 'Security'], 'concurrency-races': ['🧵', 'Concurrency'],
+  'resources-performance': ['⚡', 'Performance'], sql: ['🗄️', 'SQL'], docs: ['📄', 'Docs'],
+  styles: ['🎨', 'Styles'], 'ticket-fit': ['🎫', 'Ticket fit'],
+};
+const NO_AREA = ['🔎', 'Review'];
+export const areaOf = (...names) => names.map(n => AREAS[String(n ?? '').trim()]).find(Boolean) ?? NO_AREA;
+
 // Comments posted before the two public statuses carry one of these and are still ours.
 const OLD_STATUSES = ['critical', 'blocking', 'suggestion', 'nit', 'info'];
 const S = [...Object.values(LABEL), ...OLD_STATUSES].join('|');
 const fromLabel = token => Object.keys(LABEL).find(k => LABEL[k] === token) ?? token;
-// Emoji, reviewer, confidence and token parts optional: the plain bold header was posted before they existed.
-const HEADER_RE = new RegExp(`^\\s*(?:\\S+ )?\\*\\*(${S})\\*\\* · (?:🤖 )?AI:(.+?)(?: · 🔎 [^·\\n]+?)?(?: · 🎯 [^·\\n]+?)?(?: · 🪙 [^\\n]*)?\\s*(?:\\n|$)`);
+// The posted header names no model: the footer does, and a header alone (a human's look-alike) isn't ours.
+const HEAD_RE = new RegExp(`^\\s*\\S+ \\*\\*(?:([^*·\\n]+?) · )?(${Object.values(LABEL).join('|')})\\*\\*[ \\t]*(?:\\n|$)`);
+const FOOTER_RE = /\n[ \t]*_AI review · ([^_\n]+)_\s*$/;
+// Headers posted before the footer existed; emoji, reviewer, confidence and token parts optional.
+const OLD_HEADER_RE = new RegExp(`^\\s*(?:\\S+ )?\\*\\*(${S})\\*\\* · (?:🤖 )?AI:(.+?)(?: · 🔎 [^·\\n]+?)?(?: · 🎯 [^·\\n]+?)?(?: · 🪙 [^\\n]*)?\\s*(?:\\n|$)`);
 // Comments posted before the header format; still ours, so incremental re-review keeps tracking them.
 const LEGACY_RE = new RegExp(`^\\s*\\[(${OLD_STATUSES.join('|')}), AI:([^\\]]+)\\]`);
 
-export function header(status, model, reviewers = []) {
-  const parts = [`${EMOJI[status]} **${LABEL[status]}**`, `🤖 AI:${model}`];
-  if (reviewers.length) parts.push(`🔎 ${reviewers.join(' + ')}`);
-  return parts.join(' · ');
+export function header(status, area = null) {
+  if (!area) return `${EMOJI[status]} **${LABEL[status]}**`;
+  const [icon, name] = area;
+  return `${icon} **${name} · ${LABEL[status]}**`;
 }
 
+export const footer = model => `_AI review · ${model}_`;
+
 export function parseHeader(text) {
-  const m = String(text ?? '').match(HEADER_RE) ?? String(text ?? '').match(LEGACY_RE);
-  return m ? { status: fromLabel(m[1]), model: m[2].trim() } : null;
+  const s = String(text ?? '');
+  const h = s.match(HEAD_RE), f = s.match(FOOTER_RE);
+  if (h && f) return { status: fromLabel(h[2]), model: f[1].trim(), area: h[1] ?? null };
+  const m = s.match(OLD_HEADER_RE) ?? s.match(LEGACY_RE);
+  return m ? { status: fromLabel(m[1]), model: m[2].trim(), area: null } : null;
 }
 
 export const isOurs = text => parseHeader(text) !== null;
 
-export const stripHeader = text => String(text ?? '').replace(HEADER_RE, '').replace(LEGACY_RE, '').trim();
+export function stripHeader(text) {
+  const s = String(text ?? '');
+  if (HEAD_RE.test(s) && FOOTER_RE.test(s)) return s.replace(HEAD_RE, '').replace(FOOTER_RE, '').trim();
+  return s.replace(OLD_HEADER_RE, '').replace(LEGACY_RE, '').trim();
+}
 
 // Two trailing spaces are Markdown's hard break: a bare newline would run the labelled lines together.
 const HARD_BREAK = '  \n';
 
-export function formatComment({ status, model, reviewers = [], issue, impact = '', unconfirmed = '', fix = '' }) {
+export function formatComment({ status, model, area = null, issue, impact = '', unconfirmed = '', fix = '' }) {
   if (!STATUSES.includes(status)) throw new Error(`unknown status "${status}"`);
-  const head = header(status, model, reviewers);
+  const head = header(status, area);
+  const foot = footer(model);
   const text = v => String(v ?? '').trim();
   const labelled = [['Impact', impact], ['Not confirmed', unconfirmed], ['Fix', fix]].filter(([, v]) => text(v));
   // A note or a follow-up reply is a single statement, so it goes in without labels.
-  if (!labelled.length) return `${head}\n\n${text(issue)}`;
+  if (!labelled.length) return `${head}\n\n${text(issue)}\n\n${foot}`;
   // A code block has to start its own line, so a multi-line part drops below its label.
   const parts = [['Issue', issue], ...labelled].map(([label, v]) => {
     const t = text(v);
     return t.includes('\n') ? { block: true, s: `**${label}:**\n\n${t}` } : { block: false, s: `**${label}:** ${t}` };
   });
   const body = parts.reduce((acc, p, i) => (i === 0 ? p.s : acc + (p.block || parts[i - 1].block ? '\n\n' : HARD_BREAK) + p.s), '');
-  return `${head}\n\n${body}`;
+  return `${head}\n\n${body}\n\n${foot}`;
 }
 
 const PHRASES = [
@@ -97,7 +120,8 @@ export function followup(kind, { model, sha, severity, line, text }) {
 }
 
 // Not a finding: posted when a review starts and deleted at cleanup, so it never needs a status.
-const PROGRESS_RE = /^\s*⏳ \*\*review in progress\*\* · 🤖 AI:/;
+// The second form is the notice from before the footer, which a crashed run may have left behind.
+const PROGRESS_RE = /^\s*⏳ \*\*Review in progress\*\*[ \t]*\n[\s\S]*\n[ \t]*_AI review · [^_\n]+_\s*$|^\s*⏳ \*\*review in progress\*\* · 🤖 AI:/;
 
 export function localTimestamp(d = new Date()) {
   const pad = n => String(n).padStart(2, '0');
@@ -107,7 +131,7 @@ export function localTimestamp(d = new Date()) {
 }
 
 export function progress({ model, at = new Date() }) {
-  return `⏳ **review in progress** · 🤖 AI:${model}\n\nStarted ${localTimestamp(at)}. Findings will follow as inline comments.`;
+  return `⏳ **Review in progress**\n\nStarted ${localTimestamp(at)}. Findings will follow as inline comments.\n\n${footer(model)}`;
 }
 
 export const isProgress = text => PROGRESS_RE.test(String(text ?? ''));
