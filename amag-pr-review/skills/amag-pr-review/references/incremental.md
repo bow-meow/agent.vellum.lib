@@ -5,13 +5,19 @@ Read from SKILL.md step 2 when `state-prev.json` is not `null`, or when it is `n
 
 - Previous findings = state findings with `status` `open` or `pending` only; `fixed` ones are done.
 - **Resolved or deleted threads**: a previous finding whose comment isn't in `comments-ours.json`
-  (deleted), or is there with `resolved: true` and either a `resolvedBy` that is neither `AUTHOR_ID`
-  nor `null` (a reviewer or I resolved it; we only resolve our own when `fixed`, which state already
-  records) or a severity below Medium (the author declining a suggestion is their call), is
-  **closed**: not blocking, not re-reviewed, listed in the terminal as "closed by a human".
-- **High/Medium resolved by the author** (`resolvedBy` is `AUTHOR_ID`, or `null` because Bitbucket
-  didn't say who): not closed. Resolving is not fixing, and the author would otherwise clear their
-  own blockers. Mark it `authorResolved` and treat it like any other open previous finding below.
+  (deleted), or is there with `resolved: true` and a `resolvedBy` that is neither `AUTHOR_ID` nor
+  `null` (a reviewer or I resolved it; we only resolve our own when `fixed`, which state already
+  records), is **closed**: not blocking, not re-reviewed, listed in the terminal as "closed by a
+  human". So is a resolved Info finding, whoever resolved it: a note asks for nothing.
+- **Resolved by the author** (`resolvedBy` is `AUTHOR_ID`, or `null` because Bitbucket didn't say
+  who). Resolving is not fixing, and the author would otherwise clear their own findings, so:
+  - Low or Low/nit with `authorReplied: true` (the author wrote in the thread after our comment):
+    **closed**. The reply is their reason for leaving it, and declining a Low with a reason is their
+    call. Listed in the terminal as "closed by the author with a reply".
+  - Low or Low/nit without a reply, and every High/Medium (a reply doesn't settle those; verify
+    still checks them): not closed. Mark it `authorResolved` and treat it like any other open
+    previous finding below. When a Low or Low/nit one is reopened, its follow-up is
+    `comment.mjs followup needs-reply`, which tells the author that a reply with their reason closes it.
 - For each remaining previous finding with a `fingerprint`, locate it at head:
   `node $S/scripts/state.mjs locate "$WT/<path>" <fingerprint> <line>` → `{line}`. A line back means
   the code is unchanged (possibly moved): mark it `unchanged` at that line. `null` means the code

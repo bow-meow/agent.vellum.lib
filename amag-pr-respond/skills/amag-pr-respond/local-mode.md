@@ -15,7 +15,7 @@ state, resolution}]`. `n` is the number the review's terminal table showed; `tex
   matches the key (any case).
 - No `review-findings.json` there → stop: "No saved review for <KEY>; run `amag-pr-review <KEY>` first."
 - Actionable = findings with `state: "open"`, narrowed to the numbers the user gave ("1,3",
-  "the blocking ones"). None → say so and stop.
+  "all of them"). None → say so and stop.
 
 ### L2. Is the review still current?
 

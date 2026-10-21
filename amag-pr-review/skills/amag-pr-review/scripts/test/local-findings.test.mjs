@@ -16,9 +16,9 @@ const verified = { findings: [
   { id: 'f4', verdict: 'confirmed', repo: 'a', path: 'a.cs', line: 5, side: 'new', severity: 'Low', terminal_only: false },
 ] };
 const built = [
-  { id: 'f1', status: 'suggestion', reviewers: ['correctness'], confidence: 'high', tokens: 1000, body: '🟡 **suggestion** · 🤖 AI:Opus 5.5 · 🔎 correctness\n\nLate one.\n\n**Fix:** do it.' },
-  { id: 'f3', status: 'blocking', reviewers: ['ticket-fit'], confidence: 'low', tokens: 2000, body: '🟠 **blocking** · 🤖 AI:Opus 5.5\n\nWorst one.' },
-  { id: 'f4', status: 'suggestion', reviewers: ['security'], confidence: 'medium', tokens: 3000, body: '🟡 **suggestion** · 🤖 AI:Opus 5.5\n\nEarly one.' },
+  { id: 'f1', status: 'change', reviewers: ['correctness'], confidence: 'high', tokens: 1000, body: '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness\n\nLate one.\n\n**Fix:** do it.' },
+  { id: 'f3', status: 'change', reviewers: ['ticket-fit'], confidence: 'low', tokens: 2000, body: '🟠 **change needed** · 🤖 AI:Opus 5.5\n\nWorst one.' },
+  { id: 'f4', status: 'change', reviewers: ['security'], confidence: 'medium', tokens: 3000, body: '🟠 **change needed** · 🤖 AI:Opus 5.5\n\nEarly one.' },
 ];
 
 test('findingsFile keeps confirmed findings, numbered worst first then by path and line', () => {

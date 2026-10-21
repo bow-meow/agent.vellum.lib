@@ -3,15 +3,26 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const EMOJI = { critical: '🔴', blocking: '🟠', suggestion: '🟡', nit: '⚪', info: '🔵' };
+export const EMOJI = { change: '🟠', note: '🔵' };
+const LABEL = { change: 'change needed', note: 'note' };
 export const STATUSES = Object.keys(EMOJI);
 export const CONFIDENCES = ['high', 'medium', 'low'];
+export const SEVERITIES = ['High', 'Medium', 'Low', 'Low/nit', 'Info'];
 
-const S = STATUSES.join('|');
+// Every severity but Info asks the author for a change; how bad it is stays internal.
+export function statusOf(severity) {
+  if (!SEVERITIES.includes(severity)) throw new Error(`unknown severity "${severity}"`);
+  return severity === 'Info' ? 'note' : 'change';
+}
+
+// Comments posted before the two public statuses carry one of these and are still ours.
+const OLD_STATUSES = ['critical', 'blocking', 'suggestion', 'nit', 'info'];
+const S = [...Object.values(LABEL), ...OLD_STATUSES].join('|');
+const fromLabel = token => Object.keys(LABEL).find(k => LABEL[k] === token) ?? token;
 // Emoji, reviewer, confidence and token parts optional: the plain bold header was posted before they existed.
 const HEADER_RE = new RegExp(`^\\s*(?:\\S+ )?\\*\\*(${S})\\*\\* · (?:🤖 )?AI:(.+?)(?: · 🔎 [^·\\n]+?)?(?: · 🎯 [^·\\n]+?)?(?: · 🪙 [^\\n]*)?\\s*(?:\\n|$)`);
 // Comments posted before the header format; still ours, so incremental re-review keeps tracking them.
-const LEGACY_RE = new RegExp(`^\\s*\\[(${S}), AI:([^\\]]+)\\]`);
+const LEGACY_RE = new RegExp(`^\\s*\\[(${OLD_STATUSES.join('|')}), AI:([^\\]]+)\\]`);
 
 export function formatTokens(n) {
   if (n >= 1e6) return `~${(n / 1e6).toFixed(1)}M`;
@@ -20,7 +31,7 @@ export function formatTokens(n) {
 }
 
 export function header(status, model, tokens = null, reviewers = [], confidence = null) {
-  const parts = [`${EMOJI[status]} **${status}**`, `🤖 AI:${model}`];
+  const parts = [`${EMOJI[status]} **${LABEL[status]}**`, `🤖 AI:${model}`];
   if (reviewers.length) parts.push(`🔎 ${reviewers.join(' + ')}`);
   if (confidence) parts.push(`🎯 ${confidence} confidence`);
   if (tokens != null) parts.push(`🪙 ${formatTokens(tokens)} tokens`);
@@ -29,7 +40,7 @@ export function header(status, model, tokens = null, reviewers = [], confidence 
 
 export function parseHeader(text) {
   const m = String(text ?? '').match(HEADER_RE) ?? String(text ?? '').match(LEGACY_RE);
-  return m ? { status: m[1], model: m[2].trim() } : null;
+  return m ? { status: fromLabel(m[1]), model: m[2].trim() } : null;
 }
 
 export const isOurs = text => parseHeader(text) !== null;
@@ -67,9 +78,12 @@ export function readModel(severityFile = fileURLToPath(new URL('../references/se
   return m[1].trim();
 }
 
-export function followup(kind, { model, sha, status, line }) {
-  if (kind === 'fixed') return formatComment({ status: 'info', model, issue: `Fixed in \`${String(sha).slice(0, 8)}\`.` });
-  if (kind === 'still-applies') return formatComment({ status, model, issue: `Still applies at L${line}.` });
+export function followup(kind, { model, sha, severity, line }) {
+  if (kind === 'fixed') return formatComment({ status: 'note', model, issue: `Fixed in \`${String(sha).slice(0, 8)}\`.` });
+  if (kind === 'still-applies') return formatComment({ status: statusOf(severity), model, issue: `Still applies at L${line}.` });
+  if (kind === 'needs-reply')
+    return formatComment({ status: statusOf(severity), model,
+      issue: `Still applies at L${line}. If you're leaving it as it is, reply here with why and resolve it again.` });
   throw new Error(`unknown followup "${kind}"`);
 }
 
@@ -92,11 +106,11 @@ export const isProgress = text => PROGRESS_RE.test(String(text ?? ''));
 const invoked = process.argv[1] && resolve(process.argv[1]).toLowerCase();
 if (invoked === fileURLToPath(import.meta.url).toLowerCase()) {
   const [cmd, kind, a, b] = process.argv.slice(2);
-  const usage = 'usage: comment.mjs followup fixed <sha> | comment.mjs followup still-applies <status> <line> | comment.mjs progress';
+  const usage = 'usage: comment.mjs followup fixed <sha> | comment.mjs followup still-applies|needs-reply <severity> <line> | comment.mjs progress';
   const model = readModel();
   if (cmd === 'progress') { process.stdout.write(progress({ model })); process.exit(0); }
   if (cmd !== 'followup' || !kind) { console.error(usage); process.exit(2); }
   try {
-    process.stdout.write(kind === 'fixed' ? followup('fixed', { model, sha: a }) : followup(kind, { model, status: a, line: b }));
+    process.stdout.write(kind === 'fixed' ? followup('fixed', { model, sha: a }) : followup(kind, { model, severity: a, line: b }));
   } catch (e) { console.error(`${e.message}\n${usage}`); process.exit(2); }
 }

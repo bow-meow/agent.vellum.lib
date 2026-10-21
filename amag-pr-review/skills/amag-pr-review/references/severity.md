@@ -4,18 +4,20 @@ MODEL = Opus 5.5
 
 ## Severity → status
 
-| Severity | Status | Emoji | Blocks approval |
+| Severity | Status | Header | Blocks approval |
 |---|---|---|---|
-| High | `critical` | 🔴 | yes |
-| Medium | `blocking` | 🟠 | yes |
-| Low | `suggestion` | 🟡 | yes |
-| Low/nit | `nit` | ⚪ | yes |
-| Info | `info` | 🔵 | yes |
+| High, Medium, Low, Low/nit | `change` | 🟠 **change needed** | yes |
+| Info | `note` | 🔵 **note** | no |
 
-`scripts/factcheck.mjs` builds every posted body from `status`, `issue` and `fix`; nobody types the
+Severity is internal. It drives verify's gate, recheck, ordering and the incremental rules, but the
+author only sees whether a change is needed. Every change is expected to be addressed, by a fix or a
+reply saying why not, so raise a Low/nit only when it's worth that round trip.
+
+`scripts/factcheck.mjs` builds every posted body from the severity, `issue` and `fix`; nobody types the
 header. Replies into a thread and the "Fixed in" / "Still applies" follow-ups (`scripts/comment.mjs
 followup`) use the same layout without the token part. Comments posted before this layout used a
-`[status, AI:model]` prefix or a plain `**status** · AI:model` header; all are recognised as ours.
+`[status, AI:model]` prefix, a plain `**status** · AI:model` header, or one of the retired statuses
+(`critical`, `blocking`, `suggestion`, `nit`, `info`); all are recognised as ours.
 The in-progress notice (`comment.mjs progress`) keeps only `⏳ **review in progress** · 🤖 AI:<MODEL>`
 and a start timestamp; it isn't a finding, and `split-comments` keeps it out of both comment lists.
 
@@ -43,7 +45,7 @@ concrete failure → Low.
 
 A posted comment is exactly three parts:
 
-1. Header line: `<emoji> **<status>** · 🤖 AI:<MODEL> · 🔎 <reviewer> · 🎯 <confidence> confidence · 🪙 ~<n> tokens`.
+1. Header line: `<emoji> **<change needed | note>** · 🤖 AI:<MODEL> · 🔎 <reviewer> · 🎯 <confidence> confidence · 🪙 ~<n> tokens`.
    The reviewer is the agent whose candidate became the finding, taken from the candidate id prefix
    (`correctness-2` → `correctness`); a finding verify merged from several reviewers lists each once,
    joined by ` + `. The confidence is verify's (recheck's on an overturn), else the reviewer's; see
@@ -52,10 +54,10 @@ A posted comment is exactly three parts:
    comments add up to the summary's total. It's left out when usage wasn't recorded.
 2. The issue: 1-2 sentences. What's wrong, where, and what it causes.
 3. `**Fix:** ` plus the suggested fix: one sentence, or a short code snippet. Left out only for an
-   `info` finding with nothing to change.
+   Info finding with nothing to change.
 
 ```
-🟡 **suggestion** · 🤖 AI:Opus 5.5 · 🔎 tests-design · 🎯 high confidence · 🪙 ~51k tokens
+🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 tests-design · 🎯 high confidence · 🪙 ~51k tokens
 
 The parity tokens sit on plain `html`, but the new doc says library `:root` blocks outrank it. A pin
 bump that sets any of these tokens in `:root` would silently win over the parity value.
@@ -92,7 +94,7 @@ problem itself, name the thing, say what happens.
   "furthermore", "moreover", "it's worth noting".
 - No praise, background, recap or restating the diff.
 - Keep certainty as-is: if it will fail, say it will fail.
-- Never change the status, identifiers, numbers or code spans.
+- Never change the severity, identifiers, numbers or code spans.
 
 `factcheck.mjs` flags the mechanical tells (dashes, phrases above) in each body's `style` list.
 

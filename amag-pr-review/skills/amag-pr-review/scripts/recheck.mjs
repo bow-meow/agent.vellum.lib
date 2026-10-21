@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 
 const BLOCKING = new Set(['High', 'Medium']);
 const RANK = { High: 0, Medium: 1, Low: 2, 'Low/nit': 3, Info: 4 };
-const STATUS = { High: 'critical', Medium: 'blocking', Low: 'suggestion', 'Low/nit': 'nit', Info: 'info' };
 
 const worst = cands => cands.reduce((a, c) => (a && RANK[a] <= RANK[c.severity] ? a : c.severity), null);
 
@@ -56,7 +55,7 @@ export function apply(verified, decisions, contestedList) {
     if (r.decision === 'uphold') continue;
     if (r.decision !== 'overturn') throw new Error(`decision for ${r.id} must be uphold or overturn`);
     checkOverturn(r);
-    const restored = { ...r.finding, status: STATUS[r.finding.severity], recheck: r.reason ?? '' };
+    const restored = { ...r.finding, recheck: r.reason ?? '' };
     if (c.kind === 'omitted') {
       findings.push({ ...restored, id: `r${++n}`, sources: [c.id] });
     } else {

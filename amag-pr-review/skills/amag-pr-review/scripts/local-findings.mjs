@@ -3,12 +3,12 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { STATUSES, stripHeader } from './comment.mjs';
+import { SEVERITIES, stripHeader } from './comment.mjs';
 
 export const FILE_NAME = 'review-findings.json';
 
 // The terminal table and "fix 1,3" both use `n`, so the order has to be stable: worst first, then by place.
-const rank = f => [STATUSES.indexOf(f.status), f.repo ?? '', f.path ?? '', f.line ?? 0];
+const rank = f => [SEVERITIES.indexOf(f.severity), f.repo ?? '', f.path ?? '', f.line ?? 0];
 const compare = (a, b) => {
   const [x, y] = [rank(a), rank(b)];
   for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;

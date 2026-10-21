@@ -40,8 +40,27 @@ export function saveState(path, state) {
 }
 
 
-export function splitComments(values, meAccountId) {
+// Bitbucket's parent is the comment replied to, not the thread root, so a reply to a reply has to be walked up.
+function threadRoots(values) {
+  const byId = new Map(values.map(c => [c.id, c]));
+  const roots = new Map();
+  const rootOf = c => {
+    if (roots.has(c.id)) return roots.get(c.id);
+    const p = c.parent?.id;
+    const r = p == null ? c.id : byId.has(p) ? rootOf(byId.get(p)) : p;
+    roots.set(c.id, r);
+    return r;
+  };
+  values.forEach(rootOf);
+  return roots;
+}
+
+export function splitComments(values, meAccountId, authorAccountId = null) {
   const ours = [], others = [], progress = [];
+  const roots = threadRoots(values);
+  // Comment ids only grow, so a higher id in the same thread was posted after ours.
+  const authorRepliedAfter = id => authorAccountId != null && values.some(o =>
+    !o.deleted && o.user?.account_id === authorAccountId && o.id > id && roots.get(o.id) === roots.get(id));
   for (const c of values) {
     if (c.deleted) continue;
     if (c.user?.account_id === meAccountId && isProgress(c.content?.raw)) { progress.push(c.id); continue; }
@@ -58,7 +77,8 @@ export function splitComments(values, meAccountId) {
       resolvedBy: c.resolution?.user?.account_id ?? null,
       outdated: Boolean(inl?.outdated),
     };
-    (c.user?.account_id === meAccountId && isOurs(item.raw) ? ours : others).push(item);
+    if (c.user?.account_id === meAccountId && isOurs(item.raw)) ours.push({ ...item, authorReplied: authorRepliedAfter(c.id) });
+    else others.push(item);
   }
   return { ours, others, progress };
 }
@@ -77,16 +97,16 @@ function main([cmd, ...a]) {
     saveState(p, JSON.parse(readFileSync(0, 'utf8')));
     return { saved: p };
   }
-  if (cmd === 'split-comments' && a.length === 3) {
+  if (cmd === 'split-comments' && (a.length === 3 || a.length === 4)) {
     const { values } = JSON.parse(readFileSync(a[0], 'utf8'));
     const me = JSON.parse(readFileSync(a[1], 'utf8')).account_id;
-    const { ours, others, progress } = splitComments(values, me);
+    const { ours, others, progress } = splitComments(values, me, a[3] ?? null);
     mkdirSync(a[2], { recursive: true });
     writeFileSync(join(a[2], 'comments-ours.json'), JSON.stringify(ours, null, 2));
     writeFileSync(join(a[2], 'comments-others.json'), JSON.stringify(others, null, 2));
     return { ours: ours.length, others: others.length, staleProgress: progress };
   }
-  console.error('usage: state.mjs fingerprint <file> <line> | locate <file> <fingerprint> <oldLine> | path|load|save <ws> <repo> <pr> | split-comments <comments.json> <me.json> <out-dir>');
+  console.error('usage: state.mjs fingerprint <file> <line> | locate <file> <fingerprint> <oldLine> | path|load|save <ws> <repo> <pr> | split-comments <comments.json> <me.json> <out-dir> [author-account-id]');
   process.exit(2);
 }
 

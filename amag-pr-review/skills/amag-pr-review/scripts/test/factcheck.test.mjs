@@ -45,34 +45,34 @@ test('a number is not satisfied by a longer number', () => {
 });
 
 test('a fact moved between issue and fix still counts', () => {
-  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', status: 'blocking', sources: ['c-1'], issue: 'Two saves race.', fix: 'Index BADGE_ID.' }] };
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Medium', sources: ['c-1'], issue: 'Two saves race.', fix: 'Index BADGE_ID.' }] };
   const [p] = buildPairs(verified, [{ id: 'c-1', issue: 'Two saves race on BADGE_ID.', fix: 'Add an index.' }]);
   assert.equal(factCheck(p.draft.text, p.final.text).ok, true);
 });
 
-test('buildPairs takes the draft from the reviewer candidate and the status from the verifier', () => {
+test('buildPairs takes the draft from the reviewer candidate and the status from the verifier severity', () => {
   const verified = { findings: [
-    { id: 'f1', verdict: 'confirmed', status: 'suggestion', sources: ['correctness-1'], issue: 'tidy issue', fix: 'tidy fix' },
+    { id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['correctness-1'], issue: 'tidy issue', fix: 'tidy fix' },
     { id: 'f2', verdict: 'dropped', sources: ['x-1'] },
   ] };
   const cands = [{ id: 'correctness-1', issue: 'Original issue with BADGE_ID.', fix: 'Original fix.' }];
   const [p, ...rest] = buildPairs(verified, cands);
   assert.equal(rest.length, 0);
-  assert.equal(p.status, 'suggestion');
+  assert.equal(p.status, 'change');
   assert.deepEqual(p.draft, { issue: 'Original issue with BADGE_ID.', fix: 'Original fix.', text: 'Original issue with BADGE_ID.\nOriginal fix.' });
   assert.deepEqual(p.final, { issue: 'tidy issue', fix: 'tidy fix', text: 'tidy issue\ntidy fix' });
 });
 
 test('a legacy candidate with only a comment is used as the issue', () => {
-  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', status: 'nit', sources: ['c-1'], issue: 'i', fix: '' }] };
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low/nit', sources: ['c-1'], issue: 'i', fix: '' }] };
   const [p] = buildPairs(verified, [{ id: 'c-1', comment: 'Old style body.' }]);
   assert.deepEqual(p.draft, { issue: 'Old style body.', fix: '', text: 'Old style body.' });
 });
 
 test('build formats the body from whichever side passed, and lints its style', () => {
   const verified = { findings: [
-    { id: 'f1', verdict: 'confirmed', status: 'blocking', sources: ['c-1'], issue: 'Two saves race on BADGE_ID at line 212.', fix: 'Add a unique index.' },
-    { id: 'f2', verdict: 'confirmed', status: 'nit', sources: ['c-2'], issue: 'Rename it.', fix: '' },
+    { id: 'f1', verdict: 'confirmed', severity: 'Medium', sources: ['c-1'], issue: 'Two saves race on BADGE_ID at line 212.', fix: 'Add a unique index.' },
+    { id: 'f2', verdict: 'confirmed', severity: 'Low/nit', sources: ['c-2'], issue: 'Rename it.', fix: '' },
   ] };
   const cands = [
     { id: 'c-1', issue: 'Two saves race on BADGE_ID at line 212.', fix: 'Add a unique index.' },
@@ -80,10 +80,10 @@ test('build formats the body from whichever side passed, and lints its style', (
   ];
   const [a, b] = build(verified, cands, 'Opus 5.5');
   assert.equal(a.use, 'final');
-  assert.equal(a.body, '🟠 **blocking** · 🤖 AI:Opus 5.5 · 🔎 c\n\nTwo saves race on BADGE_ID at line 212.\n\n**Fix:** Add a unique index.');
+  assert.equal(a.body, '🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 c\n\nTwo saves race on BADGE_ID at line 212.\n\n**Fix:** Add a unique index.');
   assert.deepEqual(a.style, []);
   assert.equal(b.use, 'draft');
-  assert.ok(b.body.startsWith('⚪ **nit** · 🤖 AI:Opus 5.5 · 🔎 c\n\nRename `fooBar`'));
+  assert.ok(b.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 c\n\nRename `fooBar`'));
   assert.ok(b.style.includes('em dash'));
 });
 
@@ -101,8 +101,8 @@ test('estimateTokens charges each reviewer to its findings and shares the rest, 
 
 test('build puts each finding\'s attributed share in its header', () => {
   const verified = { findings: [
-    { id: 'f1', verdict: 'confirmed', status: 'suggestion', sources: ['correctness-1'], issue: 'Rename it.', fix: '' },
-    { id: 'f2', verdict: 'confirmed', status: 'nit', sources: ['ticket-fit-1'], issue: 'Drop it.', fix: '' },
+    { id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['correctness-1'], issue: 'Rename it.', fix: '' },
+    { id: 'f2', verdict: 'confirmed', severity: 'Low/nit', sources: ['ticket-fit-1'], issue: 'Drop it.', fix: '' },
   ] };
   const cands = [{ id: 'correctness-1', issue: 'Rename it.', fix: '' }, { id: 'correctness-2' }, { id: 'ticket-fit-1', issue: 'Drop it.', fix: '' }];
   const out = build(verified, cands, 'Opus 5.5', { correctness: 100000, 'ticket-fit': 60000, verify: 40000 });
@@ -110,50 +110,50 @@ test('build puts each finding\'s attributed share in its header', () => {
 });
 
 test('build puts the estimate in the header when usage is given', () => {
-  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', status: 'suggestion', sources: ['correctness-1'], issue: 'Rename it.', fix: '' }] };
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['correctness-1'], issue: 'Rename it.', fix: '' }] };
   const [e] = build(verified, [{ id: 'correctness-1', issue: 'Rename it.', fix: '' }], 'Opus 5.5', { correctness: 50000, verify: 1500 });
   assert.equal(e.tokens, 51500);
-  assert.ok(e.body.startsWith('🟡 **suggestion** · 🤖 AI:Opus 5.5 · 🔎 correctness · 🪙 ~52k tokens\n\n'));
+  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness · 🪙 ~52k tokens\n\n'));
 });
 
 test('build names each reviewer behind a merged finding once, in source order', () => {
-  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', status: 'suggestion', sources: ['correctness-1', 'security-2', 'correctness-3'], issue: 'Rename it.', fix: '' }] };
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['correctness-1', 'security-2', 'correctness-3'], issue: 'Rename it.', fix: '' }] };
   const cands = [{ id: 'correctness-1', issue: 'Rename it.', fix: '' }, { id: 'security-2' }, { id: 'correctness-3' }];
   const [e] = build(verified, cands, 'Opus 5.5');
   assert.equal(e.reviewers.join(','), 'correctness,security');
-  assert.ok(e.body.startsWith('🟡 **suggestion** · 🤖 AI:Opus 5.5 · 🔎 correctness + security\n\n'));
+  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness + security\n\n'));
 });
 
 test('build puts verify\'s confidence in the header, between the reviewers and the tokens', () => {
-  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', status: 'suggestion', sources: ['correctness-1'], issue: 'Rename it.', fix: '', confidence: 'medium' }] };
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['correctness-1'], issue: 'Rename it.', fix: '', confidence: 'medium' }] };
   const [e] = build(verified, [{ id: 'correctness-1', issue: 'Rename it.', fix: '', confidence: 'high' }], 'Opus 5.5', { correctness: 50000, verify: 1500 });
   assert.equal(e.confidence, 'medium');
-  assert.ok(e.body.startsWith('🟡 **suggestion** · 🤖 AI:Opus 5.5 · 🔎 correctness · 🎯 medium confidence · 🪙 ~52k tokens\n\n'));
+  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness · 🎯 medium confidence · 🪙 ~52k tokens\n\n'));
 });
 
 test('build falls back to the first source reviewer\'s confidence, and leaves it out when there is none', () => {
   const cands = [{ id: 'correctness-1', issue: 'Rename it.', fix: '' }, { id: 'security-1', confidence: 'low' }];
-  const merged = { findings: [{ id: 'f1', verdict: 'confirmed', status: 'nit', sources: ['correctness-1', 'security-1'], issue: 'Rename it.', fix: '' }] };
+  const merged = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low/nit', sources: ['correctness-1', 'security-1'], issue: 'Rename it.', fix: '' }] };
   assert.equal(build(merged, cands, 'Opus 5.5')[0].confidence, 'low');
-  const bogus = { findings: [{ id: 'f1', verdict: 'confirmed', status: 'nit', sources: ['correctness-1'], issue: 'Rename it.', fix: '', confidence: 'certain' }] };
+  const bogus = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low/nit', sources: ['correctness-1'], issue: 'Rename it.', fix: '', confidence: 'certain' }] };
   const [e] = build(bogus, cands, 'Opus 5.5');
   assert.equal(e.confidence, null);
-  assert.ok(e.body.startsWith('⚪ **nit** · 🤖 AI:Opus 5.5 · 🔎 correctness\n\n'));
+  assert.ok(e.body.startsWith('🟠 **change needed** · 🤖 AI:Opus 5.5 · 🔎 correctness\n\n'));
 });
 
 test('CLI build --out writes one body file per finding', () => {
   const dir = mkdtempSync(join(tmpdir(), 'fc-'));
-  writeFileSync(join(dir, 'verified.json'), JSON.stringify({ findings: [{ id: 'f1', verdict: 'confirmed', status: 'info', sources: ['c-1'], issue: 'Scope creep.', fix: '' }] }));
+  writeFileSync(join(dir, 'verified.json'), JSON.stringify({ findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Info', sources: ['c-1'], issue: 'Scope creep.', fix: '' }] }));
   writeFileSync(join(dir, 'cand-x.json'), JSON.stringify([{ id: 'c-1', issue: 'Scope creep.', fix: '' }]));
   const out = JSON.parse(execFileSync('node', [script, 'build', join(dir, 'verified.json'), join(dir, 'cand-x.json'), '--out', dir], { encoding: 'utf8' }));
   assert.equal(out[0].id, 'f1');
   writeFileSync(join(dir, 'usage.json'), JSON.stringify({ c: 3000, verify: 1000 }));
   execFileSync('node', [script, 'build', join(dir, 'verified.json'), join(dir, 'cand-x.json'), '--out', dir, '--usage', join(dir, 'usage.json')]);
-  assert.match(readFileSync(join(dir, 'body-f1.txt'), 'utf8'), /^🔵 \*\*info\*\* · 🤖 AI:.+ · 🔎 c · 🪙 ~4k tokens\n\nScope creep\.$/);
+  assert.match(readFileSync(join(dir, 'body-f1.txt'), 'utf8'), /^🔵 \*\*note\*\* · 🤖 AI:.+ · 🔎 c · 🪙 ~4k tokens\n\nScope creep\.$/);
 });
 
 test('a fix verify corrected is posted, though it drops the wrong fix\'s identifiers', () => {
-  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', status: 'suggestion', sources: ['c-1'],
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['c-1'],
     issue: 'Upgraded servers log no timestamps.', fix: 'Keep `AddConsole()` and set the default with `Configure<SimpleConsoleFormatterOptions>`.', fix_rewritten: true }] };
   const cands = [{ id: 'c-1', issue: 'Upgraded servers log no timestamps.', fix: 'Call `AddSimpleConsole(o => o.UseUtcTimestamp = true)`.' }];
   const [e] = build(verified, cands, 'Opus 5.5');
@@ -163,7 +163,7 @@ test('a fix verify corrected is posted, though it drops the wrong fix\'s identif
 });
 
 test('a corrected fix still keeps the issue\'s facts', () => {
-  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', status: 'suggestion', sources: ['c-1'],
+  const verified = { findings: [{ id: 'f1', verdict: 'confirmed', severity: 'Low', sources: ['c-1'],
     issue: 'Upgraded servers log nothing.', fix: 'Use `AddConsole()`.', fix_rewritten: true }] };
   const cands = [{ id: 'c-1', issue: 'Servers upgraded past 11.0 log no `Timestamp`.', fix: 'Call `AddSimpleConsole()`.' }];
   const [e] = build(verified, cands, 'Opus 5.5');
@@ -174,7 +174,7 @@ test('a corrected fix still keeps the issue\'s facts', () => {
 });
 
 test('buildPairs refuses candidates that share an id instead of drafting from the wrong one', () => {
-  const verified = { findings: [{ id: 'f1', sources: ['c-1'], verdict: 'confirmed', status: 'suggestion', issue: 'x', fix: 'y' }] };
+  const verified = { findings: [{ id: 'f1', sources: ['c-1'], verdict: 'confirmed', severity: 'Low', issue: 'x', fix: 'y' }] };
   const dup = [{ id: 'c-1', issue: 'first', fix: 'a' }, { id: 'c-1', issue: 'second', fix: 'b' }];
   assert.throws(() => buildPairs(verified, dup), /duplicate candidate id c-1/);
 });

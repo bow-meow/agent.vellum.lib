@@ -11,9 +11,9 @@ const cands = [
 ];
 const verified = {
   findings: [
-    { id: 'f1', sources: ['security-1'], verdict: 'confirmed', severity: 'High', status: 'critical' },
+    { id: 'f1', sources: ['security-1'], verdict: 'confirmed', severity: 'High' },
     { id: 'f2', sources: ['correctness-1'], verdict: 'dropped', severity: 'High', reason: 'handled by middleware' },
-    { id: 'f3', sources: ['correctness-2', 'concurrency-races-1'], verdict: 'confirmed', severity: 'Low', status: 'suggestion' },
+    { id: 'f3', sources: ['correctness-2', 'concurrency-races-1'], verdict: 'confirmed', severity: 'Low' },
   ],
   previous: [],
 };
@@ -34,15 +34,14 @@ const overturn = (id, severity = 'High') => ({
   finding: { verdict: 'confirmed', severity, path: 'a.cs', line: 3, side: 'new', match: 'new', issue: 'x', fix: 'y' },
 });
 
-test('apply restores overturned findings with the right status and keeps upheld ones dropped', () => {
+test('apply restores overturned findings with the verifier schema and keeps upheld ones dropped', () => {
   const c = contested(verified, cands);
   const out = apply(verified, [overturn('f2'), { id: 'f3', decision: 'uphold', reason: 'ok' }, overturn('sql-1', 'Medium')], c);
   const f2 = out.findings.find(f => f.id === 'f2');
   assert.equal(f2.verdict, 'confirmed');
-  assert.equal(f2.status, 'critical');
   assert.deepEqual(f2.sources, ['correctness-1']);
   assert.equal(out.findings.find(f => f.id === 'f3').severity, 'Low');
-  assert.deepEqual(out.findings.at(-1), { ...overturn('sql-1', 'Medium').finding, status: 'blocking', recheck: 'no middleware covers the subject', id: 'r1', sources: ['sql-1'] });
+  assert.deepEqual(out.findings.at(-1), { ...overturn('sql-1', 'Medium').finding, recheck: 'no middleware covers the subject', id: 'r1', sources: ['sql-1'] });
 });
 
 test('apply refuses a missing decision, an unknown id, or an overturn that is not blocking', () => {

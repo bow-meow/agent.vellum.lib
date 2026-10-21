@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CONFIDENCES, formatComment, readModel, stripHeader, styleIssues } from './comment.mjs';
+import { CONFIDENCES, formatComment, readModel, statusOf, stripHeader, styleIssues } from './comment.mjs';
 import { indexById } from './recheck.mjs';
 
 const CERTAIN = /\b(will|always|never|must|cannot|can't|won't|guaranteed)\b/gi;
@@ -41,7 +41,7 @@ const side = (issue, fix) => {
 };
 
 // The draft comes from the reviewer's own wording, not the verifier's copy of it, so a verifier that
-// drops a fact from both draft and final is still caught. The status is the verifier's: it re-grades.
+// drops a fact from both draft and final is still caught. The severity is the verifier's: it re-grades.
 export function buildPairs(verified, candidates) {
   const byId = indexById(candidates);
   return verified.findings
@@ -51,7 +51,7 @@ export function buildPairs(verified, candidates) {
       const final = side(f.issue, f.fix);
       const draft = src ? (src.issue != null ? side(src.issue, src.fix) : side(src.comment, '')) : final;
       const srcs = (f.sources ?? []).map(id => byId.get(id)).filter(Boolean);
-      return { id: f.id, status: f.status, confidence: confidenceOf(f, srcs), draft, final, fixRewritten: !!f.fix_rewritten };
+      return { id: f.id, status: statusOf(f.severity), confidence: confidenceOf(f, srcs), draft, final, fixRewritten: !!f.fix_rewritten };
     });
 }
 

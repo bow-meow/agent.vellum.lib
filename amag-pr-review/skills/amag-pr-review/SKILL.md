@@ -74,7 +74,7 @@ single-quoted because branch and repo names come from the PR author. Then:
 node $S/scripts/bb.mjs me > $W/me.json          # 401/403 → stop and show the message
 node $S/scripts/bb.mjs diff $WS $REPO $PR > $W/bb.diff
 node $S/scripts/bb.mjs get "repositories/$WS/$REPO/pullrequests/$PR/comments?pagelen=100&fields=%2Bvalues.resolution.user.account_id" > $W/comments.json
-node $S/scripts/state.mjs split-comments $W/comments.json $W/me.json $W
+node $S/scripts/state.mjs split-comments $W/comments.json $W/me.json $W "$AUTHOR_ID"
 node $S/scripts/state.mjs load $WS $REPO $PR > $W/state-prev.json
 ```
 
@@ -295,27 +295,26 @@ It prints `[{n, id, status, path, line}]`. `n` is the finding's number in the te
      reply it to its comment id; then, **only if the finding has no `parentId`** (it started its own
      thread) and isn't `authorResolved` (already resolved), `node $S/scripts/bb.mjs resolve $WS $REPO $PR <comment_id>`.
      A finding that was a reply in someone else's thread is never resolved.
-   - previous `still-applies`: `node $S/scripts/comment.mjs followup still-applies <its status> <line> > $W/body-still-<comment_id>.txt`,
+   - previous `still-applies`: `node $S/scripts/comment.mjs followup still-applies "<its severity>" <line> > $W/body-still-<comment_id>.txt`,
      reply it to its comment id.
    - previous `authorResolved` that is `still-applies` or `unchanged`: `node $S/scripts/bb.mjs reopen $WS $REPO $PR <thread root id>`
      (its `parentId`, else its comment id), then the `still-applies` reply above (for `unchanged`, at
-     its located line), so the thread shows why it's open again.
+     its located line), so the thread shows why it's open again; `needs-reply` in place of `still-applies` for a Low or Low/nit.
 3. Record each post's returned `id`/`link`; a failed post goes in the failures list (don't retry into
    duplicates).
 
 ## 8. PR mode: approval (skip on `--dry-run`)
 
-Open findings = every confirmed finding of any severity (High through Info and nit, terminal-only
-included) + previous findings with `still-applies` or `unchanged`, including `authorResolved` ones.
-Previous findings a human other than the author closed (resolved or deleted thread, step 2) don't
-count. Tooling problems = a failed post, an uncovered dimension, or verify or recheck failing. Only act
+Open findings = every confirmed finding above Info (terminal-only included) + previous ones above
+Info with `still-applies` or `unchanged`, `authorResolved` included. Notes and step 2's closed
+findings don't count. Tooling problems = a failed post, an uncovered dimension, or verify or recheck failing. Only act
 when the PR is open and not mine. Decide in this order:
 - **Tooling problem**: hold, and say which step failed. It never approves, requests changes or
   withdraws an earlier approval.
-- **Any open finding**: request changes. A single Low, nit or Info finding is enough. If my state is
+- **Any open finding**: request changes. A single Low/nit finding is enough. If my state is
   `approved`, first `node $S/scripts/bb.mjs unapprove $WS $REPO $PR`; then, unless it's already
   `changes_requested`, `node $S/scripts/bb.mjs request-changes $WS $REPO $PR`.
-- **No open findings** (a review that found nothing): approve. If my state is `changes_requested`,
+- **No open findings** (a review that found nothing, or only notes): approve. If my state is `changes_requested`,
   first `node $S/scripts/bb.mjs unrequest-changes $WS $REPO $PR`; then, unless it's already
   `approved`, `node $S/scripts/bb.mjs approve $WS $REPO $PR`.
 
@@ -354,15 +353,15 @@ Local mode: `rm -rf $W` only; the ticket worktree is never touched by the review
 ## <PR #id: title | Local review: TICKET> · 🪙 ~<total>k tokens
 <2-3 sentence overview of what the change does>. Strengths: <one line>.
 
-| # | Severity | Reviewer | Confidence | Where | Finding | Posted |
-|---|----------|----------|------------|-------|---------|--------|
-| 1 | blocking | concurrency-races | high | path/File.cs:212 | check-then-insert on BADGE without unique constraint | new |
+| # | Status | Reviewer | Confidence | Where | Finding | Posted |
+|---|--------|----------|------------|-------|---------|--------|
+| 1 | change needed | concurrency-races | high | path/File.cs:212 | check-then-insert on BADGE without unique constraint | new |
 ...
-Dropped by verify (n): <id: one-line reason>, ...   (blocking ones: "upheld by recheck")
+Dropped by verify (n): <id: one-line reason>, ...   (High/Medium ones: "upheld by recheck")
 Overturned by recheck (n): <id: what verify got wrong>, or none
 Already raised by others: <finding → author>
 Terminal-only: <unanchorable / uncertain ticket-fit findings>
-Closed by a human: <previous findings whose thread a non-author resolved or deleted>
+Closed by a human: <previous findings step 2 closed; for an author reply, its gist>
 Reopened: <author-resolved findings that still apply, or none>
 Uncovered: <dimensions, or none>   Ticket: <key or "none found">   Incremental: <yes, since <sha> | rebased: full re-review | no>
 Packages: <name@version fetched, name@version: error, or none>
@@ -378,7 +377,7 @@ nearest thousand; drop the `· 🪙` part if there is no `usage.json`.
   `Approved: <reason>` / `Changes requested: <open findings>` / `Holding: <failed step>` /
   `Dry run: would <approve|request changes|hold>`. One block per PR.
 - **Local mode**: number the table rows by each finding's `n`, then: `Saved to <TICKET_DIR>/review-findings.json.
-  Which should I fix? (e.g. "fix 1,3", "fix all blocking"; or later, "pr-respond <TICKET>")`. On
+  Which should I fix? (e.g. "fix 1,3", "fix all"; or later, "pr-respond <TICKET>")`. On
   an answer, follow step 12.
 
 ## 12. Local mode: applying fixes

@@ -14,7 +14,7 @@ Does the change actually solve the ticket? You get the full Jira issue.
 - **Scope creep**: changes unrelated to the ticket.
 
 ## Severity hints
-- `blocking` only with a concrete repro trace through the code showing the bug still happens, or a
+- Medium or High only with a concrete repro trace through the code showing the bug still happens, or a
   criterion that is plainly not implemented anywhere (including siblings).
 - Uncertain coverage ("not sure this covers X") → `terminal_only: true`, severity Low.
 - Scope creep → Info.

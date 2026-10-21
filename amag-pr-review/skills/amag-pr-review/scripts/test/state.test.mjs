@@ -45,9 +45,26 @@ test('ours = my account AND the AI tag; deleted comments dropped', () => {
   const { ours, others } = splitComments(values, 'me');
   assert.deepEqual(ours.map(c => c.id), [1, 5, 6]);
   assert.deepEqual(others.map(c => c.id), [2, 3]);
-  assert.deepEqual(ours[1], { id: 5, parent: null, path: 'b.cs', line: 9, side: 'old', author: 'Me', raw: '[info, AI:Opus 5.5] old', resolved: true, resolvedBy: 'author', outdated: true });
+  assert.deepEqual(ours[1], { id: 5, parent: null, path: 'b.cs', line: 9, side: 'old', author: 'Me', raw: '[info, AI:Opus 5.5] old', resolved: true, resolvedBy: 'author', outdated: true, authorReplied: false });
   assert.equal(ours[0].resolvedBy, null);
   assert.equal(others[1].parent, 1);
+});
+
+test('authorReplied is set when the PR author posted later anywhere in the thread, replies to replies included', () => {
+  const me = { account_id: 'me', display_name: 'Me' };
+  const author = { account_id: 'author', display_name: 'Author' };
+  const values = [
+    { id: 10, user: me, content: { raw: '🟠 **change needed** · 🤖 AI:Opus 5.5\n\nrename it' }, inline: { path: 'a.cs', to: 5 } },
+    { id: 11, user: { account_id: 'bob' }, content: { raw: 'agree' }, parent: { id: 10 } },
+    { id: 12, user: author, content: { raw: 'keeping it, matches the API name' }, parent: { id: 11 } },
+    { id: 20, user: author, content: { raw: 'unrelated earlier thread' }, inline: { path: 'b.cs', to: 1 } },
+    { id: 21, user: me, content: { raw: '🟠 **change needed** · 🤖 AI:Opus 5.5\n\nreply' }, parent: { id: 20 } },
+    { id: 30, user: me, content: { raw: '🟠 **change needed** · 🤖 AI:Opus 5.5\n\nno answer' }, inline: { path: 'c.cs', to: 2 } },
+    { id: 31, user: author, content: { raw: 'x' }, parent: { id: 30 }, deleted: true },
+  ];
+  const { ours } = splitComments(values, 'me', 'author');
+  assert.deepEqual(ours.map(c => [c.id, c.authorReplied]), [[10, true], [21, false], [30, false]]);
+  assert.deepEqual(splitComments(values, 'me').ours.map(c => c.authorReplied), [false, false, false]);
 });
 
 test('locateFingerprint finds moved code, prefers the nearest match, and misses changed code', () => {
