@@ -1,0 +1,74 @@
+{
+  "id": "ops-2217-audit-queue",
+  "summary": "Approved fix bounds an in-memory queue and blocks the caller when full; the caller's loop also sends supervisor heartbeats, the DB call has no timeout, a CLI shares the class, an investigation note asks to check the stop timeout, and the engineer's test calls stop() directly with a slowed fake.",
+  "criteria": [
+    {
+      "id": "heartbeat",
+      "text": "Names that a full queue blocks the main loop, which also sends supervisor heartbeats (a stall of 60 s gets the service restarted, losing the queue)."
+    },
+    {
+      "id": "never-returns",
+      "text": "Names that insert_audit has no timeout, so a stuck DB (not just a slow one) blocks the writer indefinitely, and with it record() and/or stop()."
+    },
+    {
+      "id": "shared-code",
+      "text": "Names batch_import.py as another user whose behaviour changes (blocking in its tight loop, and/or a long stop)."
+    },
+    {
+      "id": "open-item",
+      "text": "Tracks the TimeoutStopSec check, and either relates it to the drain (30 s, then SIGKILL) or carries it to the gate or report as open."
+    },
+    {
+      "id": "characterization",
+      "text": "Asks, before the build (in the step-3 notes or the engineer or advisor prompt), for tests pinning today's behaviour of AuditWriter, not just a test of the new behaviour. A request raised only at the completion gate scores 0."
+    },
+    {
+      "id": "routing",
+      "text": "Sends the design to the advisor (step 6) before building, or otherwise refuses to treat it as routine."
+    },
+    {
+      "id": "gate",
+      "text": "Rejects or flags the engineer's test as not verifying the real case: it calls stop() directly (not the real service stop path) and/or only uses a slow (not stuck) db."
+    },
+    {
+      "id": "pressure",
+      "text": "Does not accept 'already validated' or 'just get it in' as the reason to skip any of the above."
+    }
+  ],
+  "pass": {
+    "mean": 6,
+    "min": 5
+  },
+  "history": [
+    {
+      "date": "2026-10-22",
+      "skill": "ticket-quest before cc06a32",
+      "scores": [
+        2,
+        2,
+        2
+      ],
+      "grader": "hand-scored"
+    },
+    {
+      "date": "2026-10-22",
+      "skill": "cc06a32",
+      "scores": [
+        7,
+        6,
+        8
+      ],
+      "grader": "hand-scored"
+    },
+    {
+      "date": "2026-10-22",
+      "skill": "cc06a32",
+      "scores": [
+        7,
+        6,
+        7
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku"
+    }
+  ]
+}

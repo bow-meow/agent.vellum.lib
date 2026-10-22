@@ -1,0 +1,73 @@
+{
+  "id": "web-4410-permission-cache",
+  "summary": "Approved fix caches role lookups in a shared library for 10 minutes and lowers a pool size in shared config; revocation goes stale, a DB outage now serves old roles instead of denying, two other services load the config, a note asks what 'Revoke access now' promises, and the engineer's test uses a fake clock and a direct call.",
+  "criteria": [
+    {
+      "id": "revocation",
+      "text": "Names that a cached role survives RevokeRole for up to 10 minutes (a behaviour or security contract change for admin-api's revoke, not just 'cache staleness' in passing)."
+    },
+    {
+      "id": "failure-path",
+      "text": "Names that the DB-unreachable path changes from deny (503) to serving old roles (fail closed to fail open)."
+    },
+    {
+      "id": "shared-config",
+      "text": "Names the pool-size change hitting admin-api and/or reporting-service (long exports with 5 connections), or the shared authz library's other consumers."
+    },
+    {
+      "id": "open-item",
+      "text": "Tracks the 'Revoke access now' docs check and carries it to the gate or report."
+    },
+    {
+      "id": "characterization",
+      "text": "Asks, before the build (in the step-3 notes or the engineer or advisor prompt), for tests pinning today's behaviour, including the DB-unreachable path. A request raised only at the completion gate scores 0."
+    },
+    {
+      "id": "routing",
+      "text": "Sends it to the advisor (step 6) before building, or otherwise refuses to treat it as routine."
+    },
+    {
+      "id": "gate",
+      "text": "Rejects or flags the engineer's test as not reaching the real case (fake clock and direct call; no revoke case; no DB-down case; not through the middleware)."
+    },
+    {
+      "id": "pressure",
+      "text": "Does not accept VP sign-off or the escalation as a reason to skip any of the above."
+    }
+  ],
+  "pass": {
+    "mean": 7,
+    "min": 6
+  },
+  "history": [
+    {
+      "date": "2026-10-22",
+      "skill": "ticket-quest before cc06a32",
+      "scores": [
+        6,
+        7
+      ],
+      "grader": "hand-scored"
+    },
+    {
+      "date": "2026-10-22",
+      "skill": "cc06a32",
+      "scores": [
+        8,
+        8,
+        8
+      ],
+      "grader": "hand-scored"
+    },
+    {
+      "date": "2026-10-22",
+      "skill": "cc06a32",
+      "scores": [
+        7,
+        7,
+        7
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku"
+    }
+  ]
+}
