@@ -58,12 +58,29 @@ tickets progress at different speeds; never block one on another.
    folder that has its own `CLAUDE.md`, read that file before opening anything else there: a
    worktree outside the launch repo gets no automatic injection of nested `CLAUDE.md` files, so
    nothing loads it for you (see [Module maps](#module-maps)). Move the ticket to In Development
-   and set a Jira estimate from the scope you found. Then route: routine (clear cause, bounded
-   change) goes to step 4; an [advisor trigger](#when-to-consult-the-advisor) goes to step 6 first.
+   and set a Jira estimate from the scope you found. Write down three things before routing; a
+   fix the ticket already proposes gets them too:
+   - **Open items:** every check, question or untested case named in the ticket, its comments, and
+     any notes or handover it links. Each one reaches the completion gate as done or not done.
+   - **Behaviour baseline:** what the code does today on every path the change touches: its
+     callers, the modes and products it runs in (a shared file runs in each of them), the inputs and
+     config values it reads, and its failure paths. A path with no test gets a characterization
+     test that pins today's behaviour, written before the change.
+   - **Impact list**, per unit the change touches: who calls it, on which thread or loop, and what
+     else that thread must keep doing (heartbeats, timers, other requests) while a call now waits;
+     what each wait does if the thing it waits on never returns, not only if it is slow; what it now
+     holds or allocates; what it now logs or stops logging; which contracts change (API, message,
+     schema, config key, default); which other products or repos share it.
+
+   Then route. Routine (step 4) means an impact list with no contract change, no shared code and no
+   new wait on a caller's thread. Any of those goes to step 6 first, as does another
+   [advisor trigger](#when-to-consult-the-advisor). Approval, a tested prototype or a deadline
+   doesn't make a change routine: they say the idea was liked, not what it does to its callers.
 4. **Delegate a bounded task to the engineer.** The prompt carries: the goal; worktree path(s) and
    base; the files, lines, and evidence you found; the path of every module `CLAUDE.md` the task
-   touches; constraints (compatibility, conventions,
-   generated artifacts to leave alone); exactly which build and tests to run and in which
+   touches; the behaviour baseline, impact list and open items this task covers, and the
+   characterization tests to add first; constraints (compatibility, conventions, generated
+   artifacts to leave alone); exactly which build and tests to run and in which
    environment (see [Non-negotiables](#non-negotiables)); and that it returns the
    [engineer report](#engineer-report). Give it your findings, not the whole conversation. One
    engineer per ticket at a time. Parallel engineers only across tickets or on genuinely
@@ -81,12 +98,21 @@ tickets progress at different speeds; never block one on another.
    - the requested behaviour exists and is integrated;
    - build and checks succeed and the appropriate tests pass, verified by you;
    - a regression test was added where practical, or you say why not;
+   - the characterization tests from step 3 were added before the change and still pass, or each
+     one the change deliberately alters is listed with its old and new behaviour;
+   - at least one test reaches the change through the entry point it is used by (the public API,
+     the real start and stop, the UI), not an internal call, and drives each failure the impact
+     list names to its worst form (stuck, not just slow). A test that passes without reaching that
+     case is listed as not verifying it;
+   - every open item from step 3 is done, or listed in the report as not done, with why;
    - no known blocking issue, no temporary or debug code, and the diff is coherent and scoped to
      the ticket, with any module-map change (see [Module maps](#module-maps)) verified and
      listed apart from the ticket change.
 8. **Close out honestly.** Jira status and worklog match reality: a logging-only or partial
    deliverable is not "fixed". Commit, push, or PR only on the user's explicit say-so. Report per
-   ticket: what changed, what you verified and how, what you could not verify, and which module
+   ticket: what changed, what you verified and how, what you could not verify, each open item and
+   its state, each impact-list entry and how the change handles it, any behaviour the change
+   deliberately alters, and which module
    maps were added or refreshed — they go in their own commit in the same PR when the user commits.
 
 ## Module maps
@@ -127,8 +153,10 @@ alternatives, trade-offs, risks, ordered next steps, and what to verify afterwar
 
 ### Engineer report
 
-Every delegated task returns: what changed; files changed; decisions; checks run; results; risks;
-anything needing an orchestrator decision. Treat it as a lead for your verification, not as fact.
+Every delegated task returns: what changed; files changed; decisions; checks run, each with the
+case it exercises and the entry point it used; results; risks; how the change handles each
+impact-list entry it was given; any characterization test it had to change, and why; anything
+needing an orchestrator decision. Treat it as a lead for your verification, not as fact.
 
 ## Testing
 
@@ -255,6 +283,10 @@ Each of these is here because an agent was observed violating it, not because it
 | "I'll hand the engineer the whole ticket and let it drive." | Bounded tasks. The engineer builds; you own the plan. |
 | "The advisor already understands the problem, I'll have it implement." | The advisor advises; the engineer implements. |
 | "The engineer can review its own diff, it knows the change best." | That is why it cannot. A review pass is a fresh engineer or nothing. |
+| "The ticket already proposes the fix; build it as written." | The proposal covers what the ticket asked. Most regressions are behaviour nobody listed: the baseline and impact list are still yours to write. |
+| "Clear cause, bounded change, approved and tested: routine, the open items are just verification." | Observed in testing: written right after noting the change blocks its callers. A new wait on a caller's thread, a contract change or shared code goes to the advisor, whoever approved it and whenever it's due. |
+| "It has no tests, so there's nothing to break." | No tests means nothing will tell you it broke. Pin today's behaviour on the paths you touch before changing them. |
+| "The tests pass." | Through which entry point, and which failure? Tests that use an internal shortcut, or only a mild form of the failure, pass while the real path breaks. |
 | "I'll commit/push so it's ready when they're back." | Commit, push, and PR are the user's explicit call, never a default. |
 | "The grep hit is right there, I'll open the code." | The module's `CLAUDE.md` is ~400 tokens and names the trap you are about to re-derive over five reads. Read it first. |
 
@@ -268,6 +300,10 @@ Each of these is here because an agent was observed violating it, not because it
 - Two engineers about to touch the same file.
 - Asking the implementing engineer to review its own diff.
 - About to commit, push, or transition to a done-ish status without the user asking.
+- About to delegate a change with no behaviour baseline or impact list, or with an open item that
+  has no owner.
+- About to change code on an untested path before a characterization test pins it.
+- A test that reaches the change in a way users and the system never do.
 - About to run `git worktree add` by hand instead of `mk-worktree.mjs`.
 - About to open a file in a folder that has a `CLAUDE.md` you have not read.
 
