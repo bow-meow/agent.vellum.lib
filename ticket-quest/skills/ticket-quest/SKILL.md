@@ -73,10 +73,15 @@ tickets progress at different speeds; never block one on another.
      schema, config key, default); which other products or repos share it.
 
    Then route. Routine (step 4) means an impact list with no contract change, no shared code and no
-   new wait on a caller's thread. Any of those goes to step 6 first, as does another
-   [advisor trigger](#when-to-consult-the-advisor). Approval, a tested prototype or a deadline
-   doesn't make a change routine: they say the idea was liked, not what it does to its callers.
-4. **Delegate a bounded task to the engineer.** The prompt carries: the goal; worktree path(s) and
+   new wait on a caller's thread. Any of those sends the design to step 6 before anything is built,
+   as does another [advisor trigger](#when-to-consult-the-advisor). Approval, a tested prototype or
+   a deadline doesn't make a change routine: they say the idea was liked, not what it does to its
+   callers. Only the build waits for the advisor: the characterization task (step 4) goes to the
+   engineer now, either way: it tests today's code, which no design decision changes.
+4. **Delegate a bounded task to the engineer.** The first task on a ticket is always the
+   characterization task: tests against the unchanged code pinning each behaviour the baseline
+   named, done when they pass on the base branch. The change comes next, and keeps them passing or
+   lists each one it deliberately alters. The prompt carries: the goal; worktree path(s) and
    base; the files, lines, and evidence you found; the path of every module `CLAUDE.md` the task
    touches; the behaviour baseline, impact list and open items this task covers, and the
    characterization tests to add first; constraints (compatibility, conventions, generated
@@ -92,8 +97,9 @@ tickets progress at different speeds; never block one on another.
    diff is only the real change. For significant or risky work, dispatch **one fresh engineer** to
    review the diff — never the one that wrote it. A gap goes back to step 4 with the specific gap
    named; a trigger goes to step 6.
-6. **Escalate to the advisor** with the [advisor request](#advisor-request). Convert its
-   recommendation into bounded engineer tasks. The advisor does not build.
+6. **Escalate to the advisor** with the [advisor request](#advisor-request), with the
+   characterization task already delegated: the advisor holds up the build, not that task. Convert
+   its recommendation into bounded engineer tasks. The advisor does not build.
 7. **Completion gate**, per ticket. All must hold, or you report exactly which do not:
    - the requested behaviour exists and is integrated;
    - build and checks succeed and the appropriate tests pass, verified by you;
@@ -144,9 +150,11 @@ do not escalate a trivial failure because an attempt failed.
 
 ### Advisor request
 
-Curated context, not a repository dump, under six headings: **Goal**; **Current architecture**
+Curated context, not a repository dump, under seven headings: **Goal**; **Current architecture**
 (only the relevant components); **Evidence** (code, errors, logs, failing tests, behaviour);
-**Attempts** (what was tried, what happened); **Constraints**; **Question** — one specific question
+**Attempts** (what was tried, what happened); **Constraints**; **Already delegated** (the
+characterization task running while you advise: each untested path and the behaviour its test
+pins); **Question** — one specific question
 ("Given A, B and C, should X own this state or Y? Trade-offs and a recommended direction"), never
 "look at this and tell me what you think". The advisor returns a recommendation, reasoning,
 alternatives, trade-offs, risks, ordered next steps, and what to verify afterwards.

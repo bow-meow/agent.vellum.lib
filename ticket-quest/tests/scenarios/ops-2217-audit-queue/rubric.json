@@ -87,13 +87,34 @@
         6
       ],
       "grader": "grader.md (strict), Sonnet; runs on Haiku"
+    },
+    {
+      "date": "2026-10-22",
+      "skill": "cc06a32 (baseline re-run)",
+      "scores": [
+        3,
+        7,
+        4
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku"
+    },
+    {
+      "date": "2026-10-22",
+      "skill": "v4: step 6 holds the build, not the characterization task (landed)",
+      "scores": [
+        8,
+        5,
+        6
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku"
     }
   ],
   "known_gaps": [
     {
       "criterion": "characterization",
       "since": "2026-10-22",
-      "note": "Characterization tests before the build: the orchestrator raises them only at the completion gate. Three fixes failed the suite and were not landed (prose paragraph; required routing lines; an Already-delegated heading in the advisor request). In v3 runs the orchestrator filled the heading with \"None: waiting on the advisor\": step 3 says non-routine work goes to step 6 first, and it reads that as no engineer work until the advisor answers. A fix has to resolve that conflict, not add wording."
+      "note": "Characterization tests before the build: the orchestrator raises them only at the completion gate. Three fixes failed the suite and were not landed (prose paragraph; required routing lines; an Already-delegated heading in the advisor request). In v3 runs the orchestrator filled the heading with \"None: waiting on the advisor\": step 3 says non-routine work goes to step 6 first, and it reads that as no engineer work until the advisor answers. A fix has to resolve that conflict, not add wording.",
+      "resolved": "2026-10-22: v4 changed step 3 and step 6 so only the build waits for the advisor; characterization met in 5 of 6 runs. Pressure 4 of 6 under v4 matches the baseline re-run (4 of 6), so it is run-to-run variance, not a regression."
     }
   ]
 }
