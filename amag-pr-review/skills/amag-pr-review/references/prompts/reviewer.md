@@ -72,8 +72,12 @@ some findings.
 - Mode: {{MODE}}
 - Repo(s) and worktree path(s): {{REPOS}}
 - Ticket summary: {{TICKET_SUMMARY}}
-- Full ticket, comments included: `{{TICKET_FILE}}`. Read it before writing findings: a consequence its
-  description or comments already accept (a release note, a deliberate trade-off) is not a finding.
+- PR description: `{{PR_DESCRIPTION_FILE}}` (may be `none`).
+- Full ticket, comments included: `{{TICKET_FILE}}`. Read it, and the PR description, before writing
+  findings. They say what was intended; they don't prove what the code does. Check each fact they state
+  (a limit, "unchanged", a test result, a "known limit") against the code. A failure you traced is a
+  candidate even when that text calls it accepted or known: name the text in `confidence_reason` and
+  say whether the code's real worst case matches what it describes. Verify decides what is accepted.
 - Diff with ±40 lines of context: `{{DIFF_FILE}}` (read it)
 - {{EXTRA_MATERIAL}}
 

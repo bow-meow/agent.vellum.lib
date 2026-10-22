@@ -20,6 +20,10 @@
   - A fix extracted into a small pure helper and tested only there: the call site that applies it (the
     guard reading its result, the order state is updated in, the timer that rechecks it) is the fix.
     Check a test drives the call site; otherwise the helper's tests still pass with the guard removed.
+  - A test of a failure the change guards against that only reaches its mild form (slowed, not
+    stuck; short of a deadline, not across it), or that enters by an internal call where the system
+    enters another way (calling a stop method directly instead of the real shutdown path). It passes
+    while the case the change exists for goes untested.
   - Tests changed to match new behaviour without the ticket asking for that change.
   - A test that asserts a value equals the constant or literal it is defined from only restates the
     code: it fails only on a deliberate edit. Don't count it as coverage of the behaviour.

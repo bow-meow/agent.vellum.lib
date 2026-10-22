@@ -4,6 +4,13 @@ You read the whole change. Prose and the behaviour it describes often sit in dif
 check each claim against the code wherever it lives, not only the code next to it.
 
 ## Look for
+- **The PR description and the ticket are prose too.** Write one ledger entry for each (path
+  `PR description` or `ticket`, `from`/`to` 0) whose `checked` lists every concrete fact it states
+  about behaviour: limits and deadlines, what is logged or kept, timings and test results, "known
+  limits", what is unchanged or out of scope. Open the code that decides each fact and trace its worst
+  case, not the case the text was written about. A fact the code contradicts, or one true only in
+  part (a limit stated without what else happens when it is hit), is a finding at the code that
+  decides it. "Known limit" or "accepted" in the text doesn't make the description of the limit true.
 - Reference tables (exit codes, options, accepted input forms, error lists, state transitions): for
   each value the change adds, returns, accepts or throws, find every site that produces it and compare
   with the table in both directions. A new path returning an existing code under a new cause, or a

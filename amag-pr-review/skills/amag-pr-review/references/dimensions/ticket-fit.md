@@ -10,6 +10,8 @@ Does the change actually solve the ticket? You get the full Jira issue.
 - **Acceptance criteria**: map each one to the code that satisfies it. List any criterion with no code.
 - **Ticket comments**: the root cause and agreed approach are often worked out there. Does the change
   match what was agreed?
+- **Open checks**: a check the ticket, its comments or notes it links ask for ("check X", "confirm Y
+  before shipping") that neither the change nor the PR description addresses.
 - **Sibling PRs**: a gap covered by another PR on the same ticket is not a gap. Say which PR covers it.
 - **Scope creep**: changes unrelated to the ticket.
 

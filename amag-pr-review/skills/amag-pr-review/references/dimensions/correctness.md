@@ -14,11 +14,6 @@
   "nothing in the way", a classifying lookup that fails drops items into the harsher branch, and a
   success that records nothing leaves the next unattended run choosing the destructive default.
   Compare with sibling probes in the change that do report "not checked".
-- An input the change now handles differently (a setting, preference or request field): list the
-  kinds of value it can hold (empty, the default, each format it accepts, values that point at this
-  system vs somewhere else) and compare what the base branch produced for each with what the change
-  produces. Any kind whose output changed without the ticket asking is a finding, Medium when a client
-  stores what it was given and can't recover on its own.
 - Error handling: swallowed exceptions, broad `catch` that hides a real failure, errors that leave state
   half-written (DB row written, cache not; message acked, work not done; an in-memory copy updated
   before the write it mirrors, so a failed write leaves memory claiming saved), missing rollback, error paths
@@ -30,9 +25,6 @@
   different job shown in an existing progress view): list every message, hint, label and summary that
   code prints and check each still reads right for the new kind. Sibling hint paths often get the new
   flag in one place and keep the old advice in another.
-- A branch, option or command the change replaces or removes: list what the old one did besides its
-  main job (cleared a saved record, reset a flag, released something) and check the replacement still
-  does it, or that dropping it was intended.
 - A confirmation before a destructive or hard-to-undo action: its default should be the safe answer,
   and keystrokes buffered while earlier work ran must not answer it. Compare with the change's other
   prompts.

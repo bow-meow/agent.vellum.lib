@@ -16,6 +16,8 @@ test('statusOf makes every severity but Info a change, and Info a note', () => {
 test('areaOf takes the first known name, a dimension or a reviewer, and falls back to a plain review', () => {
   assert.deepEqual(areaOf('design-quality', 'tests-design'), ['🏗️', 'Design']);
   assert.deepEqual(areaOf(null, 'tests-design'), ['🧪', 'Tests']);
+  assert.deepEqual(areaOf('regression'), ['🔁', 'Regression']);
+  assert.deepEqual(areaOf('claims'), ['📝', 'Claims']);
   assert.deepEqual(areaOf('combined', 'msbuild-invalidation'), ['🔎', 'Review']);
   assert.deepEqual(areaOf(), ['🔎', 'Review']);
 });

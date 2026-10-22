@@ -19,7 +19,8 @@ const AREAS = {
   correctness: ['🐛', 'Correctness'], 'tests-history': ['🧪', 'Tests'], 'tests-design': ['🧪', 'Tests'],
   'design-quality': ['🏗️', 'Design'], security: ['🔒', 'Security'], 'concurrency-races': ['🧵', 'Concurrency'],
   'resources-performance': ['⚡', 'Performance'], sql: ['🗄️', 'SQL'], docs: ['📄', 'Docs'],
-  styles: ['🎨', 'Styles'], 'ticket-fit': ['🎫', 'Ticket fit'],
+  styles: ['🎨', 'Styles'], 'ticket-fit': ['🎫', 'Ticket fit'], regression: ['🔁', 'Regression'],
+  claims: ['📝', 'Claims'],
 };
 const NO_AREA = ['🔎', 'Review'];
 export const areaOf = (...names) => names.map(n => AREAS[String(n ?? '').trim()]).find(Boolean) ?? NO_AREA;

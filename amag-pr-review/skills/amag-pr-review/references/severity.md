@@ -58,7 +58,7 @@ note or a follow-up reply is one unlabelled sentence between header and footer.
 1. Header line: `<icon> **<area> · <change needed | note>**`. The area comes from the finding's
    `dimension` when it names a checklist (correctness 🐛, tests-history 🧪, design-quality 🏗️,
    security 🔒, concurrency-races 🧵, resources-performance ⚡, sql 🗄️, docs 📄, styles 🎨,
-   ticket-fit 🎫), else from the first reviewer that raised it, else `🔎 Review`. Reviewer names,
+   ticket-fit 🎫, regression 🔁, claims 📝), else from the first reviewer that raised it, else `🔎 Review`. Reviewer names,
    confidence and tokens aren't posted. The terminal table shows them, and the run log
    (`runlog.mjs`, under `C:\repos\ai-review\.log`) keeps them with every finding for tuning.
    A finding's tokens are its share of the run: each reviewer's tokens split over the findings it
@@ -147,8 +147,9 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
   (Seen on symmetryclassic: "reflect over the `[SdkHidden]` routes in `definitions/*Services.cs`", which
   are code-gen templates, not compiled C#.)
 - A consequence the ticket or its comments already acknowledge as intended: a breaking SDK change with
-  a release note, a deliberate trade-off, a behaviour the triage chose. Raise it only for a part they
-  don't cover, and say what that part is. (Seen on symmetryclassic PR 5362: "making `VisitorInfo`
+  a release note, a deliberate trade-off, a behaviour the triage chose. Check the code does what the
+  acknowledgement describes first: raise it for any part they don't cover or describe wrongly (a
+  "known limit" whose real worst case is larger than stated), and say what that part is. (Seen on symmetryclassic PR 5362: "making `VisitorInfo`
   nullable breaks SDK consumers; add a release note", when the ticket's triage comment already carried
   that release note. In `definitions/*.cs` templates, nullable means "(optional)" in the generated SDK
   docs, so the nullability itself was the fix.)
@@ -171,6 +172,9 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
 - A retry, poll or redial called unbounded ("indefinitely", "until reload") without checking for a
   higher-level backstop that already ends it: a watchdog, a connection-lost page, a session timeout.
   Name the backstop you checked for; raise it only if none exists or it fires too late to matter.
+  A backstop that ends the wait by restarting or killing the process doesn't count when everything
+  that thread does stops until it fires, or the restart loses work held in memory: the restart is
+  the failure. Nor does one that runs inside the component that may be the one hung.
 - Proposing a shared-call or dedupe helper to wrap a call that already goes through that same helper:
   the wrap stacks a second timeout or share on the first and changes nothing else.
 - A missing test for one copy of generated code when another copy generated from the same template,

@@ -193,9 +193,12 @@ If git reports "dubious ownership" for a repo, skip it and tell the user.
 
 | `changed` | Reviewers |
 |---|---|
-| < 200 | `combined` (all dimension files except ticket-fit) + `ticket-fit` (if ticket) |
-| 200–1000 | `correctness` · `concurrency-races` · `resources-performance` (+`sql` if SQL) · `tests-design` (tests-history + design-quality) · `ticket-fit` (if ticket) · `security` (always: a new handler or grant needn't contain a security keyword) · `docs` · `styles` (if `styles` ≥ 100) |
-| > 1000 | `node $S/scripts/anchors.mjs split $W/context.diff $W/chunks 800`; run the 200–1000 set minus ticket-fit/docs/styles **per chunk** (DIFF_FILE = the chunk, OUT_FILE and COVERAGE_FILE suffixed `-<n>`); ticket-fit, docs and styles once over the whole diff (docs needs the code behind each claim, which a chunk rarely holds) |
+| < 200 | `combined` (all dimension files except ticket-fit and claims) + `ticket-fit` (if ticket) + `claims` (if a PR description or ticket) |
+| 200–1000 | `correctness` · `regression` · `concurrency-races` · `resources-performance` (+`sql` if SQL) · `tests-design` (tests-history + design-quality) · `ticket-fit` (if ticket) · `claims` (if a PR description or ticket) · `security` (always: a new handler or grant needn't contain a security keyword) · `docs` · `styles` (if `styles` ≥ 100) |
+| > 1000 | `node $S/scripts/anchors.mjs split $W/context.diff $W/chunks 800`; run the 200–1000 set minus ticket-fit/claims/docs/styles **per chunk** (DIFF_FILE = the chunk, OUT_FILE and COVERAGE_FILE suffixed `-<n>`); ticket-fit, claims, docs and styles once over the whole diff (docs and claims need the code behind each claim, which a chunk rarely holds) |
+
+`claims` runs alongside the others, never first: its verdicts aren't shown to other reviewers, so a
+wrong "holds" can't settle a claim for them. Two independent checks of a claim beat one and an echo.
 
 Each prompt = [references/prompts/reviewer.md](references/prompts/reviewer.md) with slots filled:
 - `REVIEWER`: the name above. `SKILL_DIR`: this skill's base directory (Windows path).
@@ -203,11 +206,17 @@ Each prompt = [references/prompts/reviewer.md](references/prompts/reviewer.md) w
 - `CHECKLIST_FILES`: the dimension file(s) under `references/dimensions/` for that reviewer +
   `references/languages/<lang>.md` for each language detected (absolute paths).
 - `MODE`: `PR mode (#<id>: <title>)` or `local mode (<ticketKey>, uncommitted changes included)`.
+  **`regression` is blind**: `MODE` without the title, and `TICKET_SUMMARY`, `TICKET_FILE` and
+  `PR_DESCRIPTION_FILE` all `none`. It rebuilds old and new behaviour from the code alone, so the
+  author's account can't anchor it; `claims` and verify hold that account against the code.
 - `REPOS`: `<repo>: <worktree path>` per repo, then one line per fetched package (no `error`):
   `<name>@<version> (published package, read-only; original source under src/): <path>`.
   `TICKET_SUMMARY`: contents of `ticket-summary.txt`. `TICKET_FILE`: `$W/ticket.md` (Windows path), or
   `none` without a ticket. Every reviewer gets it, not only ticket-fit: the summary drops the comments,
   and a triage comment can already accept the consequence a reviewer is about to flag.
+  `PR_DESCRIPTION_FILE`: `$W/pr-description.md` (Windows path), written once in step 4 with the Write
+  tool from `pr.json`'s title and description (PR mode), or `none` (local mode). It's the author's
+  claim about the change: reviewers check what it states against the code.
 - `DIFF_FILE`: `$W/context.diff` (Windows path). `OUT_FILE`: `$W/cand-<reviewer>.json`.
   `COVERAGE_FILE`: `$W/cov-<reviewer>.json`.
 - `EXTRA_MATERIAL`: ticket-fit → `Sibling PRs: $W/siblings.json`;
@@ -215,7 +224,8 @@ Each prompt = [references/prompts/reviewer.md](references/prompts/reviewer.md) w
   `combined` → `Forward-scan: $W/forward-<repo>.json` (each); reviewer covering tests-history (`combined`,
   `tests-design`) → `History file: $W/history.txt; Commit messages: $W/commits.txt`; `styles` and `combined` → `Stylesheet facts (leads to
   confirm, not findings): $W/styles-facts-<repo>.json` (each); list several separated by `;`; otherwise `none`.
-- `EXTRA_RULES`: ticket-fit → `Uncertain coverage goes in with terminal_only: true.`; styles →
+- `EXTRA_RULES`: ticket-fit → `Uncertain coverage goes in with terminal_only: true.`; claims →
+  `Your units are the facts in the PR description and the ticket, not the diff. Write one ledger entry per text (path "PR description" or "ticket", side "new", from/to 0) whose checked lists each fact as: fact → holds | doesn't hold: <the code's worst case>. Each fact that doesn't hold is also a candidate, at the code that decides it.`; styles →
   `Your scope is the changed stylesheets and the template classes they style or that no stylesheet styles; read other files only as context.`;
   otherwise `none`.
 
@@ -233,7 +243,7 @@ Fill [references/prompts/verify.md](references/prompts/verify.md): `CANDIDATE_FI
 `$W/comments-others.json` (PR) or `none`; `OURS_PREVIOUS` = `$W/ours-previous.json` or `none`;
 `PREVIOUS_RECHECK` = `$W/previous-recheck.json` or `none`; `DROPPED_PREVIOUS` =
 `$W/dropped-previous.json` or `none`; `SIBLINGS` = `$W/siblings.json`;
-`TICKET_KEY`; `TICKET_FILE` as for the reviewers; `HUMANIZER` = the humanizer skill's `SKILL.md`, or `none` if not installed; `OUT_FILE` =
+`TICKET_KEY`; `TICKET_FILE` and `PR_DESCRIPTION_FILE` as for the reviewers; `HUMANIZER` = the humanizer skill's `SKILL.md`, or `none` if not installed; `OUT_FILE` =
 `$W/verified.json`. Dispatch; retry once on failure (second failure → no posting, no approval, no
 state saved; show the raw candidates in the terminal).
 
@@ -247,7 +257,7 @@ node $S/scripts/recheck.mjs contested $W/verified.json $W/cand-*.json > $W/conte
 
 `[]` → go on. Otherwise fill [references/prompts/recheck.md](references/prompts/recheck.md):
 `CONTESTED_FILE` = `$W/contested.json`; `VERIFIED_FILE` = `$W/verified.json`; `DIFF_FILE`, `REPOS`,
-`SKILL_DIR`, `COMMENTS_OTHERS`, `OURS_PREVIOUS`, `SIBLINGS`, `TICKET_FILE` as for verify; `OUT_FILE` =
+`SKILL_DIR`, `COMMENTS_OTHERS`, `OURS_PREVIOUS`, `SIBLINGS`, `TICKET_FILE`, `PR_DESCRIPTION_FILE` as for verify; `OUT_FILE` =
 `$W/recheck.json`. Dispatch one agent (usage key `recheck`); retry once on failure, and a second
 failure is a tooling problem (step 8). Then merge, keeping the original:
 

@@ -9,7 +9,7 @@ reads its small diff closely; the first pass has to read every chunk the same wa
 A reviewer that errors or writes no file: re-dispatch once. A second failure → record the dimension as
 **uncovered** (blocks approval).
 
-**Coverage check**, as each reviewer finishes (all but ticket-fit and styles):
+**Coverage check**, as each reviewer finishes (all but ticket-fit, claims and styles):
 `node $S/scripts/coverage.mjs check <its DIFF_FILE> $W/cov-<name>.json` (docs adds
 `--only '\.(md|markdown|txt|rst|adoc|resx)$'`: its ledger covers the prose files). Exit 0 → done.
 Exit 1 → `SendMessage` that same agent the `missing` ranges, telling it to check those units the same
