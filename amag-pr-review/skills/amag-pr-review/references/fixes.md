@@ -17,3 +17,8 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   choose (one that registers a formatter, provider or endpoint after configuration has bound): the
   configured choice is silently replaced. Suggest the form that fills the default only while the option
   is unset, and leaves the selection to configuration.
+- A deadline checked between units of work as the cap for a drain or loop whose single unit can block
+  without limit (a query with no timeout, a blocking call): the unit in flight runs past it, and a
+  harder cut that follows (a process kill, a host timeout) ends it before the summary the deadline was
+  meant to log. Pair it with a per-call timeout, or report from a timer that fires while the process
+  is still alive.

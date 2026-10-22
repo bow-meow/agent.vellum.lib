@@ -61,6 +61,13 @@
     existing customer install.
   - Public method signatures or behaviour relied on by other callers (grep callers in the worktree).
   - Config keys and file formats read by other components.
+- A change that makes a stop or shutdown path take longer (a drain, a flush, a join): check the host's
+  stop contract, such as a Windows service's wait hint and checkpoint, systemd's stop timeout or a
+  container's grace period. The new worst case must fit it and keep reporting progress, or tools and
+  installers report a failed stop even though the process exits cleanly.
+- A time limit checked only between iterations, where one iteration can block without limit (a query
+  with no timeout, a blocking call): the iteration in flight runs past the limit. Name what bounds a
+  single iteration, and what happens to the work and its log line if a harder cut follows.
 - Units and conversions: time zones, UTC vs local, milliseconds vs seconds, signed/unsigned.
 - Culture and case: string comparisons that should be ordinal / case-insensitive, parsing that depends
   on the current culture.

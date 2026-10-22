@@ -27,6 +27,11 @@ Races are subtle: name the exact interleaving (thread/request/message A does X, 
     A follow-up that must run once a side effect has started (a restart hint, a cleanup, a state
     write) placed after the awaited call is skipped when cancellation lands mid-call; it belongs in
     a `finally` keyed on "started".
+  - A bounded queue whose producer waits while it is full: list what else the producer thread does
+    (request or event handling, a watchdog or heartbeat, a message pump). A consumer that only slows
+    paces the producer, which may be intended. One that stalls (a lock, a call that never returns)
+    freezes all of that for as long as the stall lasts. Look for a stall check or wait cap that lets
+    the producer move on.
   - Lazy initialisation without `Lazy<T>` / lock / `sync.Once`; double-checked locking without volatile.
   - Lock ordering: two locks taken in different orders on different paths.
   - Timers and event handlers firing during or after teardown/dispose, or after a later event has
