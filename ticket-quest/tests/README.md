@@ -25,7 +25,9 @@ Per scenario (`node suite.mjs list`), `$OUT` being a scratch folder:
 3. `node suite.mjs check $OUT/grades`: exit 0 means every scenario met its bar with valid grades.
 
 Then append the run's totals to that scenario's `history` in `rubric.json`, with the commit the
-skill was at. That history shows whether the skill is drifting.
+skill was at. That history shows whether the skill is drifting. A change that failed the suite goes
+in the history too, marked "not landed". A criterion that keeps failing despite fixes is listed under
+`known_gaps` with what was tried and what the runs showed, so the next attempt starts from there.
 
 `node --test suite.test.mjs` tests the script itself.
 
