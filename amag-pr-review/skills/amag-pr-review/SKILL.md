@@ -182,9 +182,9 @@ If git reports "dubious ownership" for a repo, skip it and tell the user.
   `SELECT|INSERT|UPDATE|DELETE|MERGE|EXEC|SqlCommand|FromSql|Dapper`. If so, per repo:
   `node $S/scripts/sql-index-map.mjs <worktree> --diff <that repo's diff> > $W/index-map-<repo>.json`
   (one file per repo, so a multi-repo ticket doesn't overwrite them).
-- **Packages**, **newer release branches** and **stylesheet facts**: run the scans in
-  [references/context-scans.md](references/context-scans.md) (packages and forward-scan always,
-  styles-scan if `styles` ≥ 1).
+- **Packages**, **other repos**, **newer release branches** and **stylesheet facts**: run the scans in
+  [references/context-scans.md](references/context-scans.md) (all but styles-scan always, styles-scan
+  if `styles` ≥ 1).
 
 ## 5. Dispatch reviewers (parallel, one message)
 
@@ -208,7 +208,9 @@ Each prompt = [references/prompts/reviewer.md](references/prompts/reviewer.md) w
   author's account can't anchor it; `claims` and verify hold that account against the code.
 - `REPOS`: `<repo>: <worktree path>` per repo, then one line per fetched package (no `error`):
   `<name>@<version> (published package, read-only; original source under src/): <path>`, and one
-  per `local` package: `<name> (in <repo>, imported by the changed code): <worktree path>/<local>`.
+  per `local` package: `<name> (in <repo>, imported by the changed code): <worktree path>/<local>`,
+  then the lines `node $S/scripts/xrepo.mjs repos $W` prints, one per other-repo worktree.
+  `NEEDS_FILE`: `$W/needs-<reviewer>.json` (suffixed `-<n>` per chunk, like `OUT_FILE`).
   `TICKET_SUMMARY`: contents of `ticket-summary.txt`. `TICKET_FILE`: `$W/ticket.md` (Windows path), or
   `none` without a ticket. Every reviewer gets it, not only ticket-fit: the summary drops the comments,
   and a triage comment can already accept the consequence a reviewer is about to flag.
@@ -241,9 +243,10 @@ Fill [references/prompts/verify.md](references/prompts/verify.md): `CANDIDATE_FI
 `$W/comments-others.json` (PR) or `none`; `OURS_PREVIOUS` = `$W/ours-previous.json` or `none`;
 `PREVIOUS_RECHECK` = `$W/previous-recheck.json` or `none`; `DROPPED_PREVIOUS` =
 `$W/dropped-previous.json` or `none`; `SIBLINGS` = `$W/siblings.json`;
-`TICKET_KEY`; `TICKET_FILE` and `PR_DESCRIPTION_FILE` as for the reviewers; `HUMANIZER` = the humanizer skill's `SKILL.md`, or `none` if not installed; `OUT_FILE` =
-`$W/verified.json`. Dispatch; retry once on failure (second failure → no posting, no approval, no
-state saved; show the raw candidates in the terminal).
+`TICKET_KEY`; `TICKET_FILE` and `PR_DESCRIPTION_FILE` as for the reviewers; `HUMANIZER` = the humanizer skill's `SKILL.md`, or `none` if not installed; `NEEDS_FILE` =
+`$W/needs-verify.json`; `OUT_FILE` = `$W/verified.json`. Dispatch; retry once on failure (second
+failure → no posting, no approval, no state saved; show the raw candidates in the terminal). Then its
+repo requests, as in after-dispatch.md.
 
 **Recheck** what verify took off the blocking list (dropped, downgraded below Medium, or never
 mentioned), as one disproving agent is all that stands between a defect and an approval, and what it
@@ -310,17 +313,8 @@ is enough to propose request changes. A tooling problem holds, without asking.
 **Skip entirely if verify or recheck failed or any dimension is uncovered**: the next run must review this code
 again.
 
-After the user's last answer (the approval y/n, or the pick on a hold). Declined items: choosing.md step 4.
-For every posted finding and every still-open previous finding: `commentId`, `parentId` (the thread
-root for a `reply`, else `null`), `path`, `line`, `side`, `severity`, `status: 'open'`, `pushbackSeen`, and
-`fingerprint` from `node $S/scripts/state.mjs fingerprint "$WT/<path>" <line>` (new side only; `null`
-for old side). Previous `fixed` → `status: 'fixed'`. `reviewedCommit` = `HEAD_SHA`, except when any
-post failed: then keep the previous `reviewedCommit` (or omit it on a first run) so the failed
-findings are found and posted next time. Write
-`dropped` = every `verified.json` finding with verdict `dropped` (`path`, `line`, `claim`, `reason`),
-plus the previous state's `dropped` entries still in `dropped-previous.json`. Write
-`{reviewedCommit, reviewedAt: <ISO now>, findings: [...], dropped: [...]}` to `$W/state.json` with the Write tool, then
-`node $S/scripts/state.mjs save $WS $REPO $PR < $W/state.json`.
+After the user's last answer (the approval y/n, or the pick on a hold), write and save the state as
+[references/save-state.md](references/save-state.md) says.
 
 ## 10. Cleanup (after step 9, and always after errors)
 
@@ -333,11 +327,12 @@ edited or flipped, and `<id>=<commentId>` per posted comment. Local mode: key
 . /c/repos/ai-review/.work/<ws>-<repo>-PR<id>/env.sh
 node $S/scripts/runlog.mjs append $WS-$REPO-PR$PR $W --pr $WS/$REPO/$PR --head "$HEAD_SHA" --posted <ids> --declined <ids> --edited <ids> --flipped <ids> --comments <id=commentId,...>
 [ -n "$PROGRESS_ID" ] && node $S/scripts/bb.mjs delete $WS $REPO $PR $PROGRESS_ID
+node $S/scripts/xrepo.mjs cleanup $W
 git -C $AR/$REPO worktree remove --force $WT || { rm -rf $WT; git -C $AR/$REPO worktree prune; }
 rm -rf $W
 ```
 
-Local mode: the log line, then `rm -rf $W` only; the ticket worktree is never touched by the review, and
+Local mode: the log line, `xrepo.mjs cleanup $W`, then `rm -rf $W` only; the ticket worktree is never touched by the review, and
 `review-findings.json` stays in the ticket folder.
 `$AR/.deps` is kept in both modes: a published version never changes, so later reviews reuse it.
 
@@ -360,6 +355,7 @@ Closed by a human: <previous findings step 2 closed>   Accepted push-backs: <con
 Reopened: <author-resolved findings that still apply, or none>
 Uncovered: <dimensions, or none>   Ticket: <key or "none found">   Incremental: <yes, since <sha>: kept hunks per file | last reviewed commit gone: full re-review | no>
 Packages: <name@version fetched, name: local path, name@version: error, or none>
+Other repos: <repo@sha8 (kind: ref): why, then requests skipped or refused, or none>
 ```
 
 The overview describes the change. A reviewer's "checked and not raised" note never went through

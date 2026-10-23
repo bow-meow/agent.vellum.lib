@@ -65,6 +65,14 @@ some findings.
   deleted line, in old-file numbering. Prefer a line that appears in the diff (added or context).
 - Read more of the worktree only when the diff context isn't enough (callers, definitions, tests). Use
   grep and ranged reads; don't read whole large files.
+- A finding that turns on code in another repo (the subscriber or server side of a subject, a panel's
+  handler, a generated type's source) when none of the repos below holds it: keep the finding with
+  its "Not confirmed" reason, and append `{"repo": "<name>", "question": "<what you need to see>",
+  "candidates": ["<your ids>"]}` to the JSON array in `{{NEEDS_FILE}}` (create it if it doesn't exist; no requests, no file). Repos you can ask for:
+  symmetryclassic, esg-ng-core-linux, esg-ng-core-m33, esg-ng-ipc, amag.symmetry.nats, natscodegen.
+  You may be sent back with the code to settle it.
+- Evidence read in a context repo (a `REPOS` line marked "read-only context") names it as
+  `<repo>@<sha8>` in `confidence_reason`. Context repos aren't under review: findings stay on the diff.
 - {{EXTRA_RULES}}
 
 ## Material

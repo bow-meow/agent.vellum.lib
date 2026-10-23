@@ -8,6 +8,12 @@ Read from SKILL.md step 4. Run all that apply before dispatching reviewers.
   `tsconfig` `paths` or a workspace link maps into the repo comes back as `local`: its package root
   (source, not the uncommitted `dist` the mapping names), with nothing fetched. It does nothing
   outside npm projects. A record with `error` is not a failure: note it in the terminal and carry on.
+- **Other repos** (after Siblings): `node $S/scripts/xrepo.mjs plan $W $W/siblings.json --have <slugs>`
+  (`<slugs>`: the reviewed repos as `ws/repo`, comma-separated), then per entry with a `ref`, one at a
+  time: `node $S/scripts/xrepo.mjs add $W <slug> <ref> sibling-pr --why "<why>"`. It makes a read-only
+  worktree of each sibling PR's head, so reviewers read the other side of a change, not only its diff.
+  An `invalid` entry or a failed `add` is a terminal note: the sibling's diff is still there. Agents can
+  ask for more repos while they work (after-dispatch.md).
 - **Newer release branches**: per repo, `git -C <clone> fetch -q origin '+refs/heads/release/*:refs/remotes/origin/release/*'`
   (and `<prefix>/*` for DEST `template/x/1.0.0`),
   then `node $S/scripts/forward-scan.mjs <clone> <that repo's diff> <its DEST> --diffs $W/forward > $W/forward-<repo>.json`.

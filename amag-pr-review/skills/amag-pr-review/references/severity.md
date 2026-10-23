@@ -103,6 +103,8 @@ would be (severity). Every candidate and every verified finding carries one:
   Library code isn't "outside the worktree" until a search of it for the package or module name (a
   `package.json` `name`, `tsconfig` `paths`, a project or module reference) comes up empty: in-repo
   libraries are often mapped in rather than installed.
+  Another repo's code is outside the worktree unless a `REPOS` line gives a context worktree for it;
+  read there, at that sha, it can make a finding high.
 - **low**: plausible from the code, not confirmed. A High/Medium finding at low confidence goes to
   verify like any other; it isn't downgraded for that alone. Low is never posted: recheck chases what
   kept it low, then confirms it at high or medium or drops it, and `factcheck.mjs` refuses one that
@@ -196,3 +198,7 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
 - A stop or install timeout cited from an installer or deployment definition without confirming that
   definition ships: it must be referenced from a built package (a feature or component group), not
   orphaned or only referenced from commented-out markup.
+- A minimum on a setting that only a deliberately written test or QA override can reach, raised as a
+  production clock-skew risk when the default and every shipped config sit far above that minimum.
+  (Seen on symmetryclassic SYM-10498: a 1-minute floor on a prune margin that only a hand-written QA
+  settings record can lower from its 1-day default.)
