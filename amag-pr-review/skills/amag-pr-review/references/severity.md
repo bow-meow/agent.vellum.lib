@@ -202,3 +202,6 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
   production clock-skew risk when the default and every shipped config sit far above that minimum.
   (Seen on symmetryclassic SYM-10498: a 1-minute floor on a prune margin that only a hand-written QA
   settings record can lower from its 1-day default.)
+- A start or stop that now runs past the progress hint it reports, when the base branch already
+  overran that hint on the same path by more, and nothing in the product or the platform's tools acts
+  on it.
