@@ -43,3 +43,7 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   ("nothing is lost", "a growing backlog means the reader stopped") without tracing each fact through
   the code that decides it: support acts on it. List each fact with the code that makes it true,
   including the settings and failure paths that make it false, before proposing the text.
+- A dirty-read hint (`NOLOCK`, `READ UNCOMMITTED`) added to a query because its sibling queries carry
+  one: if the plan ever scans, an allocation-order scan can miss committed rows, so the query returns a
+  wrong answer, not just a stale one. Suggest it only after naming a writer to that table that holds
+  wide or long locks, and only where a wrong result is harmless.
