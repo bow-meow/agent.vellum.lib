@@ -182,12 +182,9 @@ If git reports "dubious ownership" for a repo, skip it and tell the user.
   `SELECT|INSERT|UPDATE|DELETE|MERGE|EXEC|SqlCommand|FromSql|Dapper`. If so, per repo:
   `node $S/scripts/sql-index-map.mjs <worktree> --diff <that repo's diff> > $W/index-map-<repo>.json`
   (one file per repo, so a multi-repo ticket doesn't overwrite them).
-- **Private packages**: per repo, `node $S/scripts/deps.mjs <worktree> <that repo's diff> $AR/.deps > $W/deps-<repo>.json`.
-  It fetches, at the lockfile's version, the npm packages that changed files import from a registry
-  other than the public one, so reviewers can read code the model has never seen. It does nothing
-  outside npm projects. A record with `error` is not a failure: note it in the terminal and carry on.
-- **Newer release branches** and **stylesheet facts**: run the scans in
-  [references/context-scans.md](references/context-scans.md) (forward-scan always, styles-scan if `styles` ≥ 1).
+- **Packages**, **newer release branches** and **stylesheet facts**: run the scans in
+  [references/context-scans.md](references/context-scans.md) (packages and forward-scan always,
+  styles-scan if `styles` ≥ 1).
 
 ## 5. Dispatch reviewers (parallel, one message)
 
@@ -210,7 +207,8 @@ Each prompt = [references/prompts/reviewer.md](references/prompts/reviewer.md) w
   `PR_DESCRIPTION_FILE` all `none`. It rebuilds old and new behaviour from the code alone, so the
   author's account can't anchor it; `claims` and verify hold that account against the code.
 - `REPOS`: `<repo>: <worktree path>` per repo, then one line per fetched package (no `error`):
-  `<name>@<version> (published package, read-only; original source under src/): <path>`.
+  `<name>@<version> (published package, read-only; original source under src/): <path>`, and one
+  per `local` package: `<name> (in <repo>, imported by the changed code): <worktree path>/<local>`.
   `TICKET_SUMMARY`: contents of `ticket-summary.txt`. `TICKET_FILE`: `$W/ticket.md` (Windows path), or
   `none` without a ticket. Every reviewer gets it, not only ticket-fit: the summary drops the comments,
   and a triage comment can already accept the consequence a reviewer is about to flag.
@@ -361,7 +359,7 @@ Terminal-only: <unanchorable / uncertain ticket-fit findings>
 Closed by a human: <previous findings step 2 closed>   Accepted push-backs: <conceded Lows, reply gist>
 Reopened: <author-resolved findings that still apply, or none>
 Uncovered: <dimensions, or none>   Ticket: <key or "none found">   Incremental: <yes, since <sha>: kept hunks per file | last reviewed commit gone: full re-review | no>
-Packages: <name@version fetched, name@version: error, or none>
+Packages: <name@version fetched, name: local path, name@version: error, or none>
 ```
 
 The overview describes the change. A reviewer's "checked and not raised" note never went through

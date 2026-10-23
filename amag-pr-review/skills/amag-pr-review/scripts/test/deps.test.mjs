@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { packageOf, importsIn, changedFiles, depNamesInAddedPackageJsonLines, lockEntry, isPublic, registryOf, trustedRegistry, untar, writeSources, plan } from '../deps.mjs';
+import { packageOf, importsIn, changedFiles, depNamesInAddedPackageJsonLines, lockEntry, isPublic, registryOf, trustedRegistry, untar, writeSources, plan, run } from '../deps.mjs';
 
 const REG = 'https://pkgs.dev.azure.com/acme/_packaging/feed/npm/registry/';
 
@@ -100,4 +100,46 @@ test('plan picks private packages imported by changed files and skips public one
   const diff = ['diff --git a/web/src/d.ts b/web/src/d.ts', '--- a/web/src/d.ts', '+++ b/web/src/d.ts', '@@ -3 +3 @@', '-export const x = 0;', '+export const x = 1;', ''].join('\n');
   assert.deepEqual(plan(wt, diff), [{ name: '@acme/ui-services', version: '0.0.101', registry: REG, usedBy: ['web/src/d.ts'] }]);
   assert.deepEqual(plan(wt, ''), []);
+});
+
+test('plan resolves tsconfig paths and workspace links to the in-repo package root', () => {
+  const wt = mkdtempSync(join(tmpdir(), 'deps-l-'));
+  mkdirSync(join(wt, 'api', 'web', 'src'), { recursive: true });
+  mkdirSync(join(wt, 'api', 'sdk', 'internal', 'js', 'src'), { recursive: true });
+  mkdirSync(join(wt, 'api', 'ui'), { recursive: true });
+  writeFileSync(join(wt, 'api', 'sdk', 'internal', 'js', 'package.json'), JSON.stringify({ name: '@acme/sdk-internal' }));
+  writeFileSync(join(wt, 'api', 'ui', 'package.json'), JSON.stringify({ name: '@acme/ui' }));
+  writeFileSync(join(wt, 'api', 'web', 'tsconfig.json'), [
+    '/* Angular "paths" point at build output that is never committed. */',
+    '{', '  "compilerOptions": {', '    "paths": {',
+    '      "@acme/sdk-internal": ["../sdk/internal/js/dist"], // the bare import',
+    '      "@acme/sdk-internal/*": ["../sdk/internal/js/dist/*"],',
+    '    },', '  },', '}',
+  ].join('\n'));
+  writeFileSync(join(wt, 'api', 'web', 'package-lock.json'), JSON.stringify({ packages: {
+    'node_modules/@acme/ui': { resolved: '../ui', link: true },
+  } }));
+  writeFileSync(join(wt, 'api', 'web', 'src', 'g.ts'), [
+    "import { PanelGroupDetails } from '@acme/sdk-internal/models';",
+    "import { Button } from '@acme/ui';",
+    "import { NotMapped } from '@acme/elsewhere';",
+  ].join('\n'));
+  const diff = ['diff --git a/api/web/src/g.ts b/api/web/src/g.ts', '--- a/api/web/src/g.ts', '+++ b/api/web/src/g.ts', '@@ -1 +1 @@', '-x', "+import { Button } from '@acme/ui';", ''].join('\n');
+  assert.deepEqual(plan(wt, diff), [
+    { name: '@acme/sdk-internal', local: 'api/sdk/internal/js', usedBy: ['api/web/src/g.ts'] },
+    { name: '@acme/ui', local: 'api/ui', usedBy: ['api/web/src/g.ts'] },
+  ]);
+});
+
+test('run returns local packages without fetching them', () => {
+  const wt = mkdtempSync(join(tmpdir(), 'deps-r-'));
+  mkdirSync(join(wt, 'web', 'src'), { recursive: true });
+  mkdirSync(join(wt, 'sdk'), { recursive: true });
+  writeFileSync(join(wt, 'sdk', 'package.json'), JSON.stringify({ name: '@acme/sdk' }));
+  writeFileSync(join(wt, 'web', 'tsconfig.json'), JSON.stringify({ compilerOptions: { paths: { '@acme/sdk': ['../sdk/dist'] } } }));
+  writeFileSync(join(wt, 'web', 'package-lock.json'), JSON.stringify({ packages: {} }));
+  writeFileSync(join(wt, 'web', 'src', 'a.ts'), "import { X } from '@acme/sdk';\n");
+  const diff = ['diff --git a/web/src/a.ts b/web/src/a.ts', '--- a/web/src/a.ts', '+++ b/web/src/a.ts', '@@ -1 +1 @@', '-x', "+import { X } from '@acme/sdk';", ''].join('\n');
+  assert.deepEqual(run(wt, diff, join(wt, 'cache')), [{ name: '@acme/sdk', local: 'sdk', usedBy: ['web/src/a.ts'] }]);
+  assert.equal(existsSync(join(wt, 'cache')), false);
 });

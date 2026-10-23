@@ -100,6 +100,9 @@ would be (severity). Every candidate and every verified finding carries one:
 - **medium**: the evidence is in the code, but the outcome depends on something not confirmed: runtime
   config, a caller or consumer outside the worktree, server or library behaviour, or author intent the
   ticket and PR don't settle. `confidence_reason` names that thing, and the comment posts it.
+  Library code isn't "outside the worktree" until a search of it for the package or module name (a
+  `package.json` `name`, `tsconfig` `paths`, a project or module reference) comes up empty: in-repo
+  libraries are often mapped in rather than installed.
 - **low**: plausible from the code, not confirmed. A High/Medium finding at low confidence goes to
   verify like any other; it isn't downgraded for that alone. Low is never posted: recheck chases what
   kept it low, then confirms it at high or medium or drops it, and `factcheck.mjs` refuses one that

@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { dirname, join, normalize, resolve, sep } from 'node:path';
+import { dirname, join, normalize, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 
@@ -115,6 +115,60 @@ export function writeSources(mapText, dest) {
   return n;
 }
 
+// tsconfig.json is JSONC, and its "paths" values ("../sdk/*") contain comment markers, so comments
+// and trailing commas are removed only outside strings.
+export function parseJsonc(text) {
+  const strip = (src, onOther) => {
+    let out = '';
+    const str = /"(?:[^"\\]|\\.)*"?/y;
+    for (let i = 0; i < src.length;) {
+      if (src[i] === '"') { str.lastIndex = i; const s = str.exec(src)[0]; out += s; i += s.length; }
+      else { const [o, n] = onOther(src, i); out += o; i = n; }
+    }
+    return out;
+  };
+  const noComments = strip(text, (s, i) => {
+    if (s.startsWith('//', i)) { const j = s.indexOf('\n', i); return ['', j < 0 ? s.length : j]; }
+    if (s.startsWith('/*', i)) { const j = s.indexOf('*/', i + 2); return ['', j < 0 ? s.length : j + 2]; }
+    return [s[i], i + 1];
+  });
+  return JSON.parse(strip(noComments, (s, i) => [s[i] === ',' && /^,\s*[}\]]/.test(s.slice(i, i + 200)) ? '' : s[i], i + 1]));
+}
+
+export function pathsTarget(tsconfigText, name) {
+  let co;
+  try { co = parseJsonc(tsconfigText).compilerOptions ?? {}; } catch { return null; }
+  const t = co.paths?.[name]?.[0] ?? co.paths?.[`${name}/*`]?.[0];
+  return typeof t === 'string' ? join(co.baseUrl ?? '.', t.replace(/\/\*$/, '')) : null;
+}
+
+const inside = (top, p) => p === top || p.startsWith(top + sep);
+
+// A mapping usually targets build output (dist) that isn't committed; the package root beside it
+// holds the source reviewers need.
+function packageRoot(top, from, name) {
+  for (let d = from; inside(top, d); d = dirname(d)) {
+    const pj = join(d, 'package.json');
+    if (existsSync(pj)) { try { if (JSON.parse(readFileSync(pj, 'utf8')).name === name) return d; } catch { /* not this one */ } }
+    if (d === top) break;
+  }
+  return existsSync(from) ? from : null;
+}
+
+function localPackage(worktree, file, name, project, lock) {
+  const top = resolve(worktree);
+  const link = lock?.packages?.[`node_modules/${name}`];
+  let target = link?.link && typeof link.resolved === 'string' ? resolve(project, link.resolved) : null;
+  for (let d = dirname(resolve(top, file)); !target && inside(top, d); d = dirname(d)) {
+    const ts = join(d, 'tsconfig.json');
+    if (existsSync(ts)) { const t = pathsTarget(readFileSync(ts, 'utf8'), name); if (t) target = resolve(d, t); }
+    if (d === top) break;
+  }
+  if (!target || !inside(top, target)) return null;
+  const root = packageRoot(top, target, name);
+  return root ? relative(top, root).split(sep).join('/') : null;
+}
+
 function findLock(worktree, file) {
   const top = resolve(worktree);
   for (let d = dirname(resolve(top, file)); d.startsWith(top); d = dirname(d)) {
@@ -160,12 +214,20 @@ export function plan(worktree, diffText) {
     if (/(^|\/)package\.json$/.test(file)) names = depNamesInAddedPackageJsonLines(added);
     else if (CODE_EXT.test(file) && existsSync(join(worktree, file))) names = importsIn(readFileSync(join(worktree, file), 'utf8'));
     else continue;
+    if (!names.size) continue;
     const project = findLock(worktree, file);
-    if (!project || !names.size) continue;
-    const lock = JSON.parse(readFileSync(join(project, 'package-lock.json'), 'utf8'));
+    const lock = project ? JSON.parse(readFileSync(join(project, 'package-lock.json'), 'utf8')) : null;
     for (const name of names) {
-      const e = lockEntry(lock, name);
-      if (!e?.resolved || isPublic(e.resolved)) continue;
+      const e = lock && lockEntry(lock, name);
+      if (!e?.resolved) {
+        const local = localPackage(worktree, file, name, project, lock);
+        if (!local) continue;
+        const key = `${name}@${local}`;
+        if (!wanted.has(key)) wanted.set(key, { name, local, usedBy: [] });
+        wanted.get(key).usedBy.push(file);
+        continue;
+      }
+      if (isPublic(e.resolved)) continue;
       const key = `${name}@${e.version}`;
       if (!wanted.has(key)) wanted.set(key, { name, version: e.version, registry: registryOf(e.resolved, name), usedBy: [] });
       wanted.get(key).usedBy.push(file);
@@ -177,6 +239,7 @@ export function plan(worktree, diffText) {
 export function run(worktree, diffText, cacheDir) {
   const npmrc = userNpmrc();
   return plan(worktree, diffText).map(p => {
+    if (p.local) return p;
     const rec = { name: p.name, version: p.version, registry: p.registry, usedBy: p.usedBy };
     if (!VERSION_RE.test(p.version) || !p.registry || !REGISTRY_RE.test(p.registry)) return { ...rec, error: 'unrecognised version or registry in package-lock.json' };
     if (!trustedRegistry(p.registry, npmrc)) return { ...rec, error: 'registry is not configured in the user .npmrc' };
