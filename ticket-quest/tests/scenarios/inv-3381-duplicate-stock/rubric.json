@@ -1,0 +1,98 @@
+{
+  "id": "inv-3381-duplicate-stock",
+  "summary": "Resumed ticket with a HANDOVER.md in the ticket dir; QA needs a way to rerun the repro; the engineer leaves a hardcoded repro.sh in the repo root and it lands in the diff.",
+  "criteria": [
+    {
+      "id": "resume-read",
+      "text": "On picking the ticket up, before the step-3 work, reads the ticket dir's existing HANDOVER.md (named) to recover where the earlier session left off."
+    },
+    {
+      "id": "diff-scope",
+      "text": "At the completion gate, flags repro.sh in the repo root as outside the ticket's diff, so it comes out of the repo and the diff is only the fix, its migration and its test."
+    },
+    {
+      "id": "no-just",
+      "text": "Neither the engineer prompt nor the close-out adds or asks for a justfile recipe (or other repo tooling) to run the repro."
+    },
+    {
+      "id": "handover-location",
+      "text": "Records the handover in the ticket dir's HANDOVER.md, not as handover notes on the Jira ticket."
+    },
+    {
+      "id": "handover-content",
+      "text": "Says what HANDOVER.md is updated with: what changed, how it was verified, and what is left or the next step."
+    },
+    {
+      "id": "handover-tools",
+      "text": "Says HANDOVER.md lists the repro script with what it does and how to run it."
+    }
+  ],
+  "pass": {
+    "mean": 4.5,
+    "min": 4
+  },
+  "history": [
+    {
+      "date": "2026-10-23",
+      "skill": "df2d9d3 (baseline), 8-criterion rubric before rescope",
+      "scores": [
+        1,
+        3,
+        1
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "df2d9d3 + uncommitted v2 (not landed), 8-criterion rubric before rescope",
+      "scores": [
+        3,
+        3,
+        3
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "df2d9d3 + uncommitted v2 handover/tools (not landed), rescoped 6-criterion rubric",
+      "scores": [
+        3,
+        2,
+        4
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "df2d9d3 + uncommitted v3 (gate names repro.sh, close-out names HANDOVER headings; not landed), rescoped rubric",
+      "scores": [
+        4,
+        4,
+        2
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "df2d9d3 + uncommitted v4 (gate labels report files fix/test/helper; Tools heading says what it does; not landed), rescoped rubric",
+      "scores": [
+        4,
+        4,
+        4
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "v5: handover/tools section, gate labels report files fix/test/helper, excuse row for repo-root repro scripts (passed full suite)",
+      "scores": [
+        6,
+        4,
+        5
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    }
+  ],
+  "previous_version": "An earlier draft had QA ask for a just recipe and handover notes on the Jira ticket, and the engineer add the recipe. Against it: baseline df2d9d3 scored 1,2,1; v1 2,2,3; v2 1,2,2 (2026-10-23). Haiku quoted the skill's rule and still did what the ticket asked. Dropped because it tested refusing a direct request, not what real use triggers.",
+  "rescoped": "2026-10-23: dropped tools-path, powershell and tool-doc after one run on the 8-criterion rubric (base 1,3,1; v2 3,3,3; all six missed those three). Haiku reads the engineer report before writing part B and copies its repro.sh. Where a helper is written and in what form is the engineer agent's job (agents/engineer.md), tested on the engineer directly. Kept the orchestrator's share: reading and writing HANDOVER.md, flagging the repo-root script at the gate, adding no just recipe."
+}

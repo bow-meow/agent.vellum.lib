@@ -117,6 +117,36 @@
         7
       ],
       "grader": "grader.md (strict), Sonnet; runs on Haiku"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "df2d9d3 + uncommitted v1 handover/tools section (not landed)",
+      "scores": [
+        7,
+        6,
+        7
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "df2d9d3 + uncommitted v2 handover/tools (not landed)",
+      "scores": [
+        7,
+        6,
+        8
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "v5: handover/tools section, gate labels report files fix/test/helper, excuse row for repo-root repro scripts (passed full suite)",
+      "scores": [
+        6,
+        8,
+        8
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
     }
   ],
   "known_gaps": [

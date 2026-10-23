@@ -53,6 +53,8 @@ tickets progress at different speeds; never block one on another.
    and confirm the branch **slug**.
 2. **Isolate — one git worktree per repo per ticket** (see [Worktree mechanics](#worktree-mechanics)).
    Detect a pre-existing ticket dir or branch and ask build-on vs start-fresh rather than clobbering.
+   On build-on, read the ticket dir's `HANDOVER.md` before anything else; on a new ticket, create it
+   (see [Handover and tools](#handover-and-tools)).
 3. **Establish context yourself.** Search, read the relevant sections, locate the implementation,
    note exact files and lines, prior attempts, and what QA saw. When a search hit sits under a
    folder that has its own `CLAUDE.md`, read that file before opening anything else there: a
@@ -61,7 +63,9 @@ tickets progress at different speeds; never block one on another.
    and set a Jira estimate from the scope you found. Write down three things before routing; a
    fix the ticket already proposes gets them too:
    - **Open items:** every check, question or untested case named in the ticket, its comments, and
-     any notes or handover it links. Each one reaches the completion gate as done or not done.
+     any notes or handover it links. Each one reaches the completion gate as done or not done. An
+     ask there for a `just` recipe, a repo script or handover notes on the ticket is answered by a
+     `tools\` script and `HANDOVER.md` instead: record it so, never pass it on as asked.
    - **Behaviour baseline:** what the code does today on every path the change touches: its
      callers, the modes and products it runs in (a shared file runs in each of them), the inputs and
      config values it reads, and its failure paths. A path with no test gets a characterization
@@ -85,7 +89,8 @@ tickets progress at different speeds; never block one on another.
    base; the files, lines, and evidence you found; the path of every module `CLAUDE.md` the task
    touches; the behaviour baseline, impact list and open items this task covers, and the
    characterization tests to add first; constraints (compatibility, conventions, generated
-   artifacts to leave alone); exactly which build and tests to run and in which
+   artifacts to leave alone); the ticket's `tools\` path, where any helper goes as a `.ps1`;
+   exactly which build and tests to run and in which
    environment (see [Non-negotiables](#non-negotiables)); and that it returns the
    [engineer report](#engineer-report). Give it your findings, not the whole conversation. One
    engineer per ticket at a time. Parallel engineers only across tickets or on genuinely
@@ -94,7 +99,8 @@ tickets progress at different speeds; never block one on another.
 5. **Verify the report yourself** before accepting it: `git status` and `git diff --stat` in each
    worktree, read the diff, run the build and the targeted tests (or read the pasted output
    critically), reproduce the original bug where possible. Revert regenerated artifacts so the
-   diff is only the real change. For significant or risky work, dispatch **one fresh engineer** to
+   diff is only the real change, then update `HANDOVER.md`. For significant or risky work, dispatch
+   **one fresh engineer** to
    review the diff — never the one that wrote it. A gap goes back to step 4 with the specific gap
    named; a trigger goes to step 6.
 6. **Escalate to the advisor** with the [advisor request](#advisor-request), with the
@@ -111,15 +117,32 @@ tickets progress at different speeds; never block one on another.
      list names to its worst form (stuck, not just slow). A test that passes without reaching that
      case is listed as not verifying it;
    - every open item from step 3 is done, or listed in the report as not done, with why;
-   - no known blocking issue, no temporary or debug code, and the diff is coherent and scoped to
-     the ticket, with any module-map change (see [Module maps](#module-maps)) verified and
-     listed apart from the ticket change.
+   - no known blocking issue, no temporary or debug code in the repos, and the diff is coherent
+     and scoped to the ticket, with any module-map change (see [Module maps](#module-maps))
+     verified and listed apart from the ticket change;
+   - copy the report's files-changed list and label each path `fix`, `test` or `helper` (anything
+     else, repro scripts too): a `helper` or `justfile` path in a worktree fails this item.
 8. **Close out honestly.** Jira status and worklog match reality: a logging-only or partial
    deliverable is not "fixed". Commit, push, or PR only on the user's explicit say-so. Report per
    ticket: what changed, what you verified and how, what you could not verify, each open item and
    its state, each impact-list entry and how the change handles it, any behaviour the change
    deliberately alters, and which module
    maps were added or refreshed — they go in their own commit in the same PR when the user commits.
+   Write it into `HANDOVER.md` and say in the report what went under each heading: `Changed and
+   verified`, `Left and next step`, `Tools` (each script: what it does, how to run it). Notes
+   never go on Jira.
+
+## Handover and tools
+
+The ticket dir (`<root>\<TICKET>\`, beside the worktrees, in no repo, never committed) holds:
+
+- **`HANDOVER.md`**: created with the worktrees, updated after each verified task and at close-out,
+  read first on pickup. Headings, each filled: `Goal and repos` · `Open items, baseline, impact`
+  (each with its state) · `Changed and verified` · `Left and next step` · `Tools` (each script,
+  what it does, how to run it). Handover notes live only here, never on the Jira ticket.
+- **`tools\*.ps1`**: every repro, driver, seeding or test helper is a PowerShell script here with a
+  help block (`.SYNOPSIS`, `.EXAMPLE`) and parameters. Never a repo script or a `justfile` recipe,
+  whoever asks; a helper in another language is rewritten as `.ps1`, not moved.
 
 ## Module maps
 
@@ -163,8 +186,9 @@ alternatives, trade-offs, risks, ordered next steps, and what to verify afterwar
 
 Every delegated task returns: what changed; files changed; decisions; checks run, each with the
 case it exercises and the entry point it used; results; risks; how the change handles each
-impact-list entry it was given; any characterization test it had to change, and why; anything
-needing an orchestrator decision. Treat it as a lead for your verification, not as fact.
+impact-list entry it was given; any characterization test it had to change, and why; each script
+it added to `tools\` and how to run it; anything needing an orchestrator decision. Treat it as a
+lead for your verification, not as fact.
 
 ## Testing
 
@@ -200,34 +224,11 @@ node scripts/mk-worktree.mjs <TICKET> <slug> --repo <clone>[=<base>] [--repo ...
   created · `2` git failed part-way — already rolled back, fix the cause and re-run ·
   `3` the ticket dir or branch **already exists**: surface it and let the user choose build-on vs
   start-fresh. Never clobber, and never delete the existing one yourself to get past a `3`.
-- **Build/run conveniences (environment-specific — the four steps below are an example).** A bare
-  worktree often cannot be built or tested until you seed it, and what that takes depends entirely
-  on your repos. The steps below are what mine (`symmetryclassic` / `esg-ng-core-linux`) need,
-  given as an illustration of the pattern rather than as instructions to follow literally. When the
-  ticket will need building or sim-testing, wire up the equivalent for the repos it touches:
-  1. **codejock symlink** — `<TICKET>\codejock` → `C:\repos\codejock` (classic MFC `.vcxproj`
-     references CodeJock as a sibling of the checkout root; needs Developer Mode / elevation).
-  2. **classic `bin\debug` seed** — robocopy `/XO` from the complete build under
-     `C:\repos\symmetry.build` that matches the worktree's base (e.g.
-     `C:\repos\symmetry.build\11.1.0\symmetryclassic\Source\bin\debug` for a `release/11.1.0-*` base)
-     → the classic worktree's `Source\bin\debug`, so `sym start` runs without a full classic build.
-     `just seed-sym <build>` in `symmetry.world` does this without prompting. Never seed from
-     `C:\repos\symmetryclassic`: its branch and build date drift, so the worktree runs a mix of fresh
-     and stale binaries.
-  3. **`INSTALL` seed** — robocopy `/XO` `C:\repos\INSTALL` → `C:\repos\ticket-work\<TICKET>\INSTALL`.
-     **Required for docker-sim testing:** the sims now *bind-mount* the worktree's build outputs
-     (they no longer bake a WSL image), so an unseeded worktree cannot spin sims.
-  4. **`.sym-target`** — set to `<TICKET>` so `symmetry.world` `just` build/run/log recipes act on
-     this worktree.
-  Seed sources must be built first (the matching `symmetry.build` build + main esg). When
-  `C:\repos\symmetry.world` exists, create the worktrees there with
-  `just mk-worktree <ticket> <slug> --repos classic=<base>[,<other>=<base>...] [--seed <build>]` instead of
-  `mk-worktree.mjs`: it does all four steps plus the worktrees in one go and needs no console. The seed
-  build is inferred from the classic base; pass `--seed` when no `symmetry.build` build matches it.
-  It has no `--dry-run` and refuses an existing ticket dir, so show the user the plan first and treat
-  "already exists" as exit `3` above. Apply 1–4 by hand only when the worktrees already exist, setting
-  step 4 before step 2 because `seed-sym` follows the active target; robocopy `/XO` is additive and
-  never regresses a worktree's own freshly-built binaries.
+- **Build/run conveniences.** A bare worktree often can't be built or sim-tested until it is
+  seeded, and when `C:\repos\symmetry.world` exists its `just mk-worktree` replaces
+  `mk-worktree.mjs`. Before creating worktrees for a ticket that will need building or
+  sim-testing, read [references/build-conveniences.md](references/build-conveniences.md): the
+  seeding steps, the one-step `just mk-worktree`, and its exit-`3` handling.
 
 ### Base defaults
 
@@ -294,6 +295,7 @@ Each of these is here because an agent was observed violating it, not because it
 | "The ticket already proposes the fix; build it as written." | The proposal covers what the ticket asked. Most regressions are behaviour nobody listed: the baseline and impact list are still yours to write. |
 | "Clear cause, bounded change, approved and tested: routine, the open items are just verification." | Observed in testing: written right after noting the change blocks its callers. A new wait on a caller's thread, a contract change or shared code goes to the advisor, whoever approved it and whenever it's due. |
 | "It has no tests, so there's nothing to break." | No tests means nothing will tell you it broke. Pin today's behaviour on the paths you touch before changing them. |
+| "The repro script is a tool QA needs, not production code; it can stay in the repo." | Not the fix and not its test, so it's a helper: it leaves the repo and is redone as `tools\<name>.ps1`, listed in `HANDOVER.md`. |
 | "The tests pass." | Through which entry point, and which failure? Tests that use an internal shortcut, or only a mild form of the failure, pass while the real path breaks. |
 | "I'll commit/push so it's ready when they're back." | Commit, push, and PR are the user's explicit call, never a default. |
 | "The grep hit is right there, I'll open the code." | The module's `CLAUDE.md` is ~400 tokens and names the trap you are about to re-derive over five reads. Read it first. |
