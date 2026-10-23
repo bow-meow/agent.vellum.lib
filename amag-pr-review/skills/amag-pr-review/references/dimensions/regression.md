@@ -22,6 +22,9 @@ decides which ones the ticket asked for.
   what the base branch produced for each with what the change produces. A changed default in a config
   file other components also load changes them too. Any kind whose output changed without the ticket
   asking is a finding, Medium when a client stores what it was given and can't recover on its own.
+  A setting that switches a new feature off must leave the system as it was: check the off path
+  creates none of the feature's resources (a queue, file, table, registration) and logs no errors
+  about them.
 - **Failure paths**: for each error the changed code can meet (unreachable dependency, timeout,
   exception, empty result), what the old code did (deny, throw, retry, log, give up) and what it does
   now. A path that used to refuse and now proceeds on old or default data (fail-closed to fail-open) is

@@ -39,3 +39,7 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   when the work that threw stays stuck afterwards: the loop keeps the watchdog fed, so the restart that
   would have recovered the stuck work never comes. Stop feeding the watchdog once that work has failed,
   or leave the restart to fire.
+- Prose written as a fix (a release note, doc, event or log text) that states a guarantee or a cause
+  ("nothing is lost", "a growing backlog means the reader stopped") without tracing each fact through
+  the code that decides it: support acts on it. List each fact with the code that makes it true,
+  including the settings and failure paths that make it false, before proposing the text.

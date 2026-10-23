@@ -8,6 +8,9 @@ Does the change actually solve the ticket? You get the full Jira issue.
   there another path that still reaches the bug (a second caller, another message handler, the
   server-side and the panel-side)?
 - **Acceptance criteria**: map each one to the code that satisfies it. List any criterion with no code.
+  A requirement on an operation ("catch every exception from the send", "log failures through X")
+  applies everywhere the change performs that operation: find each place (a fallback, a startup or
+  recovery path, a second caller) and check it, not only the first one that meets it.
 - **Ticket comments**: the root cause and agreed approach are often worked out there. Does the change
   match what was agreed?
 - **Open checks**: a check the ticket, its comments or notes it links ask for ("check X", "confirm Y

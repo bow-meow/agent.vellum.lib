@@ -11,6 +11,9 @@
 - ABI: changing a struct or class layout used across shared libraries or IPC without rebuilding every
   consumer.
 - Exceptions thrown across C APIs or thread boundaries.
+- A constructor that starts a thread, timer or callback before later statements that can throw: a
+  constructor that throws never runs its destructor, so the work keeps running against an object
+  being torn down. Start it as the constructor's last step, or stop it before rethrowing.
 - In C++ (not C), a new `#define` for a constant value where a typed `const`/`constexpr` or an enum
   fits: the macro has no type and no scope.
 - A failure or timeout branch reported only through a debug-only macro (`TRACE`, `ATLTRACE`,
