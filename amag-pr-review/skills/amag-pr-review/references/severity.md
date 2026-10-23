@@ -190,3 +190,6 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
   stranded nor overtaken by newer ones. Ask for a cap only if the items it leaves behind still end up
   somewhere they'll be delivered, in order. (Seen on symmetryclassic SYM-10359: capping the inline drain
   of a conditional-command outbox would strand the leftovers, and new direct sends would overtake them.)
+- A stop or install timeout cited from an installer or deployment definition without confirming that
+  definition ships: it must be referenced from a built package (a feature or component group), not
+  orphaned or only referenced from commented-out markup.
