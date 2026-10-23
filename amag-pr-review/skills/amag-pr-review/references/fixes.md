@@ -35,3 +35,7 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   on the in-progress state.
 - A comment stating a worst case for a per-instance limit (at most N%, at most N items) as the
   caller's worst case: one caller can drive several instances, and its real cost is their sum.
+- A catch-and-continue around work on a loop or timer that also feeds a watchdog or liveness signal,
+  when the work that threw stays stuck afterwards: the loop keeps the watchdog fed, so the restart that
+  would have recovered the stuck work never comes. Stop feeding the watchdog once that work has failed,
+  or leave the restart to fire.
