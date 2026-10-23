@@ -91,6 +91,46 @@
         5
       ],
       "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r1 of the shared-tools change (not landed)",
+      "scores": [
+        6,
+        4,
+        5
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r4 of the shared-tools change (not landed)",
+      "scores": [
+        5,
+        5,
+        5
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r16 of the shared-tools change (not landed on Haiku)",
+      "scores": [
+        4,
+        5,
+        4
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "landed: shared tools folder rule (step-3 _tools lookup, helper kind table + worked example, gate rows with command line, Tools rows in close-out); orchestrator model haiku -> sonnet",
+      "scores": [
+        6,
+        5,
+        6
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
     }
   ],
   "previous_version": "An earlier draft had QA ask for a just recipe and handover notes on the Jira ticket, and the engineer add the recipe. Against it: baseline df2d9d3 scored 1,2,1; v1 2,2,3; v2 1,2,2 (2026-10-23). Haiku quoted the skill's rule and still did what the ticket asked. Dropped because it tested refusing a direct request, not what real use triggers.",

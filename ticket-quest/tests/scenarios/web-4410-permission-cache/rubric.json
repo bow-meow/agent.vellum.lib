@@ -147,6 +147,46 @@
         8
       ],
       "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r1 of the shared-tools change (not landed)",
+      "scores": [
+        7,
+        7,
+        8
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r4 of the shared-tools change (not landed)",
+      "scores": [
+        7,
+        8,
+        8
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r16 of the shared-tools change (not landed on Haiku)",
+      "scores": [
+        8,
+        7,
+        8
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "landed: shared tools folder rule (step-3 _tools lookup, helper kind table + worked example, gate rows with command line, Tools rows in close-out); orchestrator model haiku -> sonnet",
+      "scores": [
+        8,
+        8,
+        8
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
     }
   ],
   "known_gaps": [

@@ -44,7 +44,11 @@ write tests that mirror implementation details.
 - Change the base branch, the worktree, or files outside the task's scope without saying so.
 - Leave debug or temporary code behind.
 - Put a repro or helper script in the repo or add a `justfile` recipe for it. Write it as a
-  PowerShell script with a help block in the ticket's `tools\` path the task gives you.
+  PowerShell script with a help block where the task puts it: a repro or seed script in the
+  ticket's `tools\`; a driver, monitor or probe in the shared tools folder, with its values as
+  parameters and a row in its index.
+- Write a helper that does the job of a script in the shared tools folder, wrapped or hardcoded.
+  Run that script, or extend it there (parameters, its index row).
 - Report success you did not observe.
 
 ## When reviewing another engineer's diff
@@ -63,6 +67,7 @@ Return these headings, every one, even when the answer is "none":
 - **Checks run** — each build/test command and its environment.
 - **Results** — pass/fail per check, with the relevant output pasted for anything that failed or
   that you could not run.
-- **Tools made** — each script added to `tools\`, what it does and how to run it.
+- **Tools made** — each script added or changed, by its path (shared folder or ticket `tools\`),
+  what it does and how to run it.
 - **Risks** — what remains uncertain or untested.
 - **Needs a decision** — anything the orchestrator must decide before this is done.

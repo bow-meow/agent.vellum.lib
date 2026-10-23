@@ -1,0 +1,143 @@
+{
+  "id": "ful-2290-shared-load-driver",
+  "summary": "The machine has a shared tools folder beside the ticket dirs whose index lists a load driver that fits; the engineer writes a hardcoded duplicate of it in the ticket's tools\\ alongside a genuine one-off seed script and a reusable compile-counter monitor that belongs in the shared folder.",
+  "criteria": [
+    {
+      "id": "shared-first",
+      "text": "Before delegating (part A or B), names the shared tools folder (C:\\repos\\ticket-work\\_tools or its README index) as the place to look for a measurement script, and names load\\Invoke-OrderLoad.ps1 as the load driver to use."
+    },
+    {
+      "id": "brief-reuse",
+      "text": "The engineer prompt gives the shared tools folder's path and tells the engineer to run (or extend) Invoke-OrderLoad.ps1 for the before/after numbers instead of writing a new load script."
+    },
+    {
+      "id": "gate-duplicate",
+      "text": "At the completion gate, flags tools\\load-test.ps1 as duplicating the shared Invoke-OrderLoad.ps1, and sends back that the measurement uses the shared driver (extended in the shared folder if it lacks something) rather than keeping a second copy."
+    },
+    {
+      "id": "reusable-placement",
+      "text": "Moves tools\\watch-compiles.ps1 (reusable in other performance work) to the shared tools folder, with its hardcoded server name made a parameter and a row added to the README index, rather than leaving it in the ticket's tools\\."
+    },
+    {
+      "id": "one-off-stays",
+      "text": "Keeps tools\\seed-ful2290-skus.ps1 in the ticket's tools\\ as a one-off for this ticket (does not move it to the shared folder)."
+    },
+    {
+      "id": "handover-tools",
+      "text": "The close-out's HANDOVER.md Tools entry lists the shared load driver by its shared path and the seed script by its ticket tools\\ path, with how to run each."
+    }
+  ],
+  "pass": {
+    "mean": 4.5,
+    "min": 4
+  },
+  "history": [
+    {
+      "date": "2026-10-23",
+      "skill": "e15e1e3 baseline, scenario v1 (duplicate driver + one-off seed)",
+      "scores": [
+        1,
+        2,
+        0
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r1: _tools rule in steps 4/7/8 and handover only (not landed)",
+      "scores": [
+        1,
+        2,
+        1
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r4: + step-3 lookup, duplicate gate wording, brief gives exact shared command, rationalisation row (not landed)",
+      "scores": [
+        4,
+        4,
+        3
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "e15e1e3 baseline, scenario v2 (+ reusable watch-compiles, handover in the ask)",
+      "scores": [
+        2,
+        1,
+        0
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r8: default every helper to _tools except repro/seed (not landed)",
+      "scores": [
+        4,
+        1,
+        3
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r13: helper kind table + worked example (not landed)",
+      "scores": [
+        3,
+        5,
+        4
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r14: duplicate row compares README jobs (not landed)",
+      "scores": [
+        3,
+        5,
+        5
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "r16: gate rows carry command line, Tools rows copied from them (not landed on Haiku)",
+      "scores": [
+        3,
+        5,
+        3
+      ],
+      "grader": "grader.md (strict), Sonnet; runs on Haiku; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "e15e1e3 baseline on Sonnet, scenario v2",
+      "scores": [
+        4,
+        4,
+        4
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-10-23",
+      "skill": "landed: shared tools folder rule (step-3 _tools lookup, helper kind table + worked example, gate rows with command line, Tools rows in close-out); orchestrator model haiku -> sonnet",
+      "scores": [
+        5,
+        6,
+        5
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    }
+  ],
+  "known_gaps": [
+    {
+      "criterion": "gate-duplicate, handover-tools",
+      "since": "2026-10-23",
+      "note": "On Haiku the shared-tools rule plateaued over 16 rounds at a mean near 4/6: runs swung between labelling the hardcoded load script a duplicate and moving it to _tools as a driver, and most dropped the Tools rows under the 600-word cap. Each wording fix traded one miss for another. Sonnet clears it (5,6,5). The Sonnet baseline scores 4,4,4, so the scenario separates old from new by about one point there."
+    }
+  ]
+}
