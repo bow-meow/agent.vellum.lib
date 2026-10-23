@@ -13,6 +13,9 @@
 - Exceptions thrown across C APIs or thread boundaries.
 - In C++ (not C), a new `#define` for a constant value where a typed `const`/`constexpr` or an enum
   fits: the macro has no type and no scope.
+- A failure or timeout branch reported only through a debug-only macro (`TRACE`, `ATLTRACE`,
+  `assert`, `OutputDebugString` under `_DEBUG`) on a path the change makes reachable or more likely:
+  release builds record nothing. Use the component's release logger.
 
 ## Team history
 - Firmware C style (esg-ng-core-m33, esg-ng-ipc): m_ prefix for module-scope variables (not s_), parenthesised return values, brackets around each operand of compound conditions, C-style comments, (void) in parameterless definitions, _t suffix on types, stdint types, camelCase variables and PascalCase functions, continuation lines indented parent+8.
