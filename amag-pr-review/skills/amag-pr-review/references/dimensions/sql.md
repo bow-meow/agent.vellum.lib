@@ -19,6 +19,11 @@ database.
   (lock escalation, log growth), dropping/renaming columns still used by procs or code.
 - **Procs**: `SELECT *` in procs consumed by code that maps by position; missing `SET NOCOUNT ON` where
   the caller counts rows; cursors where a set-based update works; transactions without error handling.
+- **Hints the sibling queries carry**: a new or rewritten query on a per-event or per-request path whose
+  siblings on that path all use a table or query hint (`NOLOCK`, `READPAST`, `FORCESEEK`,
+  `OPTION (RECOMPILE)`): grep them, then match them or say why this one differs. Without the locking
+  hint any writer's open transaction blocks the hot path; a dirty-read hint copied over needs a check
+  that the value read can't drive a wrong decision.
 
 ## Severity hints
 - Missing index: at most Medium, unless the table is obviously hot (audit, events, transactions) and
