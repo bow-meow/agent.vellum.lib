@@ -47,3 +47,6 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   one: it trades blocking for uncommitted reads and, when a scan meets concurrent page splits, skipped
   or doubled rows. Suggest it only after naming a writer to that table that holds wide or long locks,
   and only where a wrong result is harmless.
+- A log call at Warning or Info to make a silent failure visible, without reading the shipped logging
+  configuration: a default level or switch above it filters the line out, and the failure stays as
+  invisible as before. Check the level the shipped config passes, or write to a sink it doesn't filter.

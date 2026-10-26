@@ -16,6 +16,9 @@
     regex construction, string formatting, logging at Info or above.
   - Blocking calls on UI threads or async contexts.
   - Unbounded retries, queues or buffers.
+  - A cap that makes a queue or buffer discard items when full: list every kind of item that shares it.
+    Telemetry, or data already persisted elsewhere, can go; a command, change notice or broadcast that
+    exists only on that queue must not be the one evicted, whether the policy drops oldest or newest.
   - A new call to a dependency after an earlier call to it in the same pass has already failed: if
     the client retries or times out internally, each extra call repeats that stall. Check the failure
     skips the follow-up calls.
