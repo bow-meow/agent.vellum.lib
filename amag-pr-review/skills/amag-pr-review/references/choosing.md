@@ -40,7 +40,7 @@ Show the step 11 table with these numbers, its Post as column filled (`new`, `re
 `still applies`, `reopen`, `answer`, `resolve`), then the decision posting everything would lead to,
 then ask:
 
-`Which should I post? ("post 1,3", "post all", "post all but 2", "edit 2: <what to change>", "flip 4", "rule R1", "none")`
+`Which should I post? ("post 1,3", "post all", "post all but 2", "edit 2: <what to change>", "flip 4", "rule R1", "none"; add "as <voice>", "as random" or "as random each" for a voice)`
 
 **Then stop and end the turn.** Don't post, reply, resolve, reopen, approve or request changes until
 the user answers. No answer this session means nothing more happens to the PR.
@@ -58,6 +58,8 @@ the user answers. No answer this session means nothing more happens to the PR.
   SKILL.md's "Rules that always apply" says for a finding the user calls wrong. Only for a conceded
   item left conceded.
 - Anything you can't map to numbers, or that contradicts another part of the answer: ask. Don't guess.
+- `as <voice>`, `as random` or `as random each` on a post answer: rewrite the picked bodies in
+  that voice by [voices.md](voices.md) before posting. Without one, bodies post as built.
 - Items picked plainly post now; an `edit` or `flip` item waits for its own confirmation.
 - Post the chosen items in parallel (independent calls), each from its body file:
   - `new`: `node $S/scripts/bb.mjs comment $WS $REPO $PR "<path>" <side> <line> < $W/body-<id>.txt`
