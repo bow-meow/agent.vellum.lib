@@ -50,3 +50,15 @@ judging an applied one. Each line below comes from a fix of ours that later turn
 - A log call at Warning or Info to make a silent failure visible, without reading the shipped logging
   configuration: a default level or switch above it filters the line out, and the failure stays as
   invisible as before. Check the level the shipped config passes, or write to a sink it doesn't filter.
+- A scope guard (RAII object, `finally`, `defer`) replaced by a manual set on entry, to change what
+  the exception path leaves behind: the reset on the normal path leaves with the guard, so the flag
+  stays set after the first clean run and every later call returns early. Write the normal-path reset
+  back in the same fix, or keep the guard and handle the exception path on its own.
+- A catch-all fault handler (`catch (...)`, SEH `__except`, a top-level recover) put around a whole
+  callback so an unexpected fault becomes fatal or visible: it also takes every recoverable error from
+  the callback's other work, which then gets the fatal treatment (a stopped timer, a restart). Catch the
+  recoverable types around each step that can raise them, and leave the outer handler for real faults.
+- Several kinds of message sent through one shared rate limit (a once-a-minute log throttle) to stop
+  a frequent one flooding: the frequent kind uses up the window and hides a rarer, more important one,
+  and a suppressed count written only when the next message gets through is lost if none follows.
+  Throttle per kind, and write the count when the window closes.

@@ -4,6 +4,9 @@
 - Logic errors: inverted conditions, wrong operator, off-by-one, wrong variable, early return that skips
   cleanup, state updates or setup a later step relies on (logging started only after the checks whose
   failures it should record), switch/if chains missing a case the change introduced.
+- A busy or re-entry flag set on entry (`if (busy) return; busy = true;`) whose set or reset the
+  change touches: check every exit clears it, the normal path as well as the error path. One left set
+  makes every later call return early, often with nothing logged.
 - Null / empty / default handling on new inputs and on values from DB, NATS, config and files.
 - "Unknown" outcomes: a lookup that times out, a read caught by `catch`, an empty result. Find what the
   code falls back to, follow that value to the final output (the URL, message or row it ends up in) and
@@ -21,6 +24,9 @@
   reclassify, interrupt detection) never fires around a call that returns its failure as a value
   (`{ error }`, `undefined`, a status code): check what the wrapped call does on failure, and that
   every step of the protected sequence goes through the wrapper.
+- A rate limit or throttle on logging or alerts shared by several kinds of message: a frequent kind
+  can hide a rarer, more important one for the whole window, and a "N suppressed" count written only
+  when the next message gets through is never written if none follows.
 - A new mode or kind of work run through existing shared code (a run that can't be resumed, a
   different job shown in an existing progress view): list every message, hint, label and summary that
   code prints and check each still reads right for the new kind. Sibling hint paths often get the new

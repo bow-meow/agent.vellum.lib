@@ -13,6 +13,10 @@ Races are subtle: name the exact interleaving (thread/request/message A does X, 
     operation" field, telling a host "busy" then "idle"): two overlapping runs let the first to finish
     clear the second's state. Needs a count, a per-run key, or proof the runs can't overlap. This
     applies to single-threaded JS too, where overlapping `async` calls interleave at every `await`.
+  - A handler for queued events (a message, timer or COM event) re-entered on its own thread: a call
+    inside it that pumps messages (a modal loop, a UI or "process pending events" helper, a COM call or
+    managed wait on a single-threaded apartment) can dispatch the next event into it mid-run, which
+    then changes the state the outer run is using. Look for a guard that returns or defers while it runs.
   - A gate, lock or busy flag that orders work against a disruptive action (a reconnect, a flush, a
     reload): check every path that performs the action goes through it, not only the one the change was
     written for (a timer, a deferred callback, a retry). Work skipped because the moment was wrong
