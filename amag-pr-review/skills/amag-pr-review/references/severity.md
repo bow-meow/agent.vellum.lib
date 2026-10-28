@@ -22,8 +22,8 @@ Comments posted before this layout used a dot header (`🔵 **note**`), a
 `🤖 AI:<model>` header, a `[status, AI:model]` prefix, a plain `**status** · AI:model` header, or one
 of the retired statuses (`critical`, `blocking`, `suggestion`, `nit`, `info`); all are recognised as
 ours. A header or opening without our footer is not.
-The in-progress notice (`comment.mjs progress`) is `⏳ **Review in progress**`, a start timestamp and
-the footer; it isn't a finding, and `split-comments` keeps it out of both comment lists.
+The in-progress notice (`comment.mjs progress`) is `⏳ **Review in progress**`, a start timestamp, a
+`🃏` joke line when SKILL.md step 2 wrote one, and the footer; it isn't a finding, and `split-comments` keeps it out of both comment lists.
 
 ## Rubric
 

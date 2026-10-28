@@ -146,6 +146,15 @@ test('progress notice says when the review started, with the same footer', () =>
   assert.match(localTimestamp(at), /^2026-10-02 09:05 UTC[+-]\d\d:\d\d$/);
 });
 
+test('progress notice carries the joke on one line of its own, and is still the notice', () => {
+  const at = new Date(2026, 9, 2, 9, 5);
+  const body = progress({ model: 'Opus 5.5', at, joke: '  The diff walked into a bar.\nThe bar had merge conflicts. ' });
+  assert.equal(body, `⏳ **Review in progress**\n\nStarted ${localTimestamp(at)}. Findings will follow as inline comments.`
+    + '\n\n🃏 The diff walked into a bar. The bar had merge conflicts.' + FOOT);
+  assert.equal(isProgress(body), true);
+  assert.equal(progress({ model: 'Opus 5.5', at, joke: ' \n ' }), progress({ model: 'Opus 5.5', at }));
+});
+
 test('progress notice is recognised as the notice, the old one too, and never as a finding', () => {
   const body = progress({ model: 'Opus 5.5' });
   assert.equal(isProgress(body), true);

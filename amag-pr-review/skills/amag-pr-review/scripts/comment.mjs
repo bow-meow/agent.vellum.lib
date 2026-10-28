@@ -151,8 +151,10 @@ export function localTimestamp(d = new Date()) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())} ${zone}`;
 }
 
-export function progress({ model, at = new Date() }) {
-  return `⏳ **Review in progress**\n\nStarted ${localTimestamp(at)}. Findings will follow as inline comments.\n\n${footer(model)}`;
+export function progress({ model, at = new Date(), joke = '' }) {
+  const j = String(joke ?? '').trim().replace(/\s*\n\s*/g, ' ');
+  const started = `Started ${localTimestamp(at)}. Findings will follow as inline comments.`;
+  return `⏳ **Review in progress**\n\n${started}${j ? `\n\n🃏 ${j}` : ''}\n\n${footer(model)}`;
 }
 
 export const isProgress = text => PROGRESS_RE.test(String(text ?? ''));
@@ -161,9 +163,15 @@ const invoked = process.argv[1] && resolve(process.argv[1]).toLowerCase();
 if (invoked === fileURLToPath(import.meta.url).toLowerCase()) {
   const [cmd, kind, a] = process.argv.slice(2);
   const usage = 'usage: comment.mjs followup still-applies|needs-reply <line>'
-    + ' | comment.mjs followup disputed   (reply text on stdin) | comment.mjs progress';
+    + ' | comment.mjs followup disputed   (reply text on stdin) | comment.mjs progress [joke-file]';
   const model = readModel();
-  if (cmd === 'progress') { process.stdout.write(progress({ model })); process.exit(0); }
+  if (cmd === 'progress') {
+    // A missing joke file only loses the joke: the notice still goes up.
+    let joke = '';
+    try { if (kind) joke = readFileSync(kind, 'utf8'); } catch { }
+    process.stdout.write(progress({ model, joke }));
+    process.exit(0);
+  }
   if (cmd !== 'followup' || !kind) { console.error(usage); process.exit(2); }
   try {
     const text = kind === 'disputed' ? readFileSync(0, 'utf8') : undefined;

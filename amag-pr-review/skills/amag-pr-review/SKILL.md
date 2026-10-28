@@ -89,8 +89,11 @@ title and description.
   comments. Posting under my name on my own PR reads as talking to myself.
 
 **In-progress notice** (skip on `--dry-run`; cleanup deletes it): `bb.mjs delete` each
-`staleProgress` id `split-comments` printed (a crashed run's notice), then
-`node $S/scripts/comment.mjs progress > $W/body-progress.txt`, post it with
+`staleProgress` id `split-comments` printed (a crashed run's notice), then write a joke to
+`$W/joke.txt`: one or two sentences, made up now, not a stock joke or one from a past review.
+Riff on the PR's subject or on reviewing code. Keep it clean for work, and never make the
+author, their code or this PR's quality the punchline. Then
+`node $S/scripts/comment.mjs progress $W/joke.txt > $W/body-progress.txt`, post it with
 `bb.mjs general $WS $REPO $PR < $W/body-progress.txt` and append `PROGRESS_ID=<id>` to `env.sh`.
 A failed post is a terminal note, not a tooling problem.
 
