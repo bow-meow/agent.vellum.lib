@@ -69,9 +69,6 @@ export function stripHeader(text) {
   return s.replace(OLD_HEADER_RE, '').replace(LEGACY_RE, '').trim();
 }
 
-// Two trailing spaces are Markdown's hard break: a bare newline would run the labelled lines together.
-const HARD_BREAK = '  \n';
-
 export function formatComment({ status, model, area = NO_AREA, issue, impact = '', unconfirmed = '', fix = '' }) {
   if (!STATUSES.includes(status)) throw new Error(`unknown status "${status}"`);
   const head = header(status, area);
@@ -85,8 +82,8 @@ export function formatComment({ status, model, area = NO_AREA, issue, impact = '
     const t = text(v);
     return t.includes('\n') ? { block: true, s: `**${label}:**\n\n${t}` } : { block: false, s: `**${label}:** ${t}` };
   });
-  const body = parts.reduce((acc, p, i) => (i === 0 ? p.s : acc + (p.block || parts[i - 1].block ? '\n\n' : HARD_BREAK) + p.s), '');
-  return `${head}\n\n${body}\n\n${foot}`;
+  // A blank line, not a trailing-space hard break: Bitbucket runs hard-broken lines into one paragraph.
+  return `${head}\n\n${parts.map(p => p.s).join('\n\n')}\n\n${foot}`;
 }
 
 const PHRASES = [

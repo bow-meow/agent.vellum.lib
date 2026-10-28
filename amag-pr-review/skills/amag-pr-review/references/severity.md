@@ -52,7 +52,7 @@ concrete failure → Low.
 ## Comment layout
 
 A posted comment is the header, then labelled lines, one per part, each label beside its text
-(`formatComment` joins them with Markdown hard breaks), then the footer `_AI review · <MODEL>_`. A
+(`formatComment` puts a blank line between them), then the footer `_AI review · <MODEL>_`. A
 note or a follow-up reply is one unlabelled sentence between header and footer.
 
 1. Header line: `<icon> **<area> · <change needed | note>**`. The area comes from the finding's
@@ -84,7 +84,9 @@ rollout. `styleIssues` flags a part over budget and an aside in the same `style`
 🧪 **Tests · change needed**
 
 **Issue:** `Find` drops an import whose expanded path doesn't exist, and no import test uses `$(ProjectDir)` or `$(Configuration)`.
+
 **Impact:** edits to a property sheet imported that way never rebuild the row, so the build keeps stale output.
+
 **Fix:** add a test importing `$(ProjectDir)$(Configuration).$(Platform).props` and assert the file is returned.
 
 _AI review · Opus 5.5_

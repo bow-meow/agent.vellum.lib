@@ -32,8 +32,8 @@ test('header is the area icon, the area and the status, with a plain review as t
 test('formatComment puts Issue, Impact, Not confirmed and Fix on labelled lines, the AI footer last', () => {
   const body = formatComment({ status: 'change', model: 'Opus 5.5', area: ['🐛', 'Correctness'], issue: 'Two saves race on BADGE_ID.',
     impact: 'Two badges end up with the same id.', unconfirmed: 'Whether imports run in parallel.', fix: 'Add a unique index.' });
-  assert.equal(body, '🐛 **Correctness · change needed**\n\n**Issue:** Two saves race on BADGE_ID.  \n'
-    + '**Impact:** Two badges end up with the same id.  \n**Not confirmed:** Whether imports run in parallel.  \n**Fix:** Add a unique index.' + FOOT);
+  assert.equal(body, '🐛 **Correctness · change needed**\n\n**Issue:** Two saves race on BADGE_ID.\n\n'
+    + '**Impact:** Two badges end up with the same id.\n\n**Not confirmed:** Whether imports run in parallel.\n\n**Fix:** Add a unique index.' + FOOT);
 });
 
 test('formatComment leaves confidence, tokens and reviewer names out of the comment', () => {
@@ -42,13 +42,13 @@ test('formatComment leaves confidence, tokens and reviewer names out of the comm
 });
 
 test('formatComment drops the parts it has no text for', () => {
-  assert.equal(formatComment({ status: 'change', model: 'm', issue: 'i', impact: 'b', fix: '  ' }), '🔎 **Review · change needed**\n\n**Issue:** i  \n**Impact:** b\n\n_AI review · m_');
+  assert.equal(formatComment({ status: 'change', model: 'm', issue: 'i', impact: 'b', fix: '  ' }), '🔎 **Review · change needed**\n\n**Issue:** i\n\n**Impact:** b\n\n_AI review · m_');
 });
 
 test('formatComment puts a multi-line part, such as a code snippet, below its label', () => {
   const fix = 'Guard it:\n```cs\nif (x == null) return;\n```';
   assert.equal(formatComment({ status: 'change', model: 'm', issue: 'i', impact: 'b', fix }),
-    `🔎 **Review · change needed**\n\n**Issue:** i  \n**Impact:** b\n\n**Fix:**\n\n${fix}\n\n_AI review · m_`);
+    `🔎 **Review · change needed**\n\n**Issue:** i\n\n**Impact:** b\n\n**Fix:**\n\n${fix}\n\n_AI review · m_`);
 });
 
 test('formatComment leaves a note or follow-up unlabelled', () => {
@@ -63,7 +63,7 @@ test('formatComment rejects an unknown status, the retired ones included', () =>
 test('parseHeader reads the current header with its footer, and stripHeader removes both', () => {
   const body = formatComment({ status: 'change', model: 'Opus 5.5', area: ['🧪', 'Tests'], issue: 'i', impact: 'b' });
   assert.deepEqual(parseHeader(body), { status: 'change', model: 'Opus 5.5', area: 'Tests' });
-  assert.equal(stripHeader(body), '**Issue:** i  \n**Impact:** b');
+  assert.equal(stripHeader(body), '**Issue:** i\n\n**Impact:** b');
 });
 
 test('a follow-up is ours by its opening words and footer, and keeps those words when stripped', () => {

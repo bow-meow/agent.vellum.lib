@@ -81,8 +81,8 @@ test('build formats the body from whichever side passed, and lints its style', (
   ];
   const [a, b] = build(verified, cands, 'Opus 5.5');
   assert.equal(a.use, 'final');
-  assert.equal(a.body, '🔎 **Review · change needed**\n\n**Issue:** Two saves race on BADGE_ID at line 212.  \n'
-    + '**Impact:** Saves fail.  \n**Fix:** Add a unique index.\n\n_AI review · Opus 5.5_');
+  assert.equal(a.body, '🔎 **Review · change needed**\n\n**Issue:** Two saves race on BADGE_ID at line 212.\n\n'
+    + '**Impact:** Saves fail.\n\n**Fix:** Add a unique index.\n\n_AI review · Opus 5.5_');
   assert.deepEqual(a.style, []);
   assert.equal(b.use, 'draft');
   assert.ok(b.body.startsWith('🔎 **Review · change needed**\n\n**Issue:** Rename `fooBar`'));
@@ -139,8 +139,8 @@ test('a medium finding posts what was not confirmed between the issue and the fi
   const verified = { findings: [{ id: 'f1', verdict: 'confirmed', impact: 'Saves fail.', severity: 'Medium', sources: ['c-1'], issue: 'Import throws on ownerless badges.',
     fix: 'Skip them.', confidence: 'medium', confidence_reason: 'Whether the import can run before owner sync.' }] };
   const [e] = build(verified, [{ id: 'c-1', issue: 'Import throws on ownerless badges.', fix: 'Skip them.' }], 'Opus 5.5');
-  assert.equal(e.body, '🔎 **Review · change needed**\n\n**Issue:** Import throws on ownerless badges.  \n'
-    + '**Impact:** Saves fail.  \n**Not confirmed:** Whether the import can run before owner sync.  \n**Fix:** Skip them.\n\n_AI review · Opus 5.5_');
+  assert.equal(e.body, '🔎 **Review · change needed**\n\n**Issue:** Import throws on ownerless badges.\n\n'
+    + '**Impact:** Saves fail.\n\n**Not confirmed:** Whether the import can run before owner sync.\n\n**Fix:** Skip them.\n\n_AI review · Opus 5.5_');
 });
 
 test('build names the area from the finding\'s dimension before the reviewer that raised it', () => {
