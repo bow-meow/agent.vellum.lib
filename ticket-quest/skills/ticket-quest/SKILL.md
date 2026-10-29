@@ -150,7 +150,9 @@ The ticket dir (`<root>\<TICKET>\`, beside the worktrees, in no repo, never comm
 - **`HANDOVER.md`**: created with the worktrees, updated after each verified task and at close-out,
   read first on pickup. Headings, each filled: `Goal and repos` · `Open items, baseline, impact`
   (each with its state) · `Changed and verified` · `Left and next step` · `Tools` (rows as in
-  step 8). Handover notes live only here, never on the Jira ticket.
+  step 8). Each update rewrites every heading to the current state, a snapshot: stale lines
+  replaced, done or superseded ones removed; history is in git. Handover notes live only here,
+  never on the Jira ticket.
 - **`tools\`**: this ticket's `repro` and `seed` helpers (below).
 
 Every helper is a `.ps1` with a help block (`.SYNOPSIS`, `.EXAMPLE`) and parameters, never a repo
