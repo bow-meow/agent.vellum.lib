@@ -8,6 +8,10 @@
   change touches: check every exit clears it, the normal path as well as the error path. One left set
   makes every later call return early, often with nothing logged.
 - Null / empty / default handling on new inputs and on values from DB, NATS, config and files.
+- A client check that mirrors how the server treats an input (a whitespace-only value counted as
+  absent, a value it trims or ignores) but runs only on some paths, such as only while the field is
+  required: elsewhere the input passes, the server drops it and still reports success, so the user
+  thinks it was saved. Check the guard covers every path the server's treatment applies to.
 - "Unknown" outcomes: a lookup that times out, a read caught by `catch`, an empty result. Find what the
   code falls back to, follow that value to the final output (the URL, message or row it ends up in) and
   check it does what the comment on the fallback promises. "Treat it as X when unsure" is a common
