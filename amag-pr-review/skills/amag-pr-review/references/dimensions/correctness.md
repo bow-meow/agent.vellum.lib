@@ -8,6 +8,9 @@
   change touches: check every exit clears it, the normal path as well as the error path. One left set
   makes every later call return early, often with nothing logged.
 - Null / empty / default handling on new inputs and on values from DB, NATS, config and files.
+- A uniqueness or count check over a mapped value where the mapping can fail to a shared sentinel
+  (null, a default, 0): every unparsable input becomes the same value, so several bad inputs also
+  report a duplicate that isn't there. Check the check runs only over the values that mapped.
 - A client check that mirrors how the server treats an input (a whitespace-only value counted as
   absent, a value it trims or ignores) but runs only on some paths, such as only while the field is
   required: elsewhere the input passes, the server drops it and still reports success, so the user

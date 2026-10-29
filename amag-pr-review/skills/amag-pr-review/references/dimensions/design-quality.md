@@ -22,7 +22,9 @@
 - One decision made in two places: when a change splits a choice across components (which item is
   picked in one, what is done with it in another), check both key on the same value. One reading the
   raw input and the other a resolved or normalised form agree only for the inputs that need no
-  resolving.
+  resolving. The same holds for a save that normalises or derives a stored value while the read
+  returns the column as stored: data written before the rule, or by another writer, reads one way and
+  saves another, so the value changes on a save that changed nothing.
 - Repo-guide rules keyed on touching code rather than adding it ("when touching a class that…", "fix
   on contact"): for each class the diff edits, check the guides (CLAUDE.md at the root and in the
   touched directories) for such rules and whether the change applies them. Rules about the commit
