@@ -45,7 +45,7 @@ use `HEAD`). Keep the hash per repo.
 
 ### L5. Fix — SKILL.md step 6's code rules, but never commit
 
-The code-comments skill and the narrowest build/tests still apply, and what was and wasn't verified
+The engineering guidelines, the code-comments skill and the narrowest build/tests still apply, and what was and wasn't verified
 still goes in the pause table. **Never commit**: the worktree usually holds the user's uncommitted
 work, and a commit would sweep it in.
 

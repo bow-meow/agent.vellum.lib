@@ -126,6 +126,10 @@ in the code; **medium** = the evidence is in the code but the outcome rests on s
 (runtime config, a caller outside the worktree, library behaviour); **low** = plausible, not
 confirmed.
 
+**A comment asking for a test is judged by risk** (the risk lists in the guidelines file of step
+6): **fix** when the untested behaviour is a risk, **push-back** when it isn't, naming why ("label
+text, visible on the page; a test would only restate it").
+
 **Misreading is a smell, not just a push-back.** When a reviewer misunderstood correct code, first
 ask whether the code invited the misreading — if a rename, an extracted variable, or a *why*
 comment would have prevented it, the verdict is **fix** (make the code clearer) even though the
@@ -134,13 +138,21 @@ code helps every future reader.
 
 ### 6. Fix, verify, commit — one commit per fixed comment
 
+- **Before the first fix, read the engineering guidelines** ticket-quest uses for its own builds:
+  `references/engineering-guidelines.md` under `TQ` = ticket-quest's installed skill directory (the
+  most recently modified `~/.claude/plugins/cache/*/ticket-quest/*/skills/ticket-quest`). Every fix
+  follows them: the behaviour baseline and impact list for the code it touches, risk-based testing
+  (a fix that touches a risk gets a test that would fail without it; a no-risk fix gets none), no
+  debug code, regenerated artifacts reverted, helper scripts kept out of the repo. Its worktree,
+  Jira and handover steps don't apply. Not installed → say so in the pause table and go on.
 - Implement each **fix** as its own commit so each reply can cite the exact hash. Message matches
   the repo's existing style (`git log --oneline -10`), includes the ticket key when the branch
   carries one, and describes the concern addressed — never "address review comments".
 - Comments in the fixed code follow the **code-comments** skill (invoke it before writing any):
   in short — never narrate the change, never cite the review thread or a ticket ID, nothing the
   code already says.
-- Before each commit, run the narrowest build/tests that cover the touched code. When a full
+- Before each commit, run the narrowest build/tests that cover the touched code, the fix's new test
+  included. When a full
   verification is impractical (e.g. the classic C++ link), do what is feasible and record exactly
   what was and wasn't verified — it goes in the pause table, never silently omitted.
 - Draft the reply: `Fixed in <hash>, <one sentence on what changed>.`

@@ -30,8 +30,9 @@ Needs `BITBUCKET_USERNAME` (your Atlassian email) and `BITBUCKET_PASSWORD` (a sc
 `read:repository`, `read:pullrequest`, `write:pullrequest`) in your environment. Local mode needs
 neither.
 
-**Recommended companions:** `code-comments`, which it invokes before writing any comment, and
-`amag-pr-review`, which local mode and the retro step depend on.
+**Recommended companions:** `code-comments`, which it invokes before writing any comment;
+`amag-pr-review`, which local mode and the retro step depend on; and `ticket-quest`, whose
+engineering guidelines (risk-based testing among them) every fix follows.
 
 ### `ticket-quest`
 Runs assigned Jira tickets end to end on three model roles: a Haiku orchestrator that owns the
