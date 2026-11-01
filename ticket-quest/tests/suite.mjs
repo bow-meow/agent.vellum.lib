@@ -23,8 +23,8 @@ export function runPrompt(scenarioId, skillFile, answerFile) {
   const scenario = join(SCENARIOS, scenarioId, 'scenario.md');
   if (!existsSync(scenario)) throw new Error(`unknown scenario: ${scenarioId}`);
   return [
-    'Read these two files, plus any reference file the SKILL.md tells you to read for this',
-    'scenario (paths relative to its folder), and nothing else:',
+    'Read these two files, plus any other file the SKILL.md tells you to read for this scenario',
+    '(a relative path is relative to its folder), and nothing else:',
     `1. ${resolve(skillFile)} — your operating instructions as the ticket-quest orchestrator.`,
     `2. ${scenario} — the ticket and what you found.`,
     '',

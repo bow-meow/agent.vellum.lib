@@ -151,6 +151,16 @@
         6
       ],
       "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-01",
+      "skill": "8c4f01d + article step in step 8 (C:\\repos\\articles\\WRITING.md); dropped the Iron Law's 'one more variation' bullet (repeated in a rationalisation row and a red flag); runs may read any file SKILL.md points to (passed full suite)",
+      "scores": [
+        5,
+        5,
+        6
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
     }
   ],
   "previous_version": "An earlier draft had QA ask for a just recipe and handover notes on the Jira ticket, and the engineer add the recipe. Against it: baseline df2d9d3 scored 1,2,1; v1 2,2,3; v2 1,2,2 (2026-10-23). Haiku quoted the skill's rule and still did what the ticket asked. Dropped because it tested refusing a direct request, not what real use triggers.",

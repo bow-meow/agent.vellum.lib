@@ -34,6 +34,10 @@ neither.
 `amag-pr-review`, which local mode and the retro step depend on; and `ticket-quest`, whose
 engineering guidelines (risk-based testing among them) every fix follows.
 
+Both this and `ticket-quest` write up a reusable technique the work turned up as a short, generic
+article, when `C:\repos\articles\WRITING.md` exists; that file holds the rules and the site's build
+script refuses duplicates.
+
 ### `ticket-quest`
 Runs assigned Jira tickets end to end on three model roles: a Haiku orchestrator that owns the
 plan and verifies every claim, an Opus engineer that does the building in an isolated git worktree

@@ -19,9 +19,10 @@ Per scenario (`node suite.mjs list`), `$OUT` being a scratch folder:
 1. Three runs, in parallel. Each is one agent on the model the skill's frontmatter names (the
    model ticket-quest's orchestrator runs on, Sonnet since 2026-10-23), given the output of
    `node suite.mjs prompt <scenario> --skill <path to SKILL.md under test> --answer $OUT/<scenario>-<n>.md`.
-   Runs may read the reference files SKILL.md points them to, so `--skill` must be a SKILL.md with
-   its `references/` folder beside it (the checkout, or a copy of the whole skill folder), and
-   nothing in it may change while runs are going. Since 2026-11-01; earlier runs read SKILL.md only.
+   Runs may read any file SKILL.md points them to (its `references/`, and outside files such as
+   `C:\repos\articles\WRITING.md`), so `--skill` must be a SKILL.md with its `references/` folder
+   beside it (the checkout, or a copy of the whole skill folder), and nothing it points to may change
+   while runs are going. Since 2026-11-01; earlier runs read SKILL.md only.
 2. Three graders, one per answer, on a model other than the runs' (Opus for Sonnet runs), given
    `node suite.mjs grade-prompt <scenario> --answer $OUT/<scenario>-<n>.md --run <n> --out $OUT/grades/<scenario>-<n>.json`.
    A grader never sees which skill version produced the answer.

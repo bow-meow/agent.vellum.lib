@@ -327,6 +327,9 @@ followed by each line this run added or rewrote, quoted with its file (old text 
 and the retro commit hash (or why nothing was committed).
 Quote them rather than showing `git diff`: the touched file may already carry the user's own edits.
 
+If a fix taught a reusable technique (a tool feature, a way to test or profile), write an article by
+`C:\repos\articles\WRITING.md` when that file exists, and give its path in the summary.
+
 ## Rules that survive compaction
 
 - The HARD-GATE above: nothing about the PR goes outward before pause approval.

@@ -37,8 +37,6 @@ THE ORCHESTRATOR DELEGATES EVERY SUBSTANTIAL BUILD AND VERIFIES EVERY DELEGATED 
   reported, 33 in the tree, because a build had regenerated SDKs.
 - Not "I've already read the code, it's quicker to fix it myself" — your diagnosis is context to
   hand the engineer, not a licence to build.
-- Not "one more variation will work" after a corrective attempt failed — that is the escalation
-  trigger, not a reason to burn another engineer.
 
 ## Workflow
 
@@ -150,7 +148,8 @@ tickets progress at different speeds; never block one on another.
    verified`, `Left and next step`, `Tools`: the step-7 rows bar duplicates, copied in at their
    final paths as `path | what it does | command line`, e.g.
    `<root>\_tools\net\Send-Traffic.ps1 | sends requests at a set rate | Send-Traffic.ps1 -Rate 50`.
-   Notes never go on Jira.
+   Notes never go on Jira. If the ticket taught a reusable technique, write an article by
+   `C:\repos\articles\WRITING.md` when it exists.
 
 ## Quiz mode
 

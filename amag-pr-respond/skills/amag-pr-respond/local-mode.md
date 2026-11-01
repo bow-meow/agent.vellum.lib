@@ -118,4 +118,5 @@ accepted. Nothing else is written, and the code edits stay uncommitted.
 
 Fixed / dismissed / still-open counts, files changed per repo (uncommitted), verification gaps, the
 findings still open with their `n`, the miss table with each amag-pr-review line changed, and any
-don't-flag line added, each quoted with its file.
+don't-flag line added, each quoted with its file. The article step at the end of SKILL.md step 10
+applies here too.

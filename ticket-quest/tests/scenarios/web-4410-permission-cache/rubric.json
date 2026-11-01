@@ -207,6 +207,16 @@
         8
       ],
       "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-01",
+      "skill": "8c4f01d + article step in step 8 (C:\\repos\\articles\\WRITING.md); dropped the Iron Law's 'one more variation' bullet (repeated in a rationalisation row and a red flag); runs may read any file SKILL.md points to (passed full suite)",
+      "scores": [
+        8,
+        8,
+        8
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
     }
   ],
   "known_gaps": [

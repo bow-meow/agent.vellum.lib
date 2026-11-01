@@ -1,0 +1,66 @@
+{
+  "id": "bil-5521-article-closeout",
+  "summary": "At close-out the ticket taught a reusable technique (FakeTimeProvider.Advance to cross midnight in a test) that an existing article (fake-clock-tests) nearly covers; the fix itself (read the time once) is ticket-specific. The articles guide wants the existing article extended, the text generic, every snippet proven, and the change left uncommitted.",
+  "criteria": [
+    {
+      "id": "article-considered",
+      "text": "At close-out, decides to write up the FakeTimeProvider / Advance testing technique for the articles site (C:\\repos\\articles), following WRITING.md."
+    },
+    {
+      "id": "extends-existing",
+      "text": "Adds to the existing articles/fake-clock-tests.md (a new section) instead of creating a new article, and says why: the list shows an article on the same technique."
+    },
+    {
+      "id": "fix-not-article",
+      "text": "Does not make the ticket's own fix (reading the run's start time once instead of DateTime.Now) the subject of the article; the article content is the testing technique."
+    },
+    {
+      "id": "generic",
+      "text": "Any article prose or plan it gives names no product, ticket or company: no 'Ledgerline', no 'BIL-5521', no 'InvoiceRunner'. It uses a generic stand-in (e.g. 'a billing job', 'a nightly run')."
+    },
+    {
+      "id": "proven-snippets",
+      "text": "Says it will run the article's code or commands in a throwaway folder (scratchpad) before they go in, rather than copying them from the ticket unverified."
+    },
+    {
+      "id": "build-and-leave",
+      "text": "Runs node build.mjs (must print OK) and leaves the article change uncommitted, telling the user the file path."
+    }
+  ],
+  "pass": {
+    "mean": 4.5,
+    "min": 4
+  },
+  "history": [
+    {
+      "date": "2026-11-01",
+      "skill": "baseline 8c4f01d (no article step)",
+      "scores": [
+        3,
+        3,
+        2
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-01",
+      "skill": "8c4f01d + article step, harness still limited runs to files relative to the skill folder, so WRITING.md went unread (not landed; proven-snippets and build-and-leave 0 in all three)",
+      "scores": [
+        4,
+        4,
+        4
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-01",
+      "skill": "8c4f01d + article step in step 8 (C:\\repos\\articles\\WRITING.md); dropped the Iron Law's 'one more variation' bullet (repeated in a rationalisation row and a red flag); runs may read any file SKILL.md points to (passed full suite)",
+      "scores": [
+        6,
+        6,
+        6
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    }
+  ]
+}
