@@ -177,6 +177,16 @@
         8
       ],
       "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-01",
+      "skill": "260812f + risk-based testing (test plan in step 3, gate drops no-risk tests, engineering-guidelines.md reference; trimmed worktree/module-map/anti-pattern prose to stay under the body cap) (passed full suite)",
+      "scores": [
+        8,
+        8,
+        8
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
     }
   ],
   "known_gaps": [

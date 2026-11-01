@@ -1,0 +1,56 @@
+{
+  "id": "shop-5120-line-total-rounding",
+  "summary": "One risky change (rounding money, the reason for the ticket) bundled with three low-risk ones (a label typo, a UI-only default, a log line); the engineer tests everything evenly, adds characterization tests for the trivial parts, and misses the rounding midpoint and negative cases.",
+  "criteria": [
+    {
+      "id": "risk-named",
+      "text": "Before the build (step-3 notes or the engineer prompt), names the line-total rounding as the behaviour that needs tests, and names at least one of its edge cases: an exact half-cent midpoint (e.g. x.xx5) or a negative refund line."
+    },
+    {
+      "id": "trivial-untested",
+      "text": "Before the build, says explicitly that the button-text fix, the pager default and the new log line get no new tests (characterization or otherwise), with a reason such as low risk, visible at once, or the test would only restate the change. All three must be named."
+    },
+    {
+      "id": "prompt-scoped",
+      "text": "The engineer prompt asks for tests only on the rounding (characterization of today's truncation plus the new cases), and tells the engineer not to write tests for the label, the pager default or the log line."
+    },
+    {
+      "id": "gate-midpoint",
+      "text": "At the completion gate, flags that the rounding tests miss the midpoint case (x.xx5) and/or the negative case, and that Math.Round's default (round half to even) can disagree with the invoice's half-away-from-zero, and sends it back."
+    },
+    {
+      "id": "gate-drops-noise",
+      "text": "At the completion gate, does not count the button-text, pager-default and logger tests (or the two characterization tests for the label and pager) as coverage, and asks for them to be removed from the diff."
+    },
+    {
+      "id": "gate-no-false-fail",
+      "text": "No completion-gate item fails, and nothing is sent back, because the label, pager default or log line lack a test or an entry-point test."
+    }
+  ],
+  "pass": {
+    "mean": 4.5,
+    "min": 4
+  },
+  "history": [
+    {
+      "date": "2026-11-01",
+      "skill": "baseline 260812f (before risk-based testing)",
+      "scores": [
+        2,
+        2,
+        2
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-01",
+      "skill": "260812f + risk-based testing (test plan in step 3, gate drops no-risk tests, engineering-guidelines.md reference; trimmed worktree/module-map/anti-pattern prose to stay under the body cap) (passed full suite)",
+      "scores": [
+        6,
+        5,
+        6
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    }
+  ]
+}

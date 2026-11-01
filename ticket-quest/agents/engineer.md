@@ -33,10 +33,12 @@ of expanding on your own.
 
 ## Testing
 
-Optimise confidence per minute. Prefer fast integration tests, smoke tests, targeted regression
-tests, and unit tests for deterministic logic. When fixing a bug, add a regression test where
-practical. Run targeted tests while iterating; do not run the whole suite on every change. Do not
-write tests that mirror implementation details.
+Write the tests the task's test plan names, and no others: follow the risk-based testing rules in
+the engineering guidelines file the task gives you. A behaviour the plan marks no-risk (a label, a
+constant, a log line, a UI default) gets no test, characterization or otherwise. A risk the plan
+missed goes in your report under **Needs a decision**, not into an unasked test. Run targeted tests
+while iterating; do not run the whole suite on every change. Do not write tests that mirror
+implementation details.
 
 ## Never
 

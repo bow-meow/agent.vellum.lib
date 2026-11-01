@@ -68,13 +68,16 @@ tickets progress at different speeds; never block one on another.
      `tools\` script and `HANDOVER.md` instead: record it so, never pass it on as asked.
    - **Behaviour baseline:** what the code does today on every path the change touches: its
      callers, the modes and products it runs in (a shared file runs in each of them), the inputs and
-     config values it reads, and its failure paths. A path with no test gets a characterization
-     test that pins today's behaviour, written before the change.
+     config values it reads, and its failure paths.
    - **Impact list**, per unit the change touches: who calls it, on which thread or loop, and what
      else that thread must keep doing (heartbeats, timers, other requests) while a call now waits;
      what each wait does if the thing it waits on never returns, not only if it is slow; what it now
      holds or allocates; what it now logs or stops logging; which contracts change (API, message,
      schema, config key, default); which other products or repos share it.
+   - **Test plan:** each behaviour from the baseline and impact list, marked risk or no risk by
+     [Risk-based testing](#risk-based-testing), with a one-line reason. A risk gets tests, and a
+     risky path with no test gets a characterization test pinning today's behaviour, written before
+     the change. A no-risk behaviour gets no test of any kind.
 
    When verifying needs a script (repro, load driver, seeding), read
    `<root>\_tools\README.md` now and note the shared script, by path, that does each job; only a
@@ -86,13 +89,15 @@ tickets progress at different speeds; never block one on another.
    a deadline doesn't make a change routine: they say the idea was liked, not what it does to its
    callers. Only the build waits for the advisor: the characterization task (step 4) goes to the
    engineer now, either way: it tests today's code, which no design decision changes.
-4. **Delegate a bounded task to the engineer.** The first task on a ticket is always the
-   characterization task: tests against the unchanged code pinning each behaviour the baseline
-   named, done when they pass on the base branch. The change comes next, and keeps them passing or
-   lists each one it deliberately alters. The prompt carries: the goal; worktree path(s) and
-   base; the files, lines, and evidence you found; the path of every module `CLAUDE.md` the task
-   touches; the behaviour baseline, impact list and open items this task covers, and the
-   characterization tests to add first; constraints (compatibility, conventions, generated
+4. **Delegate a bounded task to the engineer.** When the test plan names a risky path with no
+   test, the first task on the ticket is the characterization task: tests against the unchanged
+   code pinning each of those behaviours, done when they pass on the base branch. The change comes
+   next, and keeps them passing or lists each one it deliberately alters. The prompt carries: the
+   goal; worktree path(s) and base; the files, lines, and evidence you found; the path of every
+   module `CLAUDE.md` the task touches; the behaviour baseline, impact list and open items this
+   task covers; the test plan, naming the tests to write and each behaviour that gets none; the
+   path of [references/engineering-guidelines.md](references/engineering-guidelines.md) for the
+   engineer to follow; constraints (compatibility, conventions, generated
    artifacts to leave alone); each shared script from step 3 by path and exact command (never a
    ticket script or wrapper for its job), and each new helper's kind and place from the
    [helper table](#handover-and-tools);
@@ -115,13 +120,16 @@ tickets progress at different speeds; never block one on another.
 7. **Completion gate**, per ticket. All must hold, or you report exactly which do not:
    - the requested behaviour exists and is integrated;
    - build and checks succeed and the appropriate tests pass, verified by you;
-   - a regression test was added where practical, or you say why not;
+   - every risk in the test plan has its tests, and nothing else got one: a test the change added
+     for a no-risk behaviour (a label, a constant, a log line, a mock verifying a call) is sent
+     back to be removed from the diff, not counted as coverage. A missing test on a no-risk
+     behaviour fails nothing;
    - the characterization tests from step 3 were added before the change and still pass, or each
      one the change deliberately alters is listed with its old and new behaviour;
-   - at least one test reaches the change through the entry point it is used by (the public API,
-     the real start and stop, the UI), not an internal call, and drives each failure the impact
-     list names to its worst form (stuck, not just slow). A test that passes without reaching that
-     case is listed as not verifying it;
+   - for each risk, at least one test reaches the change through the entry point it is used by (the
+     public API, the real start and stop, the UI), not an internal call, and drives each failure the
+     impact list names, and each edge case the risk has, to its worst form (stuck, not just slow).
+     A test that passes without reaching that case is listed as not verifying it;
    - every open item from step 3 is done, or listed in the report as not done, with why;
    - no known blocking issue, no temporary or debug code in the repos, and the diff is coherent
      and scoped to the ticket, with any module-map change (see [Module maps](#module-maps))
@@ -171,15 +179,11 @@ hardcoded is a `probe` (to `_tools\` with `-Url`, plus an index row), even if on
 
 ## Module maps
 
-A module's `CLAUDE.md` is a ≤15-line orientation — what it is, entry points, what it talks to,
-traps — in the shape given in [references/module-map.md](references/module-map.md); read that file
-before dispatching a map task. Ticket work maintains these maps as a side effect:
-
-- **Write or refresh** one when either holds: the context step or an engineer task opened three or
-  more files in a module that has no `CLAUDE.md`; or the ticket's diff changed a module whose
-  `CLAUDE.md` now says something false. Dispatch it as its own bounded engineer task after the
-  main change, naming the reference file. A module only grepped through gets no map.
-- **Verify** it yourself with the checks in the reference file before it counts as done.
+A module's `CLAUDE.md` is a ≤15-line orientation. Write or refresh one, as its own engineer task
+after the main change, when the work opened three or more files in a module that has none, or the
+diff made a module's map say something false (a module only grepped through gets none). Read
+[references/module-map.md](references/module-map.md) before dispatching it, name it in the task,
+and verify the map with its checks yourself.
 
 ## When to consult the advisor
 
@@ -214,31 +218,32 @@ impact-list entry it was given; any characterization test it had to change, and 
 it added to `tools\` and how to run it; anything needing an orchestrator decision. Treat it as a
 lead for your verification, not as fact.
 
-## Testing
+## Risk-based testing
 
-Optimise confidence per unit of agent time. Prefer fast integration tests, smoke tests, targeted
-regression tests, unit tests for deterministic logic (algorithms, parsers, calculations, state
-transitions, business rules), and end-to-end tests only for critical user paths. A bug fix adds a
-regression test where practical. No arbitrary coverage targets, no tests that mirror
-implementation details, no full-suite runs on every change: targeted tests while iterating, broad
-validation at milestones and before completion. TDD is not required universally.
+A test is upkeep for as long as the code lives; only a risk earns one. **Risk:** a regression would
+be silent or found late, and cost something. The behaviour the ticket exists to fix, with its edge
+cases (boundaries, midpoints, null, negatives, the error path, the concurrent case); a contract (API,
+message, schema, config key, default); shared code; waits and concurrency; money, data, security,
+permissions; easy-to-get-wrong logic (parsers, calculations, state machines); code with earlier
+fixes or reverts. **No risk:** the failure is loud and immediate (compile error, crash on start),
+visible at once (UI text, layout, a UI-only default), or the test could only restate the code (a
+constant, a log message, a mock verifying a call); one-line delegation to tested code; generated
+code and wiring. Size decides nothing: one line changing how money rounds is a risk.
+
+The full rules, shared with amag-pr-respond, are in
+[references/engineering-guidelines.md](references/engineering-guidelines.md).
+
+<!-- Same risk lists as engineering-guidelines.md: change both. -->
 
 ## Worktree mechanics
 
-Create worktrees with the bundled `scripts/mk-worktree.mjs`, never by hand-running git: it needs no
-console, and it owns the fetch, ref checks and rollback. Where the environment has its own one-step
-worktree command (see the build/run conveniences below), use that instead.
-
-- **The call.** Once the repos, a base per repo (see [Base defaults](#base-defaults)) and the slug
-  are confirmed, read [references/mk-worktree.md](references/mk-worktree.md) for the command, the
-  layout and branch naming, `--dry-run` and the exit codes. Confirm the slug with the user first.
-- **Exit `3`:** the ticket dir or branch already exists. Surface it and let the user choose
-  build-on vs start-fresh; never clobber, and never delete the existing one yourself.
-- **Build/run conveniences.** A bare worktree often can't be built or sim-tested until it is
-  seeded, and when `C:\repos\symmetry.world` exists its `just mk-worktree` replaces
-  `mk-worktree.mjs`. Before creating worktrees for a ticket that will need building or
-  sim-testing, read [references/build-conveniences.md](references/build-conveniences.md): the
-  seeding steps, the one-step `just mk-worktree`, and its exit-`3` handling.
+Create worktrees with the bundled `scripts/mk-worktree.mjs`, never by hand-running git. Once the
+repos, a base per repo (see [Base defaults](#base-defaults)) and the user-confirmed slug are
+settled, read [references/mk-worktree.md](references/mk-worktree.md) for the command and exit codes.
+Exit `3` means the ticket dir or branch exists: the user chooses build-on vs start-fresh; never
+clobber or delete it yourself. For a ticket that needs building or sim-testing, first read
+[references/build-conveniences.md](references/build-conveniences.md): seeding, and the
+`just mk-worktree` that replaces the script when `C:\repos\symmetry.world` exists.
 
 ### Base defaults
 
@@ -263,15 +268,10 @@ Each of these is here because an agent was observed violating it, not because it
   has already failed QA, go **logging-first**: ship diagnostic instrumentation, reproduce, read the
   logs, *then* fix. A reproduction you authored proves your hypothesis is *fixable*, not that it is
   the bug the field actually hits.
-- **Verify for real; never assert an untested limitation.** "It can't build/test here" is a claim
-  to *test*, not state. A component may build in a **different environment than the host** (a
-  Linux service or firmware that builds in WSL). A full build can regenerate **generated
-  artifacts** (SDKs); revert those so the diff is only the real change.
-- **Independently verify each worktree.** After an engineer reports, run `git status` and
-  `git diff --stat` in that worktree **yourself**. The engineer's file count is a lead, not a fact.
+- **Verify for real.** "It can't build/test here" is a claim to *test*, not state: a component may
+  build in a **different environment than the host** (a Linux service or firmware in WSL).
 - **Honest state.** Don't move a logging-only or partial deliverable to a status that signals
-  "fixed"; it misleads QA. Estimates and worklogs reflect real scope and real time. Commit and push
-  are the user's call, never a default.
+  "fixed"; it misleads QA. Estimates and worklogs reflect real scope and real time.
 
 ## Rationalisations — rejected
 
@@ -289,7 +289,9 @@ Each of these is here because an agent was observed violating it, not because it
 | "The engineer can review its own diff, it knows the change best." | That is why it cannot. A review pass is a fresh engineer or nothing. |
 | "The ticket already proposes the fix; build it as written." | The proposal covers what the ticket asked. Most regressions are behaviour nobody listed: the baseline and impact list are still yours to write. |
 | "Clear cause, bounded change, approved and tested: routine, the open items are just verification." | Observed in testing: written right after noting the change blocks its callers. A new wait on a caller's thread, a contract change or shared code goes to the advisor, whoever approved it and whenever it's due. |
-| "It has no tests, so there's nothing to break." | No tests means nothing will tell you it broke. Pin today's behaviour on the paths you touch before changing them. |
+| "It has no tests, so there's nothing to break." | No tests means nothing will tell you it broke. Pin today's behaviour on the risky paths you touch before changing them. |
+| "More tests can't hurt." / "They're written and pass; leave them." | Each is upkeep. A test of a label, constant or log call fails only on a deliberate edit. Not in the plan, out of the diff. |
+| "It's a one-line change, it doesn't need a test." | Size isn't risk. One line changing how money rounds is the risk. |
 | "The repro script is a tool QA needs, not production code; it can stay in the repo." | Not the fix and not its test, so it's a helper: it leaves the repo and is redone as `tools\<name>.ps1`, listed in `HANDOVER.md`. |
 | "It's hardcoded for this ticket, so it stays in `tools\`." | Observed in testing. Only a repro or seed stays; hardcoded values become parameters. |
 | "The tests pass." | Through which entry point, and which failure? Tests that use an internal shortcut, or only a mild form of the failure, pass while the real path breaks. |
@@ -308,21 +310,17 @@ Each of these is here because an agent was observed violating it, not because it
 - About to commit, push, or transition to a done-ish status without the user asking.
 - About to delegate a change with no behaviour baseline or impact list, or with an open item that
   has no owner.
-- About to change code on an untested path before a characterization test pins it.
+- About to change code on an untested risky path before a characterization test pins it.
+- About to ask for, or accept, a test of a label, constant, log line or UI default.
+- About to skip a test on a risk because the diff is small.
 - A test that reaches the change in a way users and the system never do.
 - About to run `git worktree add` by hand instead of `mk-worktree.mjs`.
 - About to open a file in a folder that has a `CLAUDE.md` you have not read.
 
 ## Anti-patterns
 
-- The orchestrator becomes the developer: substantial implementation done inline instead of
-  delegated to the engineer.
-- The engineer becomes the orchestrator: handed the whole project and told to finish everything.
-- The advisor becomes another worker, spending its time on routine features.
-- Advisor addiction: every decision sent up. Conventions and the engineer settle ordinary ones.
 - Agent ping-pong: agents asked to reassess the same information. You decide unless there is
   genuinely new evidence or expertise.
-- Test explosion: tests for implementation details, then time spent repairing them.
 - One giant plan for all tickets. Each ticket is its own worktree, lane, and verification.
 - Assuming the base branch, the repo set, or a build environment's limits instead of asking or
   testing.
