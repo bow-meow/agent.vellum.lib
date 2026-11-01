@@ -146,6 +146,8 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
 - "Consider adding logging/metrics" without a concrete diagnostic gap.
 - Generated files (`*.Designer.cs`, lockfiles, `Code generated ... DO NOT EDIT`, `*ModelSnapshot.cs`).
 - Magic numbers and strings inside tests.
+- A missing test for behaviour that isn't a risk by `dimensions/tests-history.md`'s definition: the
+  failure would be loud and immediate, visible at once, or a test could only restate the code.
 
 <!-- Add a line below whenever the user says a finding was wrong or noise: the pattern, and why. -->
 - A hand-kept list or count in a test that "can drift" from its source when that source isn't something

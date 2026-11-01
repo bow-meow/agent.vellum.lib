@@ -1,12 +1,25 @@
 # Tests and history
 
+Tests are risk-based: only a behaviour whose regression would be a risk needs one. **A risk** is a
+behaviour where a regression would be silent or found late, and cost something: what the change
+exists to fix or manage, with its edge cases (boundaries, midpoints, null, negatives, the error
+path, the concurrent case); a contract (API, message, schema, file format, config key, default);
+shared code; waits, timeouts and concurrency; money, data integrity, security, permissions;
+easy-to-get-wrong logic (parsers, calculations, state machines, business rules); code with earlier
+fixes or reverts. **Not a risk:** the failure would be loud and immediate (compile error, crash on
+start), visible at once (UI text, layout, a UI-only default), or a test could only restate the code
+(a constant, a log message, a mock verifying a call); one-line delegation to tested code; generated
+code and wiring. Size decides nothing: one line changing how money rounds is a risk.
+
 ## Look for
-- **Coverage**: each behaviour the change adds or alters has a test change. Name the untested behaviour.
-- **Do the tests prove it works?** Read them:
+- **Coverage of risks**: each risky behaviour the change adds or alters has a test that would fail if
+  it regressed. Name the behaviour and which kind of risk it is. A no-risk behaviour without a test
+  is not a finding.
+- **Do the tests of a risk prove it works?** Read them:
   - Does each new test assert the changed behaviour, or only that nothing throws?
   - Would it still pass against the old code? (If yes, it proves nothing about the fix.)
-  - Are the edge cases in the change covered: empty, null, boundary values, the error path, the
-    concurrent case for race fixes?
+  - Are the risk's own edge cases covered: empty, null, boundary and midpoint values, negatives,
+    the error path, the concurrent case for race fixes?
   - Over-mocking: the mock returns exactly what the code under test needs, so the test can't fail. A
     fake that sets a state flag (closed, connected, ready) at the same moment as the event under test
     hides when the real library sets it: check whether the library updates the flag before or after it
@@ -42,8 +55,16 @@
   code around it and check the change doesn't undo that fix. Name the commit. You have no shell, so
   keep this to what the file and the worktree show.
 
+## Don't flag
+- A missing test for a no-risk behaviour (above): a label or UI text, a UI-only default, a log line,
+  a constant, wiring, one-line delegation to tested code.
+- Missing edge cases for a behaviour that isn't a risk.
+- A test the change added for a no-risk behaviour, unless it costs something real (slow, flaky,
+  touches shared state): then Low/nit, suggesting it be removed.
+
 ## Severity hints
-- A bug fix with no test that fails on the old code → Low (Medium if the ticket is a regression).
+- A bug fix with no test that fails on the old code → Low (Medium if the ticket is a regression),
+  when the bug is a risk by the list above; not raised otherwise.
 - A repro from the ticket or its QA comments (each input or step it names) with no test that would
   fail if that bug came back → Medium (severity.md). Check the test runs where the bug lives: a
   model/view desync needs the binding, so a handler test on a bare element can't catch it. The fix
