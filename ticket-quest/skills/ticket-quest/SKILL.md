@@ -55,7 +55,8 @@ tickets progress at different speeds; never block one on another.
    Detect a pre-existing ticket dir or branch and ask build-on vs start-fresh rather than clobbering.
    On build-on, read the ticket dir's `HANDOVER.md` before anything else; on a new ticket, create it
    (see [Handover and tools](#handover-and-tools)).
-3. **Establish context yourself.** Search, read the relevant sections, locate the implementation,
+3. **Establish context yourself** — or, when the user asked to be quizzed, through
+   [Quiz mode](#quiz-mode). Search, read the relevant sections, locate the implementation,
    note exact files and lines, prior attempts, and what QA saw. When a search hit sits under a
    folder that has its own `CLAUDE.md`, read that file before opening anything else there: a
    worktree outside the launch repo gets no automatic injection of nested `CLAUDE.md` files, so
@@ -150,6 +151,13 @@ tickets progress at different speeds; never block one on another.
    final paths as `path | what it does | command line`, e.g.
    `<root>\_tools\net\Send-Traffic.ps1 | sends requests at a set rate | Send-Traffic.ps1 -Rate 50`.
    Notes never go on Jira.
+
+## Quiz mode
+
+Opt-in per run: the user asks to be quizzed on the approach ("quiz me", "quiz mode").
+Otherwise never quiz. When asked, read [references/quiz-mode.md](references/quiz-mode.md) before
+step 3: a scan agent maps the code, you quiz the user on what it leaves open, and answers
+constrain the build.
 
 ## Handover and tools
 
@@ -247,17 +255,8 @@ clobber or delete it yourself. For a ticket that needs building or sim-testing, 
 
 ### Base defaults
 
-Per repo, offer the default below or let the user pick another; `mk-worktree.mjs` refuses a base
-that doesn't resolve. If the user picks a **non-default**
-base, ask whether to **persist it as the new default** — on yes, edit the table below.
-
-<!-- BASE-DEFAULTS: edit this table when the user asks to change a repo's default base -->
-
-| Repo | Default base |
-|---|---|
-| `esg-ng-core-linux` | `origin/main` |
-| `symmetryclassic` | **List the live `release/*` branches and let the user pick**: read [references/release-bases.md](references/release-bases.md) for how; never hardcode one |
-| any other repo | `origin/HEAD` (ask) |
+Before confirming bases, read [references/base-defaults.md](references/base-defaults.md): the
+default per repo, and how to persist a new one when the user asks.
 
 
 ## Non-negotiables
@@ -313,6 +312,7 @@ Each of these is here because an agent was observed violating it, not because it
 - About to change code on an untested risky path before a characterization test pins it.
 - About to ask for, or accept, a test of a label, constant, log line or UI default.
 - About to skip a test on a risk because the diff is small.
+- Quiz mode: building before the user answered, or asking what a convention settles.
 - A test that reaches the change in a way users and the system never do.
 - About to run `git worktree add` by hand instead of `mk-worktree.mjs`.
 - About to open a file in a folder that has a `CLAUDE.md` you have not read.

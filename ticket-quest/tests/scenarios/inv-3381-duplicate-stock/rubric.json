@@ -141,6 +141,16 @@
         5
       ],
       "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-01",
+      "skill": "d72c071 + quiz mode (references/quiz-mode.md, opt-in), base defaults moved to references/base-defaults.md; runs may now read referenced files (passed full suite)",
+      "scores": [
+        5,
+        6,
+        6
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
     }
   ],
   "previous_version": "An earlier draft had QA ask for a just recipe and handover notes on the Jira ticket, and the engineer add the recipe. Against it: baseline df2d9d3 scored 1,2,1; v1 2,2,3; v2 1,2,2 (2026-10-23). Haiku quoted the skill's rule and still did what the ticket asked. Dropped because it tested refusing a direct request, not what real use triggers.",

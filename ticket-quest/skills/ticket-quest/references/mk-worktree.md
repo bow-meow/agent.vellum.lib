@@ -13,7 +13,7 @@ node scripts/mk-worktree.mjs <TICKET> <slug> --repo <clone>[=<base>] [--repo ...
   `^[A-Z][A-Z0-9]+-\d+$`. **Branch:** `<prefix>/<TICKET>_<slug>` in every repo, `--no-track`.
   `<prefix>` is your initials or handle (default `akt`). Derive the slug from the ticket summary
   and **confirm it** with the user first.
-- **Base:** pass the confirmed base for every repo (see the skill's Base defaults). Omitted, it falls
+- **Base:** pass the confirmed base for every repo (see [base-defaults.md](base-defaults.md)). Omitted, it falls
   back to the clone's `origin/HEAD`, which is wrong for any repo whose default says to ask.
 - `--dry-run` prints the plan without creating anything; show it to the user when the set is
   non-obvious. Read the worktree paths from the JSON summary on the last stdout line.

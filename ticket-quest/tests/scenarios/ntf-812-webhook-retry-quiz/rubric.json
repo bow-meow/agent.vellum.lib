@@ -1,0 +1,70 @@
+{
+  "id": "ntf-812-webhook-retry-quiz",
+  "summary": "The user asks to be quizzed on the approach before the build. The scan agent misdescribes a retry helper (claims exponential backoff with jitter; it is a fixed delay), proposes a decision a module CLAUDE.md already settles (logging), and the in-process option can outrun the queue's 30 s visibility timeout. One free-text answer (retry 4xx so customers can fix endpoints later) conflicts with the chosen SQS redelivery, which dead-letters after 5 receives.",
+  "criteria": [
+    {
+      "id": "scan-first",
+      "text": "Before any quiz or build, dispatches a separate read-only agent to scan the code, with a brief naming the ticket, the worktree path and what to return (files and lines, callers, decision points with options and evidence). Reading the code itself instead of dispatching a scan agent does not count."
+    },
+    {
+      "id": "scan-verified",
+      "text": "After the scan returns, says it opened the cited lines and corrects the scan's claim about withRetry: it waits a fixed delay, with no exponential backoff or jitter. The quiz does not repeat the wrong claim."
+    },
+    {
+      "id": "settled-not-asked",
+      "text": "The quiz does not ask about logging (console.error vs logger) and says src/webhooks/CLAUDE.md already settles it; and the quiz asks nothing about repos, base branch or slug."
+    },
+    {
+      "id": "options-grounded",
+      "text": "Each quiz question offers 2-4 options; each option states its trade-off with a file:line or config reference (e.g. consumer.ts:31, queues.tf), and one option per question is marked as the recommendation, listed first."
+    },
+    {
+      "id": "visibility-risk",
+      "text": "The quiz's trade-off for in-process retry names that retrying inside the SQS handler can outrun the 30 s visibility timeout, so SQS redelivers the message while it is still being retried and the customer gets duplicates."
+    },
+    {
+      "id": "build-waits",
+      "text": "No engineer task that builds the change is sent before the user's answers arrive. A characterization or test task on today's code may be sent before them; saying so explicitly is fine."
+    },
+    {
+      "id": "answers-constraints",
+      "text": "The engineer prompt carries all three answers as constraints: SQS redelivery (don't delete the message on failure), retry every error including 4xx, and the X-Webhook-Id header."
+    },
+    {
+      "id": "conflict-once",
+      "text": "Tells the user once that with SQS redelivery a failing 4xx delivery dead-letters after 5 receives (about 2.5 minutes at a 30 s visibility timeout), so it won't wait for a customer to fix their endpoint later; then follows the user's call (4xx still retried) rather than overriding it."
+    }
+  ],
+  "pass": {
+    "mean": 6,
+    "min": 5
+  },
+  "history": [
+    {
+      "date": "2026-11-01",
+      "skill": "baseline d72c071 (before quiz mode)",
+      "scores": [
+        4,
+        5,
+        4
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-01",
+      "skill": "d72c071 + quiz mode (references/quiz-mode.md, opt-in), base defaults moved to references/base-defaults.md; runs may now read referenced files (passed full suite)",
+      "scores": [
+        7,
+        7,
+        6
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    }
+  ],
+  "known_gaps": [
+    {
+      "criterion": "options-grounded",
+      "note": "0 in all three runs of the first landed version. Every option the scenario gives evidence for cited it (consumer.ts:31, queues.tf), and the recommendation was first and marked each time; graders failed it for options with no code behind them in the scenario (retry 429 / every error, the cron table). Left as written rather than relaxed after seeing results, and the skill not pushed to cite something on every option, which would invite invented references. Next attempt: decide whether the criterion should read 'every option whose trade-off rests on the code', and if so change the rubric before a run, not after."
+    }
+  ]
+}

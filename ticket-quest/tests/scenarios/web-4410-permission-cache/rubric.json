@@ -197,6 +197,16 @@
         8
       ],
       "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-01",
+      "skill": "d72c071 + quiz mode (references/quiz-mode.md, opt-in), base defaults moved to references/base-defaults.md; runs may now read referenced files (passed full suite)",
+      "scores": [
+        8,
+        8,
+        8
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
     }
   ],
   "known_gaps": [
