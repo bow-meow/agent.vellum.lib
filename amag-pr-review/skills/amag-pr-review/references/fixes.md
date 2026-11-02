@@ -62,3 +62,10 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   a frequent one flooding: the frequent kind uses up the window and hides a rarer, more important one,
   and a suppressed count written only when the next message gets through is lost if none follows.
   Throttle per kind, and write the count when the window closes.
+- A match, lookup or exemption narrowed to the right unit (per item, per form, per caller) on the one
+  path the finding named, while sibling paths that gather the same kind of evidence (another branch,
+  an exemption set, a second lookup) keep the old, wider unit: the stand-in the finding caught
+  survives one branch over. Find every path that collects that evidence and give each the new unit.
+- A field (a location, an owner) added to the key of some writes into a map or set used to report or
+  dedupe, while other writes to it keep the old key: entries that differ only in that field overwrite
+  each other, and all but the last report disappear. Give every write the same full key.

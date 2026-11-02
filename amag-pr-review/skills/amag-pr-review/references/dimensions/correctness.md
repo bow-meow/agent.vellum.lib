@@ -11,6 +11,13 @@
 - A uniqueness or count check over a mapped value where the mapping can fail to a shared sentinel
   (null, a default, 0): every unparsable input becomes the same value, so several bad inputs also
   report a duplicate that isn't there. Check the check runs only over the values that mapped.
+- A check that excuses an item using a set gathered over a wider unit than the item (exemptions,
+  matches or allow-lists collected per file, module or request, then tested per form, record or caller
+  inside it): one item's entry excuses another's, and the check passes when it should fail. Check
+  each item is tested only against entries from its own unit, on every branch that builds such a set.
+- A map or set that collects problems to report, keyed without the field that tells two of them apart
+  (the file, owner or instance): a later `set` overwrites an earlier one and only the last is
+  reported. Check every write to it uses the same full key.
 - A client check that mirrors how the server treats an input (a whitespace-only value counted as
   absent, a value it trims or ignores) but runs only on some paths, such as only while the field is
   required: elsewhere the input passes, the server drops it and still reports success, so the user
