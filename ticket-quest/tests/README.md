@@ -16,8 +16,8 @@ for that miss (below), so the lesson is tested from then on and later edits can'
 
 Per scenario (`node suite.mjs list`), `$OUT` being a scratch folder:
 
-1. Three runs, in parallel. Each is one agent on the model the skill's frontmatter names (the
-   model ticket-quest's orchestrator runs on, Sonnet since 2026-10-23), given the output of
+1. Three runs, in parallel. Each is one agent on Sonnet, the model ticket-quest's orchestrator
+   runs on since 2026-10-23, given the output of
    `node suite.mjs prompt <scenario> --skill <path to SKILL.md under test> --answer $OUT/<scenario>-<n>.md`.
    Runs may read any file SKILL.md points them to (its `references/`, and outside files such as
    `C:\repos\articles\WRITING.md`), so `--skill` must be a SKILL.md with its `references/` folder

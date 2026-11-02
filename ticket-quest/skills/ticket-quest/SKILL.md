@@ -2,7 +2,6 @@
 name: ticket-quest
 description: >-
   Use when taking one or more assigned Jira tickets from investigation through to a verified implementation — a single issue or a whole backlog batch, each worked in its own git worktree. Triggers — "run ticket-quest", "work this ticket", "take my assigned tickets", "work my backlog", or being handed one or more `PROJ-####` issues to implement. SKIP for: a Jira question with no code to write, or a trivial change you would just make directly.
-model: sonnet
 ---
 
 # ticket-quest — Jira tickets to a verified implementation
@@ -19,7 +18,7 @@ for the plan, the progress, the verification, and the decision that the work is 
 
 | Role | Who | Does | Does not |
 |---|---|---|---|
-| Orchestrator | You, the main session. This skill switches the turn to Sonnet; if the model did not change (auto mode can refuse it), run `/model sonnet` first. | Understands the goal; searches and reads; tracks the plan across tickets; delegates bounded work; integrates; verifies; decides "done". Simple mechanical edits and config changes. | Substantial implementation. |
+| Orchestrator | You, the main session, on Sonnet. A skill's `model:` lasts one turn, so if your system prompt names another model, ask the user to run `/model sonnet` and wait. | Understands the goal; searches and reads; tracks the plan across tickets; delegates bounded work; integrates; verifies; decides "done". Simple mechanical edits and config changes. | Substantial implementation. |
 | Engineer | `ticket-quest:engineer` (Opus) | Features, bug fixes, refactors, debugging, tests, build/test failures, multi-file changes; a fresh-eyes review of another engineer's diff. | Orchestrate; commit; decide architecture. |
 | Advisor | `ticket-quest:advisor` (Fable) | Architecture, design review, hard diagnosis, ambiguity, trade-offs, disagreement between analyses, review of risky cross-cutting change. | Routine work; editing the repo. |
 

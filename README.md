@@ -39,7 +39,7 @@ article, when `C:\repos\articles\WRITING.md` exists; that file holds the rules a
 script refuses duplicates.
 
 ### `ticket-quest`
-Runs assigned Jira tickets end to end on three model roles: a Haiku orchestrator that owns the
+Runs assigned Jira tickets end to end on three model roles: a Sonnet orchestrator that owns the
 plan and verifies every claim, an Opus engineer that does the building in an isolated git worktree
 per ticket, and a Fable advisor consulted only for architecture, hard diagnosis, or after two failed
 attempts. No human gate before implementation unless you ask it to quiz you: then a scan agent
