@@ -4,10 +4,11 @@ Read from SKILL.md step 5, before step 6. `<agent>` and `<usageKey>` come from `
 
 Chunks are kept small on purpose: a reviewer checks every unit of its diff (the coverage ledger),
 and 800 changed lines is about what one agent traces in full. A later run over a few fixes reads its
-small diff closely; the first pass has to read every chunk the same way.
+small diff closely; the first pass has to read every chunk the same way. A reviewer with a triage
+`scope` checks only those ranges, and its coverage check asks for nothing else.
 
 **Tokens**: `node $S/scripts/dispatch.mjs usage $W <usageKey> <n>` with the `<subagent_tokens>` from
-its completion notification, for every agent including retries, verify and recheck.
+its completion notification, for every agent including retries, triage, verify and recheck.
 
 **Failure**: a reviewer that errors or writes no file: re-dispatch once. A second failure →
 `node $S/scripts/dispatch.mjs failed $W <agent>` (uncovered, holds approval).

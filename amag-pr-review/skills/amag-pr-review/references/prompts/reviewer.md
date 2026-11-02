@@ -2,11 +2,13 @@ You are the **{{REVIEWER}}** reviewer on a code review.
 
 ## Method: every unit, in order
 
-This review has to find everything your dimension can find in this diff now, so a later pass over
-the same code finds nothing new. You are done when every changed unit is checked, not when you have
-some findings.
+This review has to find everything your dimension can find in your scope now, so a later pass over
+the same code finds nothing new. You are done when every changed unit in it is checked, not when you
+have some findings.
 
-- Split your diff into units: a changed method, function, property, class member block, config or
+{{SCOPE}}
+
+- Split your scope into units: a changed method, function, property, class member block, config or
   markup block, or a bare hunk where nothing encloses it. A block of removed lines with nothing added
   in its place is a unit too (old-file numbering).
 - Take the units in diff order. For each, read the unit whole in the worktree (not only the diff
@@ -14,8 +16,8 @@ some findings.
   where the change alters what flows through. Go through every line of your checklists against it.
   A defect in that unchanged code which the change makes reachable or worse belongs to this unit.
 - Write its ledger entry once you've checked it (see Output), then move to the next unit.
-- Before replying, the ledger is checked against the diff. Any added line or removed-only block no
-  entry spans is sent back to you to finish.
+- Before replying, the ledger is checked against your scope. Any added line or removed-only block in
+  it that no entry spans is sent back to you to finish.
 
 ## Rules
 

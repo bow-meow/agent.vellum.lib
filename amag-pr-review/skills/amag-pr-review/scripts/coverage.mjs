@@ -35,7 +35,20 @@ export function changedRuns(files, only = null) {
 }
 
 const norm = p => String(p ?? '').replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase();
-const samePath = (a, b) => { a = norm(a); b = norm(b); return a === b || a.endsWith('/' + b) || b.endsWith('/' + a); };
+export const samePath = (a, b) => { a = norm(a); b = norm(b); return a === b || a.endsWith('/' + b) || b.endsWith('/' + a); };
+
+// The parts of runs that fall inside a triage scope: [{path, side, from, to}].
+export function clipRuns(runs, scope) {
+  const out = [];
+  for (const r of runs) {
+    for (const s of scope) {
+      if (!samePath(s.path, r.path) || (s.side ?? 'new') !== r.side) continue;
+      const from = Math.max(r.from, +s.from), to = Math.min(r.to, +s.to);
+      if (from <= to) out.push({ path: r.path, side: r.side, from, to });
+    }
+  }
+  return out;
+}
 
 export function uncovered(runs, ledger) {
   const entries = (Array.isArray(ledger) ? ledger : []).filter(e => e && String(e.checked ?? '').trim()

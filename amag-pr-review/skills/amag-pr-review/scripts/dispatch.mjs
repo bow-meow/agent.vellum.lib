@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Fills the reviewer, verify, recheck and fix-review prompts from the work dir, and does the
-// after-dispatch mechanics: coverage rounds, repo requests, token usage. Usage: see USAGE.
+// Fills the triage, reviewer, verify, recheck and fix-review prompts from the work dir, and does the
+// after-dispatch mechanics: triage checks, coverage rounds, repo requests, token usage. Usage: see USAGE.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseDiff, splitDiff, stats } from './anchors.mjs';
-import { changedRuns, uncovered } from './coverage.mjs';
+import { isGenerated, parseDiff, splitDiff, stats } from './anchors.mjs';
+import { changedRuns, clipRuns, samePath, uncovered } from './coverage.mjs';
 import { nativePath } from './env.mjs';
 import { contested } from './recheck.mjs';
 import { pendingNeeds, reposLines, slugOf } from './xrepo.mjs';
@@ -30,6 +30,19 @@ export const CHECKLISTS = {
 const dimensionsOf = r => CHECKLISTS[r] ?? [r];
 
 const NO_COVERAGE = new Set(['ticket-fit', 'claims', 'styles']);
+
+// Specialists that only see the ranges triage assigns them. The rest always read the whole diff, so a
+// range triage misses can still be caught by correctness or regression.
+export const TRIAGED = ['concurrency-races', 'resources-performance', 'security', 'sql'];
+
+// Leads for triage, not a verdict: every hit has to land in a range or be dismissed with a reason.
+export const HINTS = {
+  'concurrency-races': /\b(lock|Monitor\.|Interlocked|volatile|async void|Task\.(Run|WhenAll|WhenAny|Factory)|Thread|ThreadPool|Parallel\.|Concurrent\w+|Semaphore\w*|Mutex|ReaderWriterLock\w*|Timer|Dispatcher|BeginInvoke|CancellationToken\w*|std::(thread|mutex|atomic|async|condition_variable|lock_guard|unique_lock)|pthread_\w+|go func|chan|sync\.\w+|setTimeout|setInterval|Promise|HOLDLOCK|UPDLOCK|NOLOCK|BEGIN TRAN\w*)\b|\bstatic\s+(?!(readonly|const|class|void|async|extern|inline|bool|int|string)\b)[\w<>,[\] ]+\s\w+\s*[=;]/,
+  'resources-performance': /\bnew\s+(Sql\w+|\w*Stream|\w*Reader|\w*Writer|HttpClient|Timer|Bitmap|Process|\w*Connection|CancellationTokenSource)\b|\b(IDisposable|Dispose|using\s*\(|using var|malloc|calloc|realloc|free\(|fopen|fclose|Unsubscribe|AddHandler|RemoveHandler|addEventListener|removeEventListener|unsubscribe|ngOnDestroy|takeUntil|Thread\.Sleep|\.Result\b|\.Wait\(\)|defer\b|ToList\(\)|ToArray\(\))|\w\s*\+=\s*(new\b|\w*(Handler|On\w+)\b|\([^)]*\)\s*=>|\w+\s*=>)|\bstatic\s+[\w.]*(List|Dictionary|Cache|HashSet|Map)\b/,
+  security: /\[(Authorize|AllowAnonymous|Http(Get|Post|Put|Delete|Patch)|Route|FromBody|FromQuery)\b|\b(Permission\w*|Privilege\w*|Grant\w*|Password\w*|Secret\w*|Credential\w*|ApiKey|Encrypt\w*|Decrypt\w*|Crypto\w*|Certificate\w*|Sanitiz\w*|Deserializ\w*|BinaryFormatter|Process\.Start|system\(|popen|exec[lv]p?\(|Path\.Combine|File\.(Read|Write|Open|Delete|Copy|Move)\w*|strcpy|strcat|sprintf|memcpy|gets\(|innerHTML|bypassSecurityTrust\w*|eval\(|Subscribe\w*|Controller|Request\.)/,
+  sql: /\b(SELECT|INSERT|UPDATE|DELETE|MERGE|EXEC|EXECUTE|SqlCommand|SqlParameter|FromSql\w*|ExecuteSql\w*|Dapper|QueryAsync|CommandText|CREATE (TABLE|INDEX|PROC\w*)|ALTER (TABLE|PROC\w*)|JOIN|WHERE|TRANSACTION|DbContext|SaveChanges\w*)\b/,
+};
+const HINT_GAP = 3;
 
 export const EXTRA_RULES = {
   'ticket-fit': 'Uncertain coverage goes in with terminal_only: true.',
@@ -124,7 +137,7 @@ export const formatLines = lines => (lines.length === 1 ? lines[0] : lines.map(l
 const oneLine = s => String(s).trim().replace(/\s*\r?\n\s*/g, ' ');
 
 // env: what the work dir holds, already resolved to slot text (see loadWork).
-export function reviewerSlots({ reviewer, chunk, diffFile }, env) {
+export function reviewerSlots({ reviewer, chunk, diffFile, scope = null }, env) {
   const agent = agentName({ reviewer, chunk });
   const blind = reviewer === 'regression';
   const mode = env.mode === 'pr'
@@ -143,6 +156,7 @@ export function reviewerSlots({ reviewer, chunk, diffFile }, env) {
     TICKET_FILE: blind ? 'none' : env.ticketFile,
     PR_DESCRIPTION_FILE: blind ? 'none' : env.prDescriptionFile,
     DIFF_FILE: winPath(diffFile),
+    SCOPE: scopeText(scope),
     OUT_FILE: `${env.w}/cand-${agent}.json`,
     COVERAGE_FILE: `${env.w}/cov-${agent}.json`,
     EXTRA_MATERIAL: extraMaterial(reviewer, env),
@@ -255,23 +269,185 @@ function existing(files) {
   return files.join(', ');
 }
 
+export const triageRoster = env => TRIAGED.filter(r => r !== 'sql' || env.sql);
+
+// Added lines that match a reviewer's hint pattern, merged into runs. Every line of a .sql file is a
+// sql hint, whatever it says.
+export function hintsOf(files, reviewers) {
+  const out = [];
+  for (const f of files.values()) {
+    if (f.binary || isGenerated(f)) continue;
+    const sqlFile = /\.sql$/i.test(f.path);
+    const open = {};
+    const flush = r => { if (open[r]) { out.push(open[r]); delete open[r]; } };
+    let newLn = 0;
+    for (const line of f.raw) {
+      const h = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+      if (h) { reviewers.forEach(flush); newLn = +h[1]; continue; }
+      if (!newLn || (line[0] !== '+' && line[0] !== ' ')) continue;
+      if (line[0] === '+') {
+        const text = line.slice(1);
+        for (const r of reviewers) {
+          if (!((r === 'sql' && sqlFile) || HINTS[r].test(text))) continue;
+          if (open[r] && newLn - open[r].to <= HINT_GAP) open[r].to = newLn;
+          else { flush(r); open[r] = { reviewer: r, path: f.path, side: 'new', from: newLn, to: newLn, sample: text.trim().slice(0, 120) }; }
+        }
+      }
+      newLn++;
+    }
+    reviewers.forEach(flush);
+  }
+  return out;
+}
+
+const overlaps = (a, b) => samePath(a.path, b.path) && (a.side ?? 'new') === (b.side ?? 'new') && +a.from <= +b.to && +b.from <= +a.to;
+
+function mergeRanges(ranges) {
+  const sorted = [...ranges].sort((a, b) => a.path.localeCompare(b.path) || a.side.localeCompare(b.side) || a.from - b.from);
+  const out = [];
+  for (const r of sorted) {
+    const last = out[out.length - 1];
+    if (last && last.path === r.path && last.side === r.side && r.from <= last.to + 1) {
+      last.to = Math.max(last.to, r.to);
+      if (!last.why.includes(r.why)) last.why += `; ${r.why}`;
+    } else out.push({ ...r });
+  }
+  return out;
+}
+
+const changedLines = (runs, scope) => clipRuns(runs, scope).reduce((n, r) => n + r.to - r.from + 1, 0);
+
+// triage.json: {ranges: {<reviewer>: [{path, side, from, to, why}]}, dismissed: [{reviewer, path, side, from, to, why}]}.
+// Returns the merged ranges per reviewer, or the errors to send back.
+export function checkTriage(out, { reviewers, runs, hints }) {
+  const ranges = out?.ranges;
+  if (!ranges || typeof ranges !== 'object' || Array.isArray(ranges)) return { errors: ['triage.json has no "ranges" object'] };
+  const dismissed = Array.isArray(out.dismissed) ? out.dismissed : [];
+  const errors = [];
+  const result = {};
+  for (const r of reviewers) {
+    const list = ranges[r];
+    if (!Array.isArray(list)) { errors.push(`ranges["${r}"] is missing; write [] when nothing in the diff is for it`); continue; }
+    const good = [];
+    list.forEach((x, i) => {
+      const at = `ranges["${r}"][${i}]`;
+      const side = x?.side ?? 'new';
+      if (!x?.path || !Number.isInteger(+x.from) || !Number.isInteger(+x.to) || +x.from > +x.to || !['new', 'old'].includes(side))
+        return errors.push(`${at} needs path, side "new" or "old", and whole-number from <= to`);
+      if (!String(x.why ?? '').trim()) return errors.push(`${at} has no "why"`);
+      const s = { path: x.path, side, from: +x.from, to: +x.to };
+      const run = runs.find(c => c.side === side && samePath(c.path, x.path));
+      if (!run || !clipRuns(runs, [s]).length) return errors.push(`${at}: ${x.path} ${x.from}-${x.to} (${side}) holds no changed line`);
+      good.push({ ...s, path: run.path, why: String(x.why).trim() });
+    });
+    result[r] = mergeRanges(good);
+  }
+  for (const h of hints) {
+    if (!reviewers.includes(h.reviewer)) continue;
+    const kept = (result[h.reviewer] ?? []).some(x => overlaps(x, h))
+      || dismissed.some(d => d?.reviewer === h.reviewer && String(d.why ?? '').trim() && overlaps(d, h));
+    if (!kept) errors.push(`hint ${h.reviewer} ${h.path}:${h.from}-${h.to} ("${h.sample}") is in no range and not dismissed`);
+  }
+  return errors.length ? { errors } : { ranges: result };
+}
+
+export function triage(w, opts = {}) {
+  const env = loadWork(w, opts);
+  const files = parseDiff(readFileSync(join(env.W, 'context.diff'), 'utf8'));
+  const changed = Number.isFinite(env.changed) ? env.changed : stats(files).changed;
+  if (changed < SMALL) return { skip: true, why: `under ${SMALL} changed lines: the combined reviewer reads everything` };
+  const list = triageRoster(env);
+  const hints = hintsOf(files, list);
+  writeFileSync(join(env.W, 'triage-hints.json'), JSON.stringify(hints, null, 2));
+  const slots = {
+    SKILL_DIR: winPath(env.skillDir),
+    REVIEWERS: list.map(r => `\n  - \`${r}\`: ${winPath(join(env.skillDir, 'references', 'dimensions', `${r}.md`))}`).join(''),
+    REPOS: env.repos,
+    TICKET_SUMMARY: env.ticketSummary,
+    DIFF_FILE: winPath(`${env.w}/context.diff`),
+    HINTS_FILE: winPath(`${env.w}/triage-hints.json`),
+    OUT_FILE: `${env.w}/triage.json`,
+  };
+  const promptFile = writePrompt(env, 'triage', fill(readTemplate(env.skillDir, 'triage'), slots));
+  return { skip: false, promptFile, outFile: slots.OUT_FILE, usageKey: 'triage', model: 'sonnet', reviewers: list, hints: hints.length };
+}
+
+export function triageCheck(w, opts = {}) {
+  const env = loadWork(w, opts);
+  const reviewers = triageRoster(env);
+  const runs = changedRuns(parseDiff(readFileSync(join(env.W, 'context.diff'), 'utf8')));
+  const out = readJson(join(env.W, 'triage.json'), null);
+  if (!out) return { ok: false, errors: ['triage.json is missing or not valid JSON'] };
+  const res = checkTriage(out, { reviewers, runs, hints: readJson(join(env.W, 'triage-hints.json'), []) });
+  if (res.errors) return { ok: false, errors: res.errors };
+  writeFileSync(join(env.W, 'triage-checked.json'), JSON.stringify(res.ranges, null, 2));
+  return {
+    ok: true,
+    scoped: Object.fromEntries(reviewers.filter(r => res.ranges[r].length)
+      .map(r => [r, { ranges: res.ranges[r].length, changedLines: changedLines(runs, res.ranges[r]) }])),
+    notRun: reviewers.filter(r => !res.ranges[r].length),
+  };
+}
+
+export function scopeText(scope) {
+  if (!scope) return 'Your scope is every changed unit in the diff.';
+  return 'Your scope is the ranges below, which a triage pass picked from the diff for your dimension. '
+    + 'The rest of the diff is context: read it as you need to, but your units, your ledger and the coverage '
+    + 'check cover these ranges only. A defect in your dimension that you see outside them while tracing '
+    + 'is still a candidate.'
+    + scope.map(s => `\n  - ${s.path} lines ${s.from}-${s.to} (${s.side}): ${s.why}`).join('');
+}
+
+// A triaged reviewer runs only where triage gave it ranges. Over 1000 lines, one whose ranges fit in a
+// chunk's worth of changed lines runs once over the whole diff instead of once per chunk.
+export function applyTriage(list, triaged, { runs, chunkRuns }) {
+  if (!triaged) return list.map(a => ({ ...a, scope: null }));
+  const out = [];
+  const once = new Set();
+  for (const a of list) {
+    const ranges = TRIAGED.includes(a.reviewer) && Array.isArray(triaged[a.reviewer]) ? triaged[a.reviewer] : null;
+    if (!ranges) { out.push({ ...a, scope: null }); continue; }
+    if (!ranges.length) continue;
+    if (!a.chunk) { out.push({ ...a, scope: ranges }); continue; }
+    if (changedLines(runs, ranges) <= CHUNK_SIZE) {
+      if (!once.has(a.reviewer)) { once.add(a.reviewer); out.push({ reviewer: a.reviewer, chunk: null, scope: ranges }); }
+      continue;
+    }
+    const mine = ranges.filter(s => clipRuns(chunkRuns[a.chunk - 1], [s]).length);
+    if (mine.length) out.push({ ...a, scope: mine });
+  }
+  return out;
+}
+
+// The checked triage, or null when triage didn't run, failed, or never passed its check.
+function loadTriage(W) {
+  if (existsSync(join(W, 'triage.failed'))) return null;
+  return readJson(join(W, 'triage-checked.json'), null);
+}
+
 export function reviewers(w, opts = {}) {
   const env = loadWork(w, opts);
   const template = readTemplate(env.skillDir, 'reviewer');
   const whole = `${env.w}/context.diff`;
   let changed = env.changed;
-  let diffText = null;
-  const diff = () => (diffText ??= readFileSync(join(env.W, 'context.diff'), 'utf8'));
-  if (!Number.isFinite(changed)) changed = stats(parseDiff(diff())).changed;
+  let parsed = null;
+  const files = () => (parsed ??= parseDiff(readFileSync(join(env.W, 'context.diff'), 'utf8')));
+  if (!Number.isFinite(changed)) changed = stats(files()).changed;
   let chunkFiles = [];
+  let chunkRuns = [];
   if (changed > LARGE) {
     mkdirSync(join(env.W, 'chunks'), { recursive: true });
-    chunkFiles = splitDiff(parseDiff(diff()), CHUNK_SIZE).map((c, i) => {
+    const chunks = splitDiff(files(), CHUNK_SIZE);
+    chunkRuns = chunks.map(c => changedRuns(parseDiff(c.text)));
+    chunkFiles = chunks.map((c, i) => {
       writeFileSync(join(env.W, 'chunks', `chunk-${i + 1}.diff`), c.text);
       return `${env.w}/chunks/chunk-${i + 1}.diff`;
     });
   }
-  const list = roster({ changed, ticket: env.ticket, prDescription: env.prDescription, sql: env.sql, styles: env.styles }, chunkFiles.length);
+  const triaged = loadTriage(env.W);
+  const list = applyTriage(
+    roster({ changed, ticket: env.ticket, prDescription: env.prDescription, sql: env.sql, styles: env.styles }, chunkFiles.length),
+    triaged, { runs: triaged ? changedRuns(files()) : [], chunkRuns });
   const out = list.map(a => {
     const agent = agentName(a);
     const diffFile = a.chunk ? chunkFiles[a.chunk - 1] : whole;
@@ -280,7 +456,7 @@ export function reviewers(w, opts = {}) {
     return {
       agent, reviewer: a.reviewer, usageKey: a.reviewer, promptFile,
       outFile: slots.OUT_FILE, covFile: slots.COVERAGE_FILE, needsFile: slots.NEEDS_FILE, diffFile,
-      ...coverageOf(a.reviewer),
+      ...coverageOf(a.reviewer), scope: a.scope,
     };
   });
   writeFileSync(join(env.W, 'dispatch.json'), JSON.stringify(out, null, 2));
@@ -292,7 +468,8 @@ export function coverage(w, agent) {
   const entry = readJson(join(W, 'dispatch.json'), []).find(e => e.agent === agent);
   if (!entry) throw new Error(`${agent} is not in dispatch.json; run dispatch.mjs reviewers first`);
   if (entry.coverage === 'skip') return { ok: true, skipped: true, missing: [] };
-  const runs = changedRuns(parseDiff(readFileSync(nativePath(entry.diffFile), 'utf8')), entry.only ? new RegExp(entry.only, 'i') : null);
+  let runs = changedRuns(parseDiff(readFileSync(nativePath(entry.diffFile), 'utf8')), entry.only ? new RegExp(entry.only, 'i') : null);
+  if (entry.scope) runs = clipRuns(runs, entry.scope);
   const missing = uncovered(runs, readJson(nativePath(entry.covFile), []));
   const roundsFile = join(W, 'coverage-rounds.json');
   const rounds = readJson(roundsFile, {});
@@ -310,7 +487,7 @@ export function coverage(w, agent) {
 // that post.mjs could tell apart from a run that never got that far.
 export function failed(w, agent) {
   const W = nativePath(trimDir(w));
-  if (['verify', 'recheck', 'factcheck'].includes(agent)) {
+  if (['triage', 'verify', 'recheck', 'factcheck'].includes(agent)) {
     writeFileSync(join(W, `${agent}.failed`), '');
     return { recorded: `${agent}.failed` };
   }
@@ -487,11 +664,13 @@ export function needsAnswer(w, slug, ref, { xrepo = runXrepo } = {}) {
 }
 
 const USAGE = `usage:
+  dispatch.mjs triage <W>                        write <W>/triage-hints.json and fill the triage prompt, or { skip: true } under ${SMALL} lines
+  dispatch.mjs triage-check <W>                  check <W>/triage.json; on ok writes <W>/triage-checked.json for reviewers
   dispatch.mjs reviewers <W>                     fill a reviewer prompt per agent (splits > ${LARGE} changed lines into <W>/chunks)
   dispatch.mjs coverage <W> <agent>              check that agent's ledger; counts rounds, records <W>/uncovered.json
   dispatch.mjs needs <W> [--dest <branch>]       handle needs-*.json: auto-add refs, list asks and skips
   dispatch.mjs needs-answer <W> <ws/repo> <ref>  add the branch the user picked for an ask
-  dispatch.mjs failed <W> <agent|verify|recheck|factcheck>   record an agent that failed twice
+  dispatch.mjs failed <W> <agent|triage|verify|recheck|factcheck>   record an agent that failed twice
   dispatch.mjs usage <W> <key> <tokens>          add tokens to <W>/usage.json under key
   dispatch.mjs verify <W>                        fill the verify prompt, or { skip: true } when nothing to verify
   dispatch.mjs recheck <W>                       write <W>/contested.json and fill the recheck prompt, or { skip: true }
@@ -514,6 +693,8 @@ function main(argv) {
   const usageExit = () => { console.error(USAGE); process.exit(2); };
   if (!w) usageExit();
   switch (cmd) {
+    case 'triage': return triage(w);
+    case 'triage-check': return triageCheck(w);
     case 'reviewers': return reviewers(w);
     case 'coverage': return rest[0] ? coverage(w, rest[0]) : usageExit();
     case 'needs': return needs(w, { dest });

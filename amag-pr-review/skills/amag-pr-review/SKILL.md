@@ -112,8 +112,27 @@ drop whatever this file accepts, so an assumption here hides the finding that wo
 
 ## 5. Reviewers
 
+**Triage** first, so the concurrency, resources, security and sql reviewers read only the ranges
+that concern them, or don't run when none do:
+
 ```bash
-node $S/scripts/dispatch.mjs reviewers $W   # → [{agent, usageKey, promptFile, coverage}]
+node $S/scripts/dispatch.mjs triage $W      # → {skip, why} or {promptFile, usageKey, model}
+```
+
+`skip: true` (under 200 changed lines, where one combined reviewer reads everything): go straight to
+`reviewers`. Otherwise dispatch one agent with the prompt as usual but `model: "sonnet"` (usage key
+`triage`), then:
+
+```bash
+node $S/scripts/dispatch.mjs triage-check $W   # → {ok, scoped, notRun} or {ok: false, errors}
+```
+
+`ok: false`: `SendMessage` the triage agent the `errors`, then check again. A second failure, or the
+agent failing twice → `dispatch.mjs failed $W triage`, and every reviewer reads the whole diff as
+before. Keep `scoped` and `notRun` for the terminal's Triage line.
+
+```bash
+node $S/scripts/dispatch.mjs reviewers $W   # → [{agent, usageKey, promptFile, coverage, scope}]
 ```
 
 Dispatch every listed agent in parallel, in one message. As each one finishes, follow
@@ -169,8 +188,9 @@ Print, in this order: the header `## <PR #id: title | Local review: TICKET> · �
 (`<total>` = the sum of `$W/usage.json`, to the nearest thousand; drop the `· 🪙` part without one), a
 2–3 sentence overview of what the change does plus `Strengths: <one line>`, then the script's output
 as it stands, then these lines: `Uncovered: <from uncovered.json, or none>   Ticket: <key or "none found">
-Incremental: <step 2's result, or no>`, `Packages:` and `Other repos:` from `context.json` and the
-repo requests.
+Incremental: <step 2's result, or no>`, `Triage: <reviewer: n ranges, m changed lines; not run:
+reviewers | skipped (under 200 lines) | failed: every reviewer read the whole diff>`, `Packages:` and
+`Other repos:` from `context.json` and the repo requests.
 
 The overview describes the change. A reviewer's "checked and not raised" note never went through
 verify, so don't present it as confirmed ("both reviewers confirmed X can't happen").
