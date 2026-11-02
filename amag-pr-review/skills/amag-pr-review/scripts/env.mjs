@@ -29,6 +29,13 @@ export function prEnv(pr, { ws, repo, pr: id, ar, skill }) {
 // A quoted "~" never expands when sourced, so the default is this script's own skill folder, written
 // the way Git Bash spells Windows paths.
 export const posixPath = p => p.replace(/\\/g, '/').replace(/^([A-Za-z]):/, (_, d) => `/${d.toLowerCase()}`);
+// Node and git.exe can't open the Git Bash spelling, so every path read from env.sh or repos.json goes
+// through this before use.
+export function nativePath(p, platform = process.platform) {
+  const m = platform === 'win32' && typeof p === 'string' && p.match(/^\/([A-Za-z])(?:\/(.*))?$/);
+  return m ? `${m[1].toUpperCase()}:\\${(m[2] ?? '').replace(/\//g, '\\')}` : p;
+}
+
 const ownSkillDir = () => posixPath(dirname(dirname(fileURLToPath(import.meta.url))));
 
 const invoked = process.argv[1] && resolve(process.argv[1]).toLowerCase();

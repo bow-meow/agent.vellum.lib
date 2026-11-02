@@ -1,6 +1,6 @@
 # Voices
 
-Read from choosing.md step 2, only when the user's post answer names a voice. Bodies are plain
+Read from choosing.md, only when the user's post answer names a voice. Bodies are plain
 otherwise; never pick a voice on your own.
 
 ## Choosing

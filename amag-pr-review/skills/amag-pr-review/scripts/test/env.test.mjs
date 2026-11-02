@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { shellQuote, prEnv } from '../env.mjs';
+import { nativePath, shellQuote, prEnv } from '../env.mjs';
 
 const script = fileURLToPath(new URL('../env.mjs', import.meta.url));
 
@@ -38,4 +38,13 @@ test('prEnv writes PR fields as quoted assignments', () => {
   assert.match(s, /^DEST='master'$/m);
   const out = execFileSync('bash', ['-c', `${s}\nprintf '%s|%s|%s' "$SRC_BRANCH" "$SRC_FULL_NAME" "$AUTHOR_ID"`], { encoding: 'utf8' });
   assert.equal(out, "feat/it's|ws/fork|u1");
+});
+
+test('nativePath turns the Git Bash spelling into a drive path on Windows only', () => {
+  assert.equal(nativePath('/c/repos/ai-review/.work', 'win32'), String.raw`C:\repos\ai-review\.work`);
+  assert.equal(nativePath('/c', 'win32'), 'C:\\');
+  assert.equal(nativePath('/cc/x', 'win32'), '/cc/x');
+  assert.equal(nativePath('/c/x', 'linux'), '/c/x');
+  assert.equal(nativePath(String.raw`C:\x`, 'win32'), String.raw`C:\x`);
+  assert.equal(nativePath(null, 'win32'), null);
 });

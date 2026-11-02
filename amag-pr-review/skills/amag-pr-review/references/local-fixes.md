@@ -1,12 +1,14 @@
 # Local mode: applying fixes
 
-The fixes go into the ticket worktree and are **never committed**. Source the local `env.sh` and
-`mkdir -p $W` first (cleanup may have removed it). One finding at a time:
+The fixes go into the ticket worktree and are **never committed**. Cleanup removed `$W` and its
+`env.sh`, so set them again: `W=/c/repos/ai-review/.work/local-<TICKET>; mkdir -p $W`,
+`F=<ticket folder>/review-findings.json`, and take each repo's path `R` from that file's `repos`
+list. One finding at a time:
 
 ```bash
-SNAP=$(node $S/scripts/local-findings.mjs snapshot $R_<repo>)
+SNAP=$(node $S/scripts/local-findings.mjs snapshot $R)
 # apply this finding's fix, then:
-node $S/scripts/local-findings.mjs record-fix $TICKET_DIR/review-findings.json <n> $R_<repo> $SNAP <repo-relative files it touched>
+node $S/scripts/local-findings.mjs record-fix $F <n> $R $SNAP <repo-relative files it touched>
 ```
 
 `record-fix` stores the fix's own diff on the finding, without the user's uncommitted work, so a later
@@ -16,15 +18,14 @@ Run the repo's quick checks if obvious (build of the touched project).
 Then review the fixes before showing them:
 
 ```bash
-node $S/scripts/local-findings.mjs fix-diff $TICKET_DIR/review-findings.json <n...> > $W/fixes.md
+node $S/scripts/local-findings.mjs fix-diff $F <n...> > $W/fixes.md
+node $S/scripts/dispatch.mjs fix-review $W --findings $F <files the fixes touched>   # → {promptFile, outFile}
 ```
 
-Dispatch one `pr-review-reader` with [prompts/fix-review.md](prompts/fix-review.md):
-`FIXES_FILE` = `$W/fixes.md`, `CHECKLIST_FILES` = `<SKILL_DIR>/references/dimensions/correctness.md` plus the
-absolute path of the language file for each touched file, `REPOS` and `SKILL_DIR` as in SKILL.md step 5, `OUT_FILE` = `$W/fix-review.json`.
-For each `defect` or `incomplete`: rework that fix, `record-fix` it again against the snapshot in its
-`fix.snapshot` (the record is replaced), and review the reworked fixes once more. Show each verdict
-that isn't `ok` next to its finding, with what changed or why it stands.
+Dispatch one `pr-review-reader` with that prompt. For each `defect` or `incomplete` in `outFile`:
+rework that fix, `record-fix` it again against the snapshot in its `fix.snapshot` (the record is
+replaced), and review the reworked fixes once more. Show each verdict that isn't `ok` next to its
+finding, with what changed or why it stands.
 
 Last, set each fixed finding's `state` to `fixed` and its `resolution` to a one-line what-changed
 (Edit tool; leave the `fix` record as it is).
