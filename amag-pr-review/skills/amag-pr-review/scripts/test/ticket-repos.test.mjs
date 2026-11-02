@@ -71,6 +71,11 @@ test('ticketKeyOf finds the key in a path', () => {
   assert.equal(ticketKeyOf('C:\\repos\\other'), null);
 });
 
+test('ticketKeyOf reads the key from a suffixed ticket folder', () => {
+  assert.equal(ticketKeyOf('C:\\repos\\ticket-work\\SYM-10359-j2\\symmetryclassic'), 'SYM-10359');
+  assert.equal(ticketKeyOf('C:\\repos\\ticket-work\\SYM-10359-j2'), 'SYM-10359');
+});
+
 test('ticketKeyOf accepts project keys containing digits', () => {
   assert.equal(ticketKeyOf('C:\\repos\\ticket-work\\ab2-17\\repo'), 'AB2-17');
 });

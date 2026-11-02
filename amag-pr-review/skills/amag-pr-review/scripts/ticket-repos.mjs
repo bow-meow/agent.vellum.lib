@@ -26,8 +26,9 @@ export function ticketRepos(dir) {
 }
 
 export function ticketKeyOf(path) {
-  const seg = path.split(/[\\/]/).find(s => /^[A-Za-z][A-Za-z0-9]*-\d+$/.test(s));
-  return seg ? seg.toUpperCase() : null;
+  // A second worktree for the same ticket gets a suffix: SYM-10359-j2.
+  const m = path.split(/[\\/]/).map(s => s.match(/^([A-Za-z][A-Za-z0-9]*-\d+)(?:-[A-Za-z0-9]+)?$/)).find(Boolean);
+  return m ? m[1].toUpperCase() : null;
 }
 
 export function repoSlug(remoteUrl) {
