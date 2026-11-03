@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   ticketKeyFrom, ticketKeyOf, prDescription, languagesOf, styleLines, touchesSql, historyFiles,
-  excludeSelf, siblingSlugs, releaseRefspecs, parseArgs, run,
+  excludeSelf, siblingSlugs, releaseRefspecs, parseArgs, run, proseLines,
 } from '../context.mjs';
 
 const fileDiff = (path, added = [], removed = []) =>
@@ -61,6 +61,13 @@ test('styleLines adds added and removed lines of stylesheets only', () => {
   ];
   assert.equal(styleLines(files), 12);
   assert.equal(styleLines([]), 0);
+});
+
+test('proseLines counts docs-file lines both ways and added comment lines in code, not preprocessor lines', () => {
+  assert.equal(proseLines(fileDiff('README.md', ['a', 'b'], ['c'])), 3);
+  assert.equal(proseLines(fileDiff('Strings.resx', ['<comment>x</comment>'])), 1);
+  const code = ['/// <summary>Sends it.</summary>', '// why', '/* block', ' * more', '# shell note', '#region X', '#include <x>', 'var x = 1; // trailing', '-- sql note'];
+  assert.equal(proseLines(fileDiff('A.cs', code, ['// gone'])), 6);
 });
 
 test('touchesSql: a .sql file in the diff, or an added line with a SQL word', () => {

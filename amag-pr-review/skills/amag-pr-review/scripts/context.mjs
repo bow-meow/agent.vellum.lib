@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isGenerated, parseDiff, stats } from './anchors.mjs';
+import { DOCS_ONLY } from './dispatch.mjs';
 import { nativePath } from './env.mjs';
 import { familyOf } from './forward-scan.mjs';
 import { diffLines } from './styles-scan.mjs';
@@ -61,6 +62,20 @@ const STYLE_EXT = /\.(scss|css|sass|less)$/i;
 
 export function styleLines(statFiles) {
   return statFiles.filter(f => STYLE_EXT.test(f.path)).reduce((n, f) => n + f.added + f.removed, 0);
+}
+
+// A shell or YAML comment needs the space after #, which keeps out C/C# preprocessor lines.
+const COMMENT_LINE = /^\s*(\/\/|\/\*|\*|<!--|--|'''|"""|# )/;
+
+// Changed lines in docs files plus added comment lines elsewhere: how much prose the docs reviewer has.
+export function proseLines(diffText) {
+  const docs = new RegExp(DOCS_ONLY, 'i');
+  let n = 0;
+  for (const [path, f] of diffLines(diffText)) {
+    if (docs.test(path)) n += f.added.length + f.removed.length;
+    else n += f.added.filter(a => COMMENT_LINE.test(a.text)).length;
+  }
+  return n;
 }
 
 const SQL_WORDS = /SELECT|INSERT|UPDATE|DELETE|MERGE|EXEC|SqlCommand|FromSql|Dapper/;
@@ -189,6 +204,7 @@ export function run(wArg, { siblings: extra = [] } = {}, runners = defaultRunner
   const found = new Set(perRepo.flatMap(({ r, files }) => languagesOf(files.map(f => f.path), angularHtml(r.wt, exists))));
   const languages = LANGUAGES.map(([, n]) => n).filter((n, i, a) => a.indexOf(n) === i && found.has(n));
   const sql = repos.some(r => touchesSql(diffs.get(r.name)));
+  const prose = repos.reduce((n, r) => n + proseLines(diffs.get(r.name)), 0);
 
   const scan = (script, args, out, fallback, label) => {
     const res = node(script, args);
@@ -267,7 +283,7 @@ export function run(wArg, { siblings: extra = [] } = {}, runners = defaultRunner
   const staticSummary = { tool: staticTool, candidates: staticCands.length, leads: staticLeads.length };
 
   if (!ticketKey) notes.push('Ticket: none found; no sibling search');
-  const context = { changed, styles, languages, sql, ticketKey, siblings: siblings.length, packages, otherRepos, static: staticSummary, notes };
+  const context = { changed, styles, prose, languages, sql, ticketKey, siblings: siblings.length, packages, otherRepos, static: staticSummary, notes };
   writeFileSync(join(w, 'context.json'), JSON.stringify(context, null, 2));
   return context;
 }

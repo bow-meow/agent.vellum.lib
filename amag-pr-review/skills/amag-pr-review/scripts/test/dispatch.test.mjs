@@ -8,6 +8,7 @@ import {
   fill, roster, agentName, checklistFiles, languagesOf, extraMaterial, repoLines, formatLines, reviewerSlots,
   coverageOf, coverageStep, nothingToVerify, addUsage, findHumanizer, winPath, defaultDest, haveSlugs,
   reviewers, coverage, failed, usage, verify, recheck, fixReview, needs, needsAnswer, DOCS_ONLY, EXTRA_RULES,
+  extraRules, PROSE_REVIEWER_MIN,
 } from '../dispatch.mjs';
 
 const SKILL = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -19,10 +20,30 @@ test('fill replaces every slot and refuses to leave one unfilled', () => {
   assert.equal(fill('{{X}}', { X: '{{Y}}' }), '{{Y}}', 'a value is not filled again');
 });
 
-test('roster below 200 changed lines is combined plus ticket-fit and claims when they apply', () => {
+test('roster below 200 changed lines is combined plus ticket-fit, or claims when there is only a PR description', () => {
   assert.deepEqual(names(roster({ changed: 199, ticket: false, prDescription: false })), ['combined']);
-  assert.deepEqual(names(roster({ changed: 10, ticket: true, prDescription: false })), ['combined', 'ticket-fit', 'claims']);
+  assert.deepEqual(names(roster({ changed: 10, ticket: true, prDescription: true })), ['combined', 'ticket-fit']);
   assert.deepEqual(names(roster({ changed: 10, ticket: false, prDescription: true })), ['combined', 'claims']);
+});
+
+test('ticket-fit carries the claims checklist and both reviewers\' rules, except at low level', () => {
+  const [, fit] = roster({ changed: 10, ticket: true, prDescription: true });
+  assert.deepEqual(fit.dimensions, ['ticket-fit', 'claims']);
+  const rules = extraRules('ticket-fit', fit.dimensions);
+  assert.ok(rules.includes(EXTRA_RULES['ticket-fit']) && rules.includes(EXTRA_RULES.claims));
+  assert.match(rules, /set each candidate's `dimension` to the one it falls under/);
+  assert.equal(roster({ changed: 10, ticket: true, prDescription: true }, 0, 'low')[1].dimensions, undefined);
+  assert.equal(extraRules('ticket-fit'), EXTRA_RULES['ticket-fit']);
+  assert.match(extraRules('specialists', ['sql', 'security']), /never `specialists`/);
+  assert.equal(extraRules('failure-paths'), EXTRA_RULES['failure-paths']);
+  assert.equal(extraRules('correctness'), 'none');
+});
+
+test('roster runs docs only with enough changed prose, and as before when prose was not counted', () => {
+  const base = { changed: 500, ticket: false, prDescription: false };
+  assert.ok(!names(roster({ ...base, prose: PROSE_REVIEWER_MIN - 1 })).includes('docs'));
+  assert.ok(names(roster({ ...base, prose: PROSE_REVIEWER_MIN })).includes('docs'));
+  assert.ok(names(roster(base)).includes('docs'));
 });
 
 test('roster from 200 to 1000 adds sql and styles only when they apply', () => {
@@ -30,15 +51,16 @@ test('roster from 200 to 1000 adds sql and styles only when they apply', () => {
   assert.deepEqual(names(roster(base)),
     ['correctness', 'regression', 'concurrency-races', 'resources-performance', 'tests-design', 'security', 'docs']);
   const all = names(roster({ ...base, changed: 1000, ticket: true, prDescription: true, sql: true, styles: 100 }));
-  for (const r of ['sql', 'ticket-fit', 'claims', 'styles', 'security', 'docs']) assert.ok(all.includes(r), r);
+  for (const r of ['sql', 'ticket-fit', 'styles', 'security', 'docs']) assert.ok(all.includes(r), r);
+  assert.ok(!all.includes('claims'));
 });
 
-test('roster over 1000 runs the core set per chunk and ticket-fit, claims, docs and styles once', () => {
+test('roster over 1000 runs the core set per chunk and ticket-fit, docs and styles once', () => {
   const list = roster({ changed: 1001, ticket: true, prDescription: true, sql: true, styles: 150 }, 2);
   const n = names(list);
   for (const c of [1, 2]) for (const r of ['correctness', 'regression', 'concurrency-races', 'resources-performance', 'sql', 'tests-design', 'security'])
     assert.ok(n.includes(`${r}-${c}`), `${r}-${c}`);
-  for (const r of ['ticket-fit', 'claims', 'docs', 'styles']) assert.equal(n.filter(x => x === r).length, 1, r);
+  for (const r of ['ticket-fit', 'docs', 'styles']) assert.equal(n.filter(x => x === r).length, 1, r);
   assert.ok(!n.some(x => /^(ticket-fit|claims|docs|styles)-\d/.test(x)));
 });
 
@@ -206,7 +228,7 @@ function workDir({ mode = 'pr', changed = 50, diff, ticket = true, extra = {} } 
 test('reviewers fills a prompt per agent with every slot set and writes dispatch.json', () => {
   const w = workDir();
   const out = reviewers(w, { skillDir: SKILL });
-  assert.deepEqual(out.map(o => o.agent), ['combined', 'ticket-fit', 'claims']);
+  assert.deepEqual(out.map(o => o.agent), ['combined', 'ticket-fit']);
   for (const o of out) {
     const text = readFileSync(o.promptFile, 'utf8');
     assert.ok(!/\{\{[A-Z_]+\}\}/.test(text), `${o.agent} has an unfilled slot`);
@@ -215,7 +237,10 @@ test('reviewers fills a prompt per agent with every slot set and writes dispatch
   assert.match(combined, /PR mode \(#42: Add \{\{thing\}\}\)/);
   assert.match(combined, /@amag\/x@1\.0\.0 \(published package/);
   assert.match(combined, /Ticket summary: line one line \{\{two\}\}/);
-  assert.deepEqual(out.find(o => o.agent === 'claims').coverage, 'skip');
+  assert.deepEqual(out.find(o => o.agent === 'ticket-fit').coverage, 'skip');
+  const fit = readFileSync(out[1].promptFile, 'utf8');
+  assert.match(fit, /dimensions\\ticket-fit\.md, .*dimensions\\claims\.md/);
+  assert.ok(fit.includes(EXTRA_RULES.claims));
   assert.deepEqual(JSON.parse(readFileSync(join(w, 'dispatch.json'), 'utf8')), out);
 });
 
@@ -247,7 +272,7 @@ test('coverage counts rounds per agent and records the agent as uncovered after 
   assert.deepEqual(JSON.parse(readFileSync(join(w, 'uncovered.json'), 'utf8')).map(u => u.agent), ['combined']);
   writeFileSync(join(w, 'cov-combined.json'), JSON.stringify([{ path: 'src/A.cs', side: 'new', from: 1, to: 9, checked: 'ok' }]));
   assert.deepEqual(coverage(w, 'combined'), { ok: true, missing: [] });
-  assert.equal(coverage(w, 'claims').skipped, true);
+  assert.equal(coverage(w, 'ticket-fit').skipped, true);
   assert.throws(() => coverage(w, 'nobody'), /not in dispatch\.json/);
 });
 

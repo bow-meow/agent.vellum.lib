@@ -29,13 +29,13 @@ test('low runs a quick reviewer beside regression, sql and ticket-fit, and nothi
 
 test('medium is the roster that ran before levels existed', () => {
   assert.deepEqual(names(roster(big, 0, 'medium')), names(roster(big)));
-  assert.ok(names(roster(big)).includes('tests-design') && names(roster(big)).includes('claims'));
+  assert.ok(names(roster(big)).includes('tests-design') && names(roster(big)).includes('docs'));
 });
 
 test('high adds a failure-paths pass beside correctness, per chunk over 1000 lines, and under 200 lines', () => {
   assert.deepEqual(names(roster(big, 0, 'high')).filter(n => /failure-paths/.test(n)), ['failure-paths']);
   assert.deepEqual(names(roster({ ...big, changed: 1500 }, 2, 'high')).filter(n => /failure-paths/.test(n)), ['failure-paths-1', 'failure-paths-2']);
-  assert.deepEqual(names(roster({ ...big, changed: 50 }, 0, 'high')), ['combined', 'failure-paths', 'ticket-fit', 'claims']);
+  assert.deepEqual(names(roster({ ...big, changed: 50 }, 0, 'high')), ['combined', 'failure-paths', 'ticket-fit']);
 });
 
 test('the merge threshold follows the level: medium merges small scopes, low and high never merge', () => {
@@ -43,7 +43,7 @@ test('the merge threshold follows the level: medium merges small scopes, low and
   const runs = [{ path: 'a.cs', side: 'new', from: 1, to: 3000 }];
   const r = (from, to) => [{ path: 'a.cs', side: 'new', from, to, why: 'w' }];
   const triaged = { 'concurrency-races': r(1, 100), 'resources-performance': r(200, 300), sql: r(1000, 1900) };
-  const at = level => applyTriage(list, triaged, { runs, chunkRuns: [], mergeMax: levelOf(level).mergeMax }).map(a => a.reviewer);
+  const at = level => applyTriage(list, triaged, { runs, mergeMax: levelOf(level).mergeMax }).map(a => a.reviewer);
   assert.deepEqual(at('low'), ['concurrency-races', 'resources-performance', 'sql']);
   assert.deepEqual(at('medium'), ['specialists', 'sql']);
   assert.deepEqual(at('high'), ['concurrency-races', 'resources-performance', 'sql']);

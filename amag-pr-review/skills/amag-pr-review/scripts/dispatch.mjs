@@ -20,6 +20,9 @@ export const SMALL = 200;
 export const LARGE = 1000;
 export const CHUNK_SIZE = 800;
 export const STYLES_REVIEWER_MIN = 100;
+// Changed lines in docs files plus added comment lines (context.mjs). Below this every reviewer's own
+// prose rule covers it; docs on its own found only Lows across 23 logged reviews.
+export const PROSE_REVIEWER_MIN = 10;
 export const MAX_ROUNDS = 2;
 export const DOCS_ONLY = '\\.(md|markdown|txt|rst|adoc|resx)$';
 
@@ -81,17 +84,21 @@ export function fill(template, values) {
   return out;
 }
 
-export function roster({ changed, ticket, prDescription, sql, styles }, chunks = 0, level = null) {
+// prose undefined (a context.json from before it was counted) runs docs as before.
+export function roster({ changed, ticket, prDescription, sql, styles, prose }, chunks = 0, level = null) {
   const { lean, quick, secondPass } = levelOf(level);
   const second = secondPass ? ['failure-paths'] : [];
-  const once = [ticket && 'ticket-fit', !lean && (prDescription || ticket) && 'claims'];
-  if (changed < SMALL) return ['combined', ...second, ...once].filter(Boolean).map(reviewer => ({ reviewer, chunk: null }));
+  // ticket-fit checks the claims too when there is a ticket: both read the same texts, and over 23
+  // logged reviews a separate claims agent found 2 issues no other reviewer did, for 1.7M tokens.
+  const once = [ticket ? 'ticket-fit' : !lean && prDescription && 'claims'];
+  const entry = reviewer => ({ reviewer, chunk: null, ...(reviewer === 'ticket-fit' && !lean && { dimensions: ['ticket-fit', 'claims'] }) });
+  if (changed < SMALL) return ['combined', ...second, ...once].filter(Boolean).map(entry);
   const perChunk = (quick
     ? ['quick', 'regression', sql && 'sql']
     : ['correctness', 'regression', ...second, 'concurrency-races', 'resources-performance', sql && 'sql', !lean && 'tests-design', 'security']
   ).filter(Boolean);
-  if (!lean) once.push('docs', (styles ?? 0) >= STYLES_REVIEWER_MIN && 'styles');
-  const single = once.filter(Boolean).map(reviewer => ({ reviewer, chunk: null }));
+  if (!lean) once.push((prose ?? PROSE_REVIEWER_MIN) >= PROSE_REVIEWER_MIN && 'docs', (styles ?? 0) >= STYLES_REVIEWER_MIN && 'styles');
+  const single = once.filter(Boolean).map(entry);
   if (changed <= LARGE) return [...perChunk.map(reviewer => ({ reviewer, chunk: null })), ...single];
   const out = [];
   for (let n = 1; n <= chunks; n++) for (const reviewer of perChunk) out.push({ reviewer, chunk: n });
@@ -186,10 +193,16 @@ export function reviewerSlots({ reviewer, chunk, diffFile, scope = null, dimensi
     OUT_FILE: `${env.w}/cand-${agent}.json`,
     COVERAGE_FILE: `${env.w}/cov-${agent}.json`,
     EXTRA_MATERIAL: extraMaterial(reviewer, env, dimensions),
-    EXTRA_RULES: EXTRA_RULES[reviewer] ?? (MULTI.has(reviewer)
-      ? `You cover the checklists ${dimensions.join(', ')}. Go through every one of them on each unit, and set each candidate's \`dimension\` to the checklist it falls under, never \`${reviewer}\`.`
-      : 'none'),
+    EXTRA_RULES: extraRules(reviewer, dimensions),
   };
+}
+
+export function extraRules(reviewer, dimensions = dimensionsOf(reviewer)) {
+  if (MULTI.has(reviewer) && !EXTRA_RULES[reviewer])
+    return `You cover the checklists ${dimensions.join(', ')}. Go through every one of them on each unit, and set each candidate's \`dimension\` to the checklist it falls under, never \`${reviewer}\`.`;
+  if (MULTI.has(reviewer) || dimensions.length < 2) return EXTRA_RULES[reviewer] ?? 'none';
+  return [...dimensions.map(d => EXTRA_RULES[d]).filter(Boolean),
+    `You cover the checklists ${dimensions.join(', ')}; set each candidate's \`dimension\` to the one it falls under.`].join(' ');
 }
 
 export function coverageOf(reviewer) {
@@ -270,7 +283,7 @@ export function loadWork(w, { skillDir = OWN_SKILL_DIR, fixFindings = null } = {
     ticketFile: ticket ? winPath(`${w}/ticket.md`) : 'none',
     prDescriptionFile: prDescription ? winPath(`${w}/pr-description.md`) : 'none',
     level: levelName(repos?.level),
-    languages: ctx.languages ?? [], styles: ctx.styles ?? 0, sql: !!ctx.sql, changed: ctx.changed,
+    languages: ctx.languages ?? [], styles: ctx.styles ?? 0, sql: !!ctx.sql, changed: ctx.changed, prose: ctx.prose,
     material: {
       siblings: has('siblings.json') ? `${w}/siblings.json` : null,
       indexMaps: files(/^index-map-.+\.json$/),
@@ -497,10 +510,27 @@ function mergeSpecialists(present, triaged, runs, mergeMax) {
   return picked.length > 1 ? { reviewer: 'specialists', chunk: null, scope: union, dimensions: picked } : null;
 }
 
-// A triaged reviewer runs only where triage gave it ranges. Over 1000 lines, one whose ranges fit in a
-// chunk's worth of changed lines runs once over the whole diff instead of once per chunk. Specialists
-// with small scopes are merged into one agent (mergeMax).
-export function applyTriage(list, triaged, { runs, chunkRuns, mergeMax = MERGE_MAX }) {
+// Ranges in order, cut into groups of at most a chunk's worth of changed lines. A range bigger than that
+// is a group of its own.
+export function packScope(runs, ranges, size = CHUNK_SIZE) {
+  const groups = [];
+  let cur = [];
+  let n = 0;
+  for (const s of ranges) {
+    const k = changedLines(runs, [s]);
+    if (cur.length && n + k > size) { groups.push(cur); cur = []; n = 0; }
+    cur.push(s);
+    n += k;
+  }
+  if (cur.length) groups.push(cur);
+  return groups;
+}
+
+// A triaged reviewer runs only where triage gave it ranges. Over 1000 lines, its ranges are packed into
+// chunk-sized groups, one agent each, not cut at the diff's chunks: a scope spread thinly over ten
+// chunks takes one or two agents, not ten (SYM-10557 ran 70 agents over 6931 lines). Specialists with
+// small scopes are merged into one agent (mergeMax).
+export function applyTriage(list, triaged, { runs, mergeMax = MERGE_MAX }) {
   if (!triaged) return list.map(a => ({ ...a, scope: null }));
   const out = [];
   const once = new Set();
@@ -514,12 +544,11 @@ export function applyTriage(list, triaged, { runs, chunkRuns, mergeMax = MERGE_M
       continue;
     }
     if (!a.chunk) { out.push({ ...a, scope: ranges }); continue; }
-    if (changedLines(runs, ranges) <= CHUNK_SIZE) {
-      if (!once.has(a.reviewer)) { once.add(a.reviewer); out.push({ reviewer: a.reviewer, chunk: null, scope: ranges }); }
-      continue;
-    }
-    const mine = ranges.filter(s => clipRuns(chunkRuns[a.chunk - 1], [s]).length);
-    if (mine.length) out.push({ ...a, scope: mine });
+    if (once.has(a.reviewer)) continue;
+    once.add(a.reviewer);
+    const groups = packScope(runs, ranges);
+    if (groups.length === 1) out.push({ reviewer: a.reviewer, chunk: null, scope: ranges });
+    else groups.forEach((scope, i) => out.push({ reviewer: a.reviewer, chunk: i + 1, scope }));
   }
   return out;
 }
@@ -539,12 +568,10 @@ export function reviewers(w, opts = {}) {
   const files = () => (parsed ??= parseDiff(readFileSync(join(env.W, 'context.diff'), 'utf8')));
   if (!Number.isFinite(changed)) changed = stats(files()).changed;
   let chunkFiles = [];
-  let chunkRuns = [];
   let chunkTexts = [];
   if (changed > LARGE) {
     mkdirSync(join(env.W, 'chunks'), { recursive: true });
     const chunks = splitDiff(files(), CHUNK_SIZE);
-    chunkRuns = chunks.map(c => changedRuns(parseDiff(c.text)));
     chunkTexts = chunks.map(c => c.text);
     chunkFiles = chunks.map((c, i) => {
       writeFileSync(join(env.W, 'chunks', `chunk-${i + 1}.diff`), c.text);
@@ -553,8 +580,8 @@ export function reviewers(w, opts = {}) {
   }
   const triaged = loadTriage(env.W);
   const list = applyTriage(
-    roster({ changed, ticket: env.ticket, prDescription: env.prDescription, sql: env.sql, styles: env.styles }, chunkFiles.length, env.level),
-    triaged, { runs: triaged ? changedRuns(files()) : [], chunkRuns, mergeMax: levelOf(env.level).mergeMax });
+    roster({ changed, ticket: env.ticket, prDescription: env.prDescription, sql: env.sql, styles: env.styles, prose: env.prose }, chunkFiles.length, env.level),
+    triaged, { runs: triaged ? changedRuns(files()) : [], mergeMax: levelOf(env.level).mergeMax });
   const out = list.map(a => {
     const agent = agentName(a);
     let diffFile = a.chunk ? chunkFiles[a.chunk - 1] : whole;

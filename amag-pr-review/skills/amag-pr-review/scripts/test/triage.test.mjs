@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { parseDiff } from '../anchors.mjs';
 import { changedRuns, clipRuns } from '../coverage.mjs';
 import {
-  hintsOf, checkTriage, applyTriage, scopeText, scopedDiff, triage, triageCheck, reviewers, coverage, failed, TRIAGED, CHUNK_SIZE, MERGE_MAX,
+  hintsOf, checkTriage, applyTriage, scopeText, scopedDiff, triage, triageCheck, reviewers, coverage, failed, TRIAGED, CHUNK_SIZE, MERGE_MAX, packScope,
 } from '../dispatch.mjs';
 
 const SKILL = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -166,14 +166,14 @@ test('applyTriage merges specialists up to MERGE_MAX changed lines and leaves a 
   const runs = [{ path: 'a.cs', side: 'new', from: 1, to: 2000 }];
   const r = (from, to) => [{ path: 'a.cs', side: 'new', from, to, why: 'w' }];
   const triaged = { 'concurrency-races': r(1, 100), 'resources-performance': r(50, 250), security: [], sql: r(1000, 1000 + MERGE_MAX) };
-  const out = applyTriage(list, triaged, { runs, chunkRuns: [] });
+  const out = applyTriage(list, triaged, { runs });
   assert.deepEqual(out.map(a => a.reviewer), ['correctness', 'specialists', 'sql']);
   const spec = out[1];
   assert.deepEqual(spec.dimensions, ['concurrency-races', 'resources-performance']);
   assert.deepEqual(spec.scope.map(s => [s.from, s.to]), [[1, 250]]);
   assert.match(spec.scope[0].why, /concurrency-races: w; resources-performance: w/);
 
-  const alone = applyTriage(list, { ...triaged, 'resources-performance': [] }, { runs, chunkRuns: [] });
+  const alone = applyTriage(list, { ...triaged, 'resources-performance': [] }, { runs });
   assert.deepEqual(alone.map(a => a.reviewer), ['correctness', 'concurrency-races', 'sql'], 'one small specialist is not "merged"');
 });
 
@@ -193,19 +193,29 @@ test('a failed or unchecked triage leaves every reviewer reading the whole diff'
 test('applyTriage over 1000 lines runs a small scope once and splits a large one across its chunks', () => {
   const list = [1, 2].flatMap(chunk => ['correctness', 'security', 'concurrency-races'].map(reviewer => ({ reviewer, chunk })));
   const runs = [{ path: 'a/A.cs', side: 'new', from: 1, to: 900 }, { path: 'b/B.cs', side: 'new', from: 1, to: 900 }];
-  const chunkRuns = [[runs[0]], [runs[1]]];
   const triaged = {
     security: [{ path: 'a/A.cs', side: 'new', from: 1, to: 10, why: 's' }],
     'concurrency-races': [{ path: 'a/A.cs', side: 'new', from: 1, to: 900, why: 'c' }, { path: 'b/B.cs', side: 'new', from: 1, to: 10, why: 'c' }],
   };
   assert.ok(900 + 10 > CHUNK_SIZE);
-  const out = applyTriage(list, triaged, { runs, chunkRuns });
+  const out = applyTriage(list, triaged, { runs });
   const sec = out.filter(a => a.reviewer === 'security');
   assert.deepEqual(sec.map(a => a.chunk), [null]);
   const conc = out.filter(a => a.reviewer === 'concurrency-races');
   assert.deepEqual(conc.map(a => [a.chunk, a.scope.map(s => s.path)]), [[1, ['a/A.cs']], [2, ['b/B.cs']]]);
   assert.deepEqual(out.filter(a => a.reviewer === 'correctness').map(a => a.chunk), [1, 2]);
-  assert.ok(applyTriage(list, null, { runs, chunkRuns }).every(a => a.scope === null));
+  assert.ok(applyTriage(list, null, { runs }).every(a => a.scope === null));
+});
+
+test('applyTriage packs a large scope spread over many chunks into chunk-sized agents, not one per chunk', () => {
+  const paths = [1, 2, 3, 4, 5].map(n => `f${n}.cs`);
+  const list = [1, 2, 3, 4, 5].map(chunk => ({ reviewer: 'security', chunk }));
+  const runs = paths.map(path => ({ path, side: 'new', from: 1, to: 800 }));
+  const triaged = { security: paths.map(path => ({ path, side: 'new', from: 1, to: 200, why: 's' })) };
+  const out = applyTriage(list, triaged, { runs });
+  assert.deepEqual(out.map(a => [a.chunk, a.scope.length]), [[1, 4], [2, 1]]);
+  assert.deepEqual(packScope(runs, [{ path: 'f1.cs', side: 'new', from: 1, to: 900 }, triaged.security[1]]).map(g => g.length), [1, 1],
+    'a range over a chunk is a group of its own');
 });
 
 test('scopeText lists each range with its reason', () => {
