@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { findAccountId, findCreds, makeClient } from './bb.mjs';
 import { followup, readModel } from './comment.mjs';
 import { nativePath } from './env.mjs';
+import { levelName, levelOf } from './levels.mjs';
 
 // repos.json carries the Git Bash spelling; node and git.exe need the drive-letter one.
 export function readJson(p, fallback = null) {
@@ -82,10 +83,12 @@ export function decisionCalls(action, myState, { ws, repo, id }) {
   return [];
 }
 
-export function decision({ items, stillOpen, outcome, problems = [], pr, dryRun = false }) {
+export function decision({ items, stillOpen, outcome, problems = [], pr, dryRun = false, level = null }) {
   const failed = outcome.filter(o => o.result === 'failed').map(o => `post of ${o.n} failed`);
   const holds = [...failed, ...problems];
   const open = openFindings({ items, stillOpen, outcome });
+  const noApprove = open === 0 && !holds.length && !levelOf(level).approve;
+  if (noApprove) holds.push(`a ${levelName(level)}-level review can't approve; review at medium or high to approve`);
   const action = holds.length ? 'hold' : open > 0 ? 'request-changes' : 'approve';
   const why = holds.length ? `Holding: ${holds.join('; ')}`
     : open > 0 ? `Request changes: ${open} open finding${open === 1 ? '' : 's'}` : 'Approve: nothing open';
@@ -334,7 +337,7 @@ export function decideFor(w) {
   const repos = loadContext(w);
   const picks = loadPicks(w);
   return decision({ items: picks.items, stillOpen: picks.stillOpen, outcome: loadOutcome(w), problems: reviewProblems(w),
-    pr: repos.pr, dryRun: !!repos.dryRun });
+    pr: repos.pr, dryRun: !!repos.dryRun, level: repos.level ?? null });
 }
 
 const BB_METHOD = { approve: 'approve', unapprove: 'unapprove', 'request-changes': 'requestChanges', 'unrequest-changes': 'unrequestChanges' };

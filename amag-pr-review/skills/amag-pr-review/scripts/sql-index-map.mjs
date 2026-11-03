@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DIFF_CONTEXT, parseDiff } from './anchors.mjs';
+import { parseDiff } from './anchors.mjs';
 
 // SQL Server tooling often saves scripts as UTF-16, with or without a BOM.
 export function decode(buf) {
@@ -157,7 +157,7 @@ export function binarySqlPaths(diffText) {
 
 // git has no text driver for UTF-16 here, so it diffs those scripts as binary; decode both sides and
 // diff them as text so reviewers see the change. head === null means the working tree.
-export function textDiffs(repo, base, head, paths) {
+export function textDiffs(repo, base, head, paths, context = 15) {
   const tmp = mkdtempSync(join(tmpdir(), 'sqldiff-'));
   const show = rev => p => {
     try { return decode(execFileSync('git', ['-C', repo, 'show', `${rev}:${p}`], { stdio: ['ignore', 'pipe', 'ignore'] })); }
@@ -171,7 +171,7 @@ export function textDiffs(repo, base, head, paths) {
       writeFileSync(fa, show(base)(p));
       writeFileSync(fb, readHead(p));
       let d = '';
-      try { execFileSync('git', ['diff', '--no-index', `-U${DIFF_CONTEXT}`, '--', fa, fb], { encoding: 'utf8' }); }
+      try { execFileSync('git', ['diff', '--no-index', `-U${context}`, '--', fa, fb], { encoding: 'utf8' }); }
       catch (e) { d = e.stdout ?? ''; }
       if (!d) continue;
       out += d.replace(/^diff --git .*$/m, `diff --git a/${p} b/${p}`)

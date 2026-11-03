@@ -42,8 +42,9 @@ When the user's answers are final (everything they'll post is posted, or they sa
 node $S/scripts/post.mjs decide $W     # → {action, why, open, myState}
 ```
 
-- `hold`: a tooling problem (a failed post, an uncovered dimension, verify or recheck failing). Say
-  which step failed. Don't ask; nothing changes my approval state.
+- `hold`: a tooling problem (a failed post, an uncovered dimension, verify or recheck failing), or a
+  low-level review with nothing open. Say which, from `why`. Don't ask; nothing changes my approval
+  state.
 - Otherwise propose, with my current state: `Request changes: <open> open findings. Go ahead? (y/n)` or
   `Approve: nothing open. Go ahead? (y/n)`. **Stop and wait again.**
 - On yes: `node $S/scripts/post.mjs apply-decision $W`. On no: leave it, and say `Left as <state>: you said no`.

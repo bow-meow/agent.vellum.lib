@@ -5,7 +5,7 @@ description: >-
   worktree under C:\repos\ticket-work. Triggers — "review pr", a pasted bitbucket.org pull-requests
   link, "review SYM-1234", "review my changes for ESG-…", "just show me". SKIP for replying to
   reviewer comments on your own PR (amag-pr-respond).
-argument-hint: "<pr-url | TICKET-KEY | worktree-path> [--dry-run]"
+argument-hint: "<pr-url | TICKET-KEY | worktree-path> [--dry-run] [--level low|medium|high]"
 ---
 
 # PR review
@@ -53,10 +53,20 @@ S=<this skill's base directory, POSIX>   MODEL: see references/severity.md
 
 `--dry-run` / "just show me" in PR mode: run everything, post nothing, approve nothing, save no state.
 
+`--level` (default `medium`), passed to `prepare.mjs`, which records it for every later script:
+
+| Level | For | What changes |
+|---|---|---|
+| `low` ("quick look") | early feedback, small follow-ups | no tests-design, claims, docs or recheck; specialists always merged. **Never approves** and never counts as reviewing the commit, so the next review reads the whole change |
+| `medium` | the normal review | as described below |
+| `high` ("thorough") | threading, data, money, security | ±40 lines of diff context, specialists never merged, and a second independent `failure-paths` pass beside correctness |
+
+Map the user's words to a level ("quick" → low, "thorough" → high); ask only if they conflict.
+
 ## 2. PR mode: prepare
 
 ```bash
-node $S/scripts/prepare.mjs pr "<url>" [--dry-run]     # → {w, dryRun, dryRunWhy, incremental, notes}
+node $S/scripts/prepare.mjs pr "<url>" [--dry-run] [--level <l>]   # → {w, level, dryRun, dryRunWhy, incremental, notes}
 . <w>/env.sh                                            # every later block starts with this
 ```
 
@@ -84,7 +94,7 @@ gone: full re-review". `bestEffort` → say the previous findings were rebuilt f
 ## 3. Local mode: prepare
 
 ```bash
-node $S/scripts/prepare.mjs local "<arg>" [--base <repo>=<branch>]...   # → {w, repos, asks, notes, suspicious}
+node $S/scripts/prepare.mjs local "<arg>" [--base <repo>=<branch>]... [--level <l>]   # → {w, level, repos, asks, notes, suspicious}
 . <w>/env.sh
 ```
 
@@ -157,7 +167,8 @@ after-dispatch.md.
 node $S/scripts/dispatch.mjs recheck $W     # → {skip} or {promptFile}
 ```
 
-Not `skip`: dispatch one agent (usage key `recheck`), retry once on failure, then merge:
+`skip: true` with a `why` naming the level (low): go on to the fact-check below. Not `skip`: dispatch
+one agent (usage key `recheck`), retry once on failure, then merge:
 
 ```bash
 cp $W/verified.json $W/verified-orig.json
@@ -184,7 +195,7 @@ with the error, then `dispatch.mjs failed $W factcheck`.
 node $S/scripts/pick.mjs build $W           # PR mode: picks.json; local mode: saves review-findings.json
 ```
 
-Print, in this order: the header `## <PR #id: title | Local review: TICKET> · 🪙 ~<total>k tokens`
+Print, in this order: the header `## <PR #id: title | Local review: TICKET> · <level> · 🪙 ~<total>k tokens`
 (`<total>` = the sum of `$W/usage.json`, to the nearest thousand; drop the `· 🪙` part without one), a
 2–3 sentence overview of what the change does plus `Strengths: <one line>`, then the script's output
 as it stands, then these lines: `Uncovered: <from uncovered.json, or none>   Ticket: <key or "none found">
@@ -205,7 +216,8 @@ the turn.** Nothing but the in-progress notice is posted until the user picks.
 
 ## 8. PR mode: approval
 
-choosing.md's last section: `post.mjs decide`, the y/n, `post.mjs apply-decision` only on yes.
+choosing.md's last section: `post.mjs decide`, the y/n, `post.mjs apply-decision` only on yes. At low
+level, nothing open is a hold, not an approval: say a medium or high review is needed to approve.
 
 ## 9. Finish (always, and after errors)
 

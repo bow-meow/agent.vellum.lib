@@ -3,7 +3,8 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DIFF_CONTEXT, parseDiff, stats } from './anchors.mjs';
+import { parseDiff, stats } from './anchors.mjs';
+import { levelName, levelOf } from './levels.mjs';
 import { BbError, findAccountId, findCreds, makeClient } from './bb.mjs';
 import { progress, readModel } from './comment.mjs';
 import { nativePath, posixPath, prEnv, shellQuote } from './env.mjs';
@@ -44,7 +45,7 @@ export function runGit(args, { ok = [0] } = {}) {
   }
 }
 
-const sqlTextDiff = (repo, base, head, diff) => textDiffs(repo, base, head, binarySqlPaths(diff));
+const sqlTextDiff = (repo, base, head, diff, context) => textDiffs(repo, base, head, binarySqlPaths(diff), context);
 const isDubious = e => /dubious ownership/i.test(`${e?.stderr ?? ''}\n${e?.message ?? ''}`);
 const writeJson = (file, v) => writeFileSync(file, JSON.stringify(v, null, 2) + '\n');
 
@@ -132,7 +133,9 @@ function meOrFail(bb) {
   });
 }
 
-export async function preparePr({ ws, repo, id, ar = DEFAULT_AR, skill, dryRun = false }, deps = {}) {
+export async function preparePr({ ws, repo, id, ar = DEFAULT_AR, skill, dryRun = false, level = null }, deps = {}) {
+  level = levelName(level);
+  const { context } = levelOf(level);
   const { bb, git = runGit, textDiff = sqlTextDiff, stateFile = statePath } = deps;
   const AR = posixPath(ar);
   const W = `${AR}/.work/${ws}-${repo}-PR${id}`;
@@ -181,8 +184,8 @@ export async function preparePr({ ws, repo, id, ar = DEFAULT_AR, skill, dryRun =
   }
   git(['-C', c, 'worktree', 'add', '-q', '--detach', t, head]);
   const mb = git(['-C', t, 'merge-base', `origin/${dest}`, 'HEAD']).trim();
-  const diff = git(['-C', t, 'diff', `-U${DIFF_CONTEXT}`, mb, 'HEAD']);
-  writeFileSync(at('context.diff'), diff + textDiff(t, mb, 'HEAD', diff));
+  const diff = git(['-C', t, 'diff', `-U${context}`, mb, 'HEAD']);
+  writeFileSync(at('context.diff'), diff + textDiff(t, mb, 'HEAD', diff, context));
   const headLines = `HEAD_SHA=${shellQuote(head)}\nMB=${shellQuote(mb)}\n`;
   appendFileSync(at('env.sh'), headLines);
 
@@ -204,7 +207,7 @@ export async function preparePr({ ws, repo, id, ar = DEFAULT_AR, skill, dryRun =
   if (mine) notes.push('this is my own PR, so nothing is posted: local mode (review <TICKET>) reviews my own work and pr-respond handles reviewer comments');
 
   const repos = {
-    mode: 'pr', dryRun: why.length > 0,
+    mode: 'pr', dryRun: why.length > 0, level,
     pr: {
       ws, repo, id, title: pr.title ?? '', state, authorId, mine, myState: myState(pr, me.account_id),
       url: pr.links?.html?.href ?? `https://bitbucket.org/${ws}/${repo}/pull-requests/${id}`,
@@ -215,7 +218,7 @@ export async function preparePr({ ws, repo, id, ar = DEFAULT_AR, skill, dryRun =
   writeJson(at('repos.json'), repos);
 
   return {
-    w: W, env: `${W}/env.sh`, dryRun: repos.dryRun, dryRunWhy: why.length ? why.join('; ') : null,
+    w: W, env: `${W}/env.sh`, level, dryRun: repos.dryRun, dryRunWhy: why.length ? why.join('; ') : null,
     staleProgress: stale, incremental: isIncremental(statePrev, ours), headMoved, notes,
   };
 }
@@ -260,14 +263,16 @@ export function chooseDest({ branch, prs = [], override = null, closest = null }
   return null;
 }
 
-export function localRepoDiff(R, mb, { git = runGit, textDiff = sqlTextDiff } = {}) {
-  let diff = git(['-C', R, 'diff', `-U${DIFF_CONTEXT}`, mb]);
+export function localRepoDiff(R, mb, { git = runGit, textDiff = sqlTextDiff, context = levelOf(null).context } = {}) {
+  let diff = git(['-C', R, 'diff', `-U${context}`, mb]);
   const untracked = git(['-C', R, 'ls-files', '--others', '--exclude-standard', '-z']).split('\0').filter(Boolean);
-  for (const f of untracked) diff += git(['-C', R, 'diff', '--no-index', `-U${DIFF_CONTEXT}`, '--', '/dev/null', f], { ok: [0, 1] });
-  return diff + textDiff(R, mb, null, diff);
+  for (const f of untracked) diff += git(['-C', R, 'diff', '--no-index', `-U${context}`, '--', '/dev/null', f], { ok: [0, 1] });
+  return diff + textDiff(R, mb, null, diff, context);
 }
 
-export async function prepareLocal(arg, { ar = DEFAULT_AR, skill, bases = {} } = {}, deps = {}) {
+export async function prepareLocal(arg, { ar = DEFAULT_AR, skill, bases = {}, level = null } = {}, deps = {}) {
+  level = levelName(level);
+  const { context } = levelOf(level);
   const { bb, git = runGit, textDiff = sqlTextDiff, closest = closestBase, ticketBase } = deps;
   const ticketDir = ticketBase ? resolveTicketDir(arg, ticketBase) : resolveTicketDir(arg);
   if (!ticketDir) throw new UserError(`no ticket folder for ${arg}`);
@@ -310,7 +315,7 @@ export async function prepareLocal(arg, { ar = DEFAULT_AR, skill, bases = {} } =
 
       git(['-C', R, 'fetch', '-q', 'origin', pick.dest]);
       const mb = git(['-C', R, 'merge-base', 'HEAD', `origin/${pick.dest}`]).trim();
-      const diff = localRepoDiff(R, mb, { git, textDiff });
+      const diff = localRepoDiff(R, mb, { git, textDiff, context });
       writeFileSync(join(w, `${name}.diff`), diff);
       const changed = stats(parseDiff(diff)).changed;
       total += changed;
@@ -326,27 +331,31 @@ export async function prepareLocal(arg, { ar = DEFAULT_AR, skill, bases = {} } =
     }
   }
   writeFileSync(join(w, 'context.diff'), combined);
-  writeJson(join(w, 'repos.json'), { mode: 'local', dryRun: false, pr: null, ticketKey, ticketDir: TD, repos: entries });
+  writeJson(join(w, 'repos.json'), { mode: 'local', dryRun: false, level, pr: null, ticketKey, ticketDir: TD, repos: entries });
   const suspicious = total > SUSPICIOUS_CHANGED;
   if (suspicious) notes.push(`${total} changed lines is far more than one ticket: the base is probably wrong, check before reviewing`);
-  return { w: W, env: `${W}/env.sh`, ticketKey, repos: out, asks, notes, suspicious };
+  return { w: W, env: `${W}/env.sh`, level, ticketKey, repos: out, asks, notes, suspicious };
 }
 
 const ownSkillDir = () => posixPath(dirname(dirname(fileURLToPath(import.meta.url))));
 
 const USAGE = `usage:
-  prepare.mjs pr <bitbucket PR url> [--dry-run] [--ar <ai-review root>]
+  prepare.mjs pr <bitbucket PR url> [--dry-run] [--level low|medium|high] [--ar <ai-review root>]
   prepare.mjs progress <W>
-  prepare.mjs local <ticket key or path> [--base <repo>=<branch>]... [--ar <ai-review root>]`;
+  prepare.mjs local <ticket key or path> [--base <repo>=<branch>]... [--level low|medium|high] [--ar <ai-review root>]`;
 
 export function parseArgs(argv) {
   const a = [...argv];
-  const opts = { ar: DEFAULT_AR, dryRun: false, bases: {} };
+  const opts = { ar: DEFAULT_AR, dryRun: false, bases: {}, level: null };
   const pos = [];
   while (a.length) {
     const x = a.shift();
     if (x === '--dry-run') opts.dryRun = true;
-    else if (x === '--ar') { opts.ar = a.shift(); if (!opts.ar) throw new UserError('--ar needs a path'); }
+    else if (x === '--level') {
+      opts.level = a.shift();
+      if (!opts.level) throw new UserError('--level takes low, medium or high');
+      try { levelName(opts.level); } catch (e) { throw new UserError(e.message); }
+    } else if (x === '--ar') { opts.ar = a.shift(); if (!opts.ar) throw new UserError('--ar needs a path'); }
     else if (x === '--base') {
       const m = String(a.shift() ?? '').match(/^([^=]+)=(.+)$/);
       if (!m) throw new UserError('--base takes <repo>=<branch>');
@@ -375,12 +384,12 @@ async function main(argv) {
   }
   try {
     let out;
-    if (args.cmd === 'pr') out = await preparePr({ ...parsePrUrl(args.target), ar: args.ar, skill: ownSkillDir(), dryRun: args.dryRun }, { bb: client() });
+    if (args.cmd === 'pr') out = await preparePr({ ...parsePrUrl(args.target), ar: args.ar, skill: ownSkillDir(), dryRun: args.dryRun, level: args.level }, { bb: client() });
     else if (args.cmd === 'progress') out = await postProgress(args.target, { bb: client() });
     else {
       let bb = null;
       try { bb = client(); } catch (e) { console.error(`prepare.mjs: ${e.message}; choosing bases without the open-PR lookup`); }
-      out = await prepareLocal(args.target, { ar: args.ar, skill: ownSkillDir(), bases: args.bases }, { bb });
+      out = await prepareLocal(args.target, { ar: args.ar, skill: ownSkillDir(), bases: args.bases, level: args.level }, { bb });
     }
     console.log(JSON.stringify(out, null, 2));
   } catch (e) {

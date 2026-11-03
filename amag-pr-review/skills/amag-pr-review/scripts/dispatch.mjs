@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { isGenerated, parseDiff, splitDiff, stats } from './anchors.mjs';
 import { changedRuns, clipRuns, samePath, uncovered } from './coverage.mjs';
 import { nativePath } from './env.mjs';
+import { levelName, levelOf } from './levels.mjs';
 import { contested } from './recheck.mjs';
 import { pendingNeeds, reposLines, slugOf } from './xrepo.mjs';
 
@@ -25,6 +26,7 @@ export const DOCS_ONLY = '\\.(md|markdown|txt|rst|adoc|resx)$';
 export const CHECKLISTS = {
   combined: ['correctness', 'regression', 'concurrency-races', 'resources-performance', 'sql', 'security', 'tests-history', 'design-quality', 'docs'],
   'tests-design': ['tests-history', 'design-quality'],
+  'failure-paths': ['correctness', 'regression'],
   styles: [],
 };
 const dimensionsOf = r => CHECKLISTS[r] ?? [r];
@@ -47,6 +49,7 @@ const HINT_GAP = 3;
 export const EXTRA_RULES = {
   'ticket-fit': 'Uncertain coverage goes in with terminal_only: true.',
   claims: 'Your units are the facts in the PR description and the ticket, not the diff. Write one ledger entry per text (path "PR description" or "ticket", side "new", from/to 0) whose checked lists each fact as: fact → holds | doesn\'t hold: <the code\'s worst case>. Each fact that doesn\'t hold is also a candidate, at the code that decides it.',
+  'failure-paths': 'You are a second, independent pass over the same code as the correctness and regression reviewers, and you will not see their findings. Work from failure rather than from the checklist order: for each unit, ask what happens when a call it makes fails, times out, returns empty or stale data, runs twice, runs late, or runs at the same time as another, and follow that into the callee and framework code even when it lies outside the diff. Set each candidate\'s `dimension` to correctness or regression, never failure-paths.',
   styles: 'Your scope is the changed stylesheets and the template classes they style or that no stylesheet styles; read other files only as context.',
 };
 
@@ -74,11 +77,13 @@ export function fill(template, values) {
   return out;
 }
 
-export function roster({ changed, ticket, prDescription, sql, styles }, chunks = 0) {
-  const once = [ticket && 'ticket-fit', (prDescription || ticket) && 'claims'];
-  if (changed < SMALL) return ['combined', ...once].filter(Boolean).map(reviewer => ({ reviewer, chunk: null }));
-  const perChunk = ['correctness', 'regression', 'concurrency-races', 'resources-performance', sql && 'sql', 'tests-design', 'security'].filter(Boolean);
-  once.push('docs', (styles ?? 0) >= STYLES_REVIEWER_MIN && 'styles');
+export function roster({ changed, ticket, prDescription, sql, styles }, chunks = 0, level = null) {
+  const { lean, secondPass } = levelOf(level);
+  const second = secondPass ? ['failure-paths'] : [];
+  const once = [ticket && 'ticket-fit', !lean && (prDescription || ticket) && 'claims'];
+  if (changed < SMALL) return ['combined', ...second, ...once].filter(Boolean).map(reviewer => ({ reviewer, chunk: null }));
+  const perChunk = ['correctness', 'regression', ...second, 'concurrency-races', 'resources-performance', sql && 'sql', !lean && 'tests-design', 'security'].filter(Boolean);
+  if (!lean) once.push('docs', (styles ?? 0) >= STYLES_REVIEWER_MIN && 'styles');
   const single = once.filter(Boolean).map(reviewer => ({ reviewer, chunk: null }));
   if (changed <= LARGE) return [...perChunk.map(reviewer => ({ reviewer, chunk: null })), ...single];
   const out = [];
@@ -111,7 +116,7 @@ export function extraMaterial(reviewer, { sql, material: m }, dimensions = dimen
   const coversSql = reviewer === 'sql' || (reviewer === 'specialists' && dimensions.includes('sql'));
   if (reviewer === 'ticket-fit' && m.siblings) parts.push(`Sibling PRs: ${m.siblings}`);
   if ((coversSql || (reviewer === 'combined' && sql)) && m.indexMaps.length) parts.push(`Index maps: ${list(m.indexMaps)}`);
-  if ((coversSql || ['correctness', 'combined'].includes(reviewer)) && m.forward.length) parts.push(`Forward-scan: ${list(m.forward)}`);
+  if ((coversSql || ['correctness', 'combined', 'failure-paths'].includes(reviewer)) && m.forward.length) parts.push(`Forward-scan: ${list(m.forward)}`);
   if (['combined', 'tests-design'].includes(reviewer)) {
     if (m.history) parts.push(`History file: ${m.history}`);
     if (m.commits) parts.push(`Commit messages: ${m.commits}`);
@@ -244,6 +249,7 @@ export function loadWork(w, { skillDir = OWN_SKILL_DIR, fixFindings = null } = {
     ticketSummary: ticket && has('ticket-summary.txt') ? oneLine(readFileSync(at('ticket-summary.txt'), 'utf8')) || 'none' : 'none',
     ticketFile: ticket ? winPath(`${w}/ticket.md`) : 'none',
     prDescriptionFile: prDescription ? winPath(`${w}/pr-description.md`) : 'none',
+    level: levelName(repos?.level),
     languages: ctx.languages ?? [], styles: ctx.styles ?? 0, sql: !!ctx.sql, changed: ctx.changed,
     material: {
       siblings: has('siblings.json') ? `${w}/siblings.json` : null,
@@ -427,16 +433,16 @@ export function scopedDiff(files, scope) {
 }
 
 // Specialists whose ranges add up to no more than this run as one agent with all their checklists,
-// which pays the fixed reading and the tracing of shared code once.
-export const MERGE_MAX = 400;
+// which pays the fixed reading and the tracing of shared code once. The level sets it (levels.mjs).
+export const MERGE_MAX = levelOf(null).mergeMax;
 
-function mergeSpecialists(present, triaged, runs) {
+function mergeSpecialists(present, triaged, runs, mergeMax) {
   const picked = [];
   let union = [];
   for (const r of TRIAGED) {
     if (!present.has(r) || !triaged[r]?.length) continue;
     const next = mergeRanges([...union, ...triaged[r].map(s => ({ ...s, why: `${r}: ${s.why}` }))]);
-    if (changedLines(runs, next) > MERGE_MAX) continue;
+    if (changedLines(runs, next) > mergeMax) continue;
     picked.push(r);
     union = next;
   }
@@ -445,12 +451,12 @@ function mergeSpecialists(present, triaged, runs) {
 
 // A triaged reviewer runs only where triage gave it ranges. Over 1000 lines, one whose ranges fit in a
 // chunk's worth of changed lines runs once over the whole diff instead of once per chunk. Specialists
-// with small scopes are merged into one agent (MERGE_MAX).
-export function applyTriage(list, triaged, { runs, chunkRuns }) {
+// with small scopes are merged into one agent (mergeMax).
+export function applyTriage(list, triaged, { runs, chunkRuns, mergeMax = MERGE_MAX }) {
   if (!triaged) return list.map(a => ({ ...a, scope: null }));
   const out = [];
   const once = new Set();
-  const merged = mergeSpecialists(new Set(list.map(a => a.reviewer)), triaged, runs);
+  const merged = mergeSpecialists(new Set(list.map(a => a.reviewer)), triaged, runs, mergeMax);
   for (const a of list) {
     const ranges = TRIAGED.includes(a.reviewer) && Array.isArray(triaged[a.reviewer]) ? triaged[a.reviewer] : null;
     if (!ranges) { out.push({ ...a, scope: null }); continue; }
@@ -497,8 +503,8 @@ export function reviewers(w, opts = {}) {
   }
   const triaged = loadTriage(env.W);
   const list = applyTriage(
-    roster({ changed, ticket: env.ticket, prDescription: env.prDescription, sql: env.sql, styles: env.styles }, chunkFiles.length),
-    triaged, { runs: triaged ? changedRuns(files()) : [], chunkRuns });
+    roster({ changed, ticket: env.ticket, prDescription: env.prDescription, sql: env.sql, styles: env.styles }, chunkFiles.length, env.level),
+    triaged, { runs: triaged ? changedRuns(files()) : [], chunkRuns, mergeMax: levelOf(env.level).mergeMax });
   const out = list.map(a => {
     const agent = agentName(a);
     let diffFile = a.chunk ? chunkFiles[a.chunk - 1] : whole;
@@ -600,6 +606,7 @@ export function recheck(w, opts = {}) {
   const env = loadWork(w, opts);
   // No verified.json: verify was skipped or failed, so nothing was taken off the blocking list.
   if (!existsSync(join(env.W, 'verified.json'))) return { skip: true };
+  if (!levelOf(env.level).recheck) return { skip: true, why: `${env.level} level: no recheck; low-confidence findings stay unposted` };
   const verified = JSON.parse(readFileSync(join(env.W, 'verified.json'), 'utf8'));
   const cands = candidateNames(env.W).flatMap(n => JSON.parse(readFileSync(join(env.W, n), 'utf8')));
   const list = contested(verified, cands);

@@ -42,6 +42,7 @@ export function runContext(w) {
     reviewers,
     chunks: existsSync(chunksDir) ? readdirSync(chunksDir).length : 0,
     recheckItems: readJson(join(w, 'contested.json'), []).length,
+    level: readJson(join(w, 'repos.json'), {})?.level ?? 'medium',
   };
 }
 

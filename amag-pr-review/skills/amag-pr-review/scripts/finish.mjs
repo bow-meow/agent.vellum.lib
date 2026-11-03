@@ -6,6 +6,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stripHeader } from './comment.mjs';
 import { nativePath } from './env.mjs';
+import { levelOf } from './levels.mjs';
 import { defaultBb, loadOutcome, loadPicks, oneLine, readJson, reviewProblems } from './post.mjs';
 import { fingerprint, saveState, statePath } from './state.mjs';
 import { cleanup as xrepoCleanup } from './xrepo.mjs';
@@ -24,7 +25,7 @@ export function unanswered(picks, outcome) {
 }
 
 export function buildState({ verified, picks, outcome, prev = null, droppedPrevious = [], recheck = [], ours = [], head, now = new Date(),
-  fingerprintAt = () => null }) {
+  fingerprintAt = () => null, level = null }) {
   const byN = new Map(outcome.map(o => [o.n, o]));
   const fp = (path, line, side) => (side === 'old' || !path || line == null ? null : fingerprintAt(path, Number(line)));
   const findings = [];
@@ -84,7 +85,9 @@ export function buildState({ verified, picks, outcome, prev = null, droppedPrevi
 
   dropped.push(...droppedPrevious);
   const failed = outcome.some(o => o.result === 'failed');
-  const reviewedCommit = failed ? prev?.reviewedCommit ?? null : head;
+  // A low-level review keeps its threads tracked but never counts as having reviewed the commit, so the
+  // next review reads the whole change rather than only what moved since.
+  const reviewedCommit = failed || !levelOf(level).approve ? prev?.reviewedCommit ?? null : head;
   return { ...(reviewedCommit ? { reviewedCommit } : {}), reviewedAt: now.toISOString(), findings, dropped };
 }
 
@@ -109,7 +112,7 @@ export function stateFor(w, { now = new Date(), save = (ws, repo, pr, state) => 
     verified: readJson(join(w, 'verified.json'), { findings: [], previous: [] }), picks, outcome,
     prev: readJson(join(w, 'state-prev.json'), null), droppedPrevious: readJson(join(w, 'dropped-previous.json'), []) ?? [],
     recheck: readJson(join(w, 'previous-recheck.json'), []) ?? [], ours: readJson(join(w, 'comments-ours.json'), []) ?? [],
-    head: repo.head ?? null, now, fingerprintAt,
+    head: repo.head ?? null, now, fingerprintAt, level: repos.level ?? null,
   });
   writeFileSync(join(w, 'state.json'), JSON.stringify(state, null, 2));
   const { ws, repo: name, id } = repos.pr;
