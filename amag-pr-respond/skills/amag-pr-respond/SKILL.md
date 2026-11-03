@@ -217,6 +217,7 @@ class of defect so you sharpen an existing line instead of adding a near-duplica
 | A line already covers it concretely | Nothing; report "covered, reviewer missed it" (the same report across several PRs points at the prompts, not the checklists) |
 | A `## Don't flag` line or severity rule in `references/severity.md` would suppress it | Narrow that line so it no longer covers this case |
 | The evidence lived where amag-pr-review never looks (a repo missing from `ALLOWED` in its `scripts/xrepo.mjs`, an undetected file type, a linked Jira issue, a file its scripts filter out) | Pipeline change in amag-pr-review's `SKILL.md` or `scripts/`, see below. Before claiming one, check that the filter applies on the path this PR's size takes through amag-pr-review's reviewer roster (`scripts/dispatch.mjs`) |
+| The defect has a fixed code shape (a call checked the wrong way, a missing handler around a call known to throw, a value built into SQL) | As well as any checklist row: an Opengrep rule in amag-pr-review's `rules/`, as its `references/rules.md` says. A rule may name the project's types, scoped with `paths`; the generic-line rule below is for checklist lines |
 | Our own suggested or applied fix introduced it (question 1) | Add one bullet to `references/fixes.md`'s `## Don't suggest`, naming the class of wrong fix. If a line there already covers it concretely, sharpen `references/prompts/fix-review.md` instead: the fix-review pass had the rule and passed the fix |
 | Needs knowledge outside the code, ticket and repo (product intent, one reviewer's taste, a customer setup) | Nothing; say so in the summary |
 
@@ -246,8 +247,9 @@ is green. The checkout often holds the user's own uncommitted work, which must n
   the retro edited, by path, never `git add -A`. A file that already had uncommitted changes stays
   uncommitted and goes in the summary.
 - Commit only on `main`. On any other branch, don't switch: leave the change uncommitted and report it.
-- Message: `amag-pr-review: checklist line(s) from a PR-respond retro`, then one bullet per file
-  changed.
+- Message: `amag-pr-review: checklist line(s) from a PR-respond retro` (`checklist line(s) and
+  rule(s)` when the retro added a rule), then one bullet per file changed. A rule's fixture is
+  committed with it, and only after `opengrep scan --test rules/` passes.
 - `git push origin main`. Rejected → report it; never force-push.
 - Refresh the installed copy: `claude plugin marketplace update <marketplace>`, then
   `claude plugin update amag-pr-review@<marketplace>`, and tell the user to run `/reload-plugins`
