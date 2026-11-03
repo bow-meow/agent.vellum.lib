@@ -27,8 +27,12 @@ export const CHECKLISTS = {
   combined: ['correctness', 'regression', 'concurrency-races', 'resources-performance', 'sql', 'security', 'tests-history', 'design-quality', 'docs'],
   'tests-design': ['tests-history', 'design-quality'],
   'failure-paths': ['correctness', 'regression'],
+  quick: ['correctness', 'concurrency-races', 'resources-performance', 'security'],
   styles: [],
 };
+const MULTI = new Set(['specialists', 'quick', 'failure-paths']);
+// Reviewers handed the callers of changed functions: the ones that trace what a change reaches.
+const TRACERS = new Set(['correctness', 'regression', 'failure-paths', 'quick', 'combined', 'specialists', 'concurrency-races', 'resources-performance']);
 const dimensionsOf = r => CHECKLISTS[r] ?? [r];
 
 const NO_COVERAGE = new Set(['ticket-fit', 'claims', 'styles']);
@@ -78,11 +82,14 @@ export function fill(template, values) {
 }
 
 export function roster({ changed, ticket, prDescription, sql, styles }, chunks = 0, level = null) {
-  const { lean, secondPass } = levelOf(level);
+  const { lean, quick, secondPass } = levelOf(level);
   const second = secondPass ? ['failure-paths'] : [];
   const once = [ticket && 'ticket-fit', !lean && (prDescription || ticket) && 'claims'];
   if (changed < SMALL) return ['combined', ...second, ...once].filter(Boolean).map(reviewer => ({ reviewer, chunk: null }));
-  const perChunk = ['correctness', 'regression', ...second, 'concurrency-races', 'resources-performance', sql && 'sql', !lean && 'tests-design', 'security'].filter(Boolean);
+  const perChunk = (quick
+    ? ['quick', 'regression', sql && 'sql']
+    : ['correctness', 'regression', ...second, 'concurrency-races', 'resources-performance', sql && 'sql', !lean && 'tests-design', 'security']
+  ).filter(Boolean);
   if (!lean) once.push('docs', (styles ?? 0) >= STYLES_REVIEWER_MIN && 'styles');
   const single = once.filter(Boolean).map(reviewer => ({ reviewer, chunk: null }));
   if (changed <= LARGE) return [...perChunk.map(reviewer => ({ reviewer, chunk: null })), ...single];
@@ -116,7 +123,10 @@ export function extraMaterial(reviewer, { sql, material: m }, dimensions = dimen
   const coversSql = reviewer === 'sql' || (reviewer === 'specialists' && dimensions.includes('sql'));
   if (reviewer === 'ticket-fit' && m.siblings) parts.push(`Sibling PRs: ${m.siblings}`);
   if ((coversSql || (reviewer === 'combined' && sql)) && m.indexMaps.length) parts.push(`Index maps: ${list(m.indexMaps)}`);
-  if ((coversSql || ['correctness', 'combined', 'failure-paths'].includes(reviewer)) && m.forward.length) parts.push(`Forward-scan: ${list(m.forward)}`);
+  if ((coversSql || ['correctness', 'combined', 'failure-paths', 'quick'].includes(reviewer)) && m.forward.length) parts.push(`Forward-scan: ${list(m.forward)}`);
+  if (TRACERS.has(reviewer) && m.callers?.length) parts.push(`Callers of the changed functions (read before searching for them yourself): ${list(m.callers)}`);
+  if (m.staticCands) parts.push(`Already raised by static analysis, so don't raise again: ${m.staticCands}`);
+  if (m.staticLeads) parts.push(`Static-analysis leads to confirm or rule out at your units: ${m.staticLeads}`);
   if (['combined', 'tests-design'].includes(reviewer)) {
     if (m.history) parts.push(`History file: ${m.history}`);
     if (m.commits) parts.push(`Commit messages: ${m.commits}`);
@@ -143,7 +153,16 @@ export const formatLines = lines => (lines.length === 1 ? lines[0] : lines.map(l
 const oneLine = s => String(s).trim().replace(/\s*\r?\n\s*/g, ' ');
 
 // env: what the work dir holds, already resolved to slot text (see loadWork).
-export function reviewerSlots({ reviewer, chunk, diffFile, scope = null, dimensions = dimensionsOf(reviewer) }, env) {
+// Removed-only blocks are the units reviewers skipped most often: listing them up front saves a send-back.
+export const MAX_REMOVED_LISTED = 60;
+export function removedBlocksText(runs) {
+  const old = runs.filter(r => r.side === 'old');
+  if (!old.length) return 'none';
+  const shown = old.slice(0, MAX_REMOVED_LISTED).map(r => `\n  - ${r.path} old lines ${r.from}-${r.to}`).join('');
+  return shown + (old.length > MAX_REMOVED_LISTED ? `\n  - and ${old.length - MAX_REMOVED_LISTED} more in the diff` : '');
+}
+
+export function reviewerSlots({ reviewer, chunk, diffFile, scope = null, dimensions = dimensionsOf(reviewer), removed = 'none' }, env) {
   const agent = agentName({ reviewer, chunk });
   const blind = reviewer === 'regression';
   const mode = env.mode === 'pr'
@@ -163,12 +182,13 @@ export function reviewerSlots({ reviewer, chunk, diffFile, scope = null, dimensi
     PR_DESCRIPTION_FILE: blind ? 'none' : env.prDescriptionFile,
     DIFF_FILE: winPath(diffFile),
     SCOPE: scopeText(scope),
+    REMOVED_BLOCKS: removed,
     OUT_FILE: `${env.w}/cand-${agent}.json`,
     COVERAGE_FILE: `${env.w}/cov-${agent}.json`,
     EXTRA_MATERIAL: extraMaterial(reviewer, env, dimensions),
-    EXTRA_RULES: reviewer === 'specialists'
-      ? `You cover the checklists ${dimensions.join(', ')}. Go through every one of them on each unit, and set each candidate's \`dimension\` to the checklist it falls under, never \`specialists\`.`
-      : EXTRA_RULES[reviewer] ?? 'none',
+    EXTRA_RULES: EXTRA_RULES[reviewer] ?? (MULTI.has(reviewer)
+      ? `You cover the checklists ${dimensions.join(', ')}. Go through every one of them on each unit, and set each candidate's \`dimension\` to the checklist it falls under, never \`${reviewer}\`.`
+      : 'none'),
   };
 }
 
@@ -258,6 +278,9 @@ export function loadWork(w, { skillDir = OWN_SKILL_DIR, fixFindings = null } = {
       history: has('history.txt') ? `${w}/history.txt` : null,
       commits: has('commits.txt') ? `${w}/commits.txt` : null,
       stylesFacts: files(/^styles-facts-.+\.json$/),
+      callers: files(/^callers-.+\.json$/),
+      staticCands: has('cand-static.json') ? `${w}/cand-static.json` : null,
+      staticLeads: has('static-leads.json') && readJson(at('static-leads.json'), []).length ? `${w}/static-leads.json` : null,
     },
     optional: n => (has(n) ? `${w}/${n}` : 'none'),
   };
@@ -305,6 +328,22 @@ export function hintsOf(files, reviewers) {
       newLn++;
     }
     reviewers.forEach(flush);
+  }
+  return out;
+}
+
+// The new-side span of every hunk that holds one of the hints, as scope ranges.
+export function hunksAt(files, hints) {
+  const out = [];
+  for (const f of files.values()) {
+    const mine = hints.filter(h => samePath(h.path, f.path));
+    if (!mine.length) continue;
+    for (const line of f.raw) {
+      const m = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
+      if (!m) continue;
+      const from = +m[1], to = from + (m[2] === undefined ? 1 : +m[2]) - 1;
+      if (to >= from && mine.some(h => +h.from <= to && from <= +h.to)) out.push({ path: f.path, side: 'new', from, to });
+    }
   }
   return out;
 }
@@ -366,8 +405,17 @@ export function triage(w, opts = {}) {
   const changed = Number.isFinite(env.changed) ? env.changed : stats(files).changed;
   if (changed < SMALL) return { skip: true, why: `under ${SMALL} changed lines: the combined reviewer reads everything` };
   const list = triageRoster(env);
-  const hints = hintsOf(files, list);
+  const leads = readJson(join(env.W, 'static-leads.json'), [])
+    .filter(l => list.includes(l.dimension))
+    .map(l => ({ reviewer: l.dimension, path: l.path, side: 'new', from: l.from, to: l.to, sample: `static ${l.rule}: ${l.lead}`.slice(0, 160) }));
+  const hints = [...hintsOf(files, list), ...leads];
   writeFileSync(join(env.W, 'triage-hints.json'), JSON.stringify(hints, null, 2));
+  if (!levelOf(env.level).llmTriage) {
+    // Only sql is scoped at this level; the quick reviewer reads every changed line for the rest.
+    const sql = mergeRanges(hunksAt(files, hints.filter(h => h.reviewer === 'sql')).map(s => ({ ...s, why: 'sql hint in this hunk' })));
+    writeFileSync(join(env.W, 'triage-checked.json'), JSON.stringify({ sql }, null, 2));
+    return { skip: true, why: `${env.level} level: sql scoped by script hints, no triage agent`, scoped: { sql: sql.length } };
+  }
   const slots = {
     SKILL_DIR: winPath(env.skillDir),
     REVIEWERS: list.map(r => `\n  - \`${r}\`: ${winPath(join(env.skillDir, 'references', 'dimensions', `${r}.md`))}`).join(''),
@@ -492,10 +540,12 @@ export function reviewers(w, opts = {}) {
   if (!Number.isFinite(changed)) changed = stats(files()).changed;
   let chunkFiles = [];
   let chunkRuns = [];
+  let chunkTexts = [];
   if (changed > LARGE) {
     mkdirSync(join(env.W, 'chunks'), { recursive: true });
     const chunks = splitDiff(files(), CHUNK_SIZE);
     chunkRuns = chunks.map(c => changedRuns(parseDiff(c.text)));
+    chunkTexts = chunks.map(c => c.text);
     chunkFiles = chunks.map((c, i) => {
       writeFileSync(join(env.W, 'chunks', `chunk-${i + 1}.diff`), c.text);
       return `${env.w}/chunks/chunk-${i + 1}.diff`;
@@ -508,17 +558,22 @@ export function reviewers(w, opts = {}) {
   const out = list.map(a => {
     const agent = agentName(a);
     let diffFile = a.chunk ? chunkFiles[a.chunk - 1] : whole;
+    let runs;
     if (a.scope) {
       mkdirSync(join(env.W, 'scoped'), { recursive: true });
-      writeFileSync(join(env.W, 'scoped', `${agent}.diff`), scopedDiff(files(), a.scope));
+      const text = scopedDiff(files(), a.scope);
+      writeFileSync(join(env.W, 'scoped', `${agent}.diff`), text);
       diffFile = `${env.w}/scoped/${agent}.diff`;
-    }
-    const slots = reviewerSlots({ ...a, diffFile }, env);
+      runs = clipRuns(changedRuns(parseDiff(text)), a.scope);
+    } else runs = changedRuns(a.chunk ? parseDiff(chunkTexts[a.chunk - 1]) : files());
+    const cov = coverageOf(a.reviewer);
+    const removed = cov.coverage === 'skip' || cov.only ? 'none' : removedBlocksText(runs);
+    const slots = reviewerSlots({ ...a, diffFile, removed }, env);
     const promptFile = writePrompt(env, agent, fill(template, slots));
     return {
-      agent, reviewer: a.reviewer, usageKey: a.reviewer, promptFile,
+      agent, reviewer: a.reviewer, usageKey: a.reviewer, promptFile, model: levelOf(env.level).reviewerModel,
       outFile: slots.OUT_FILE, covFile: slots.COVERAGE_FILE, needsFile: slots.NEEDS_FILE, diffFile,
-      ...coverageOf(a.reviewer), scope: a.scope,
+      ...cov, scope: a.scope,
     };
   });
   writeFileSync(join(env.W, 'dispatch.json'), JSON.stringify(out, null, 2));
@@ -559,6 +614,23 @@ export function failed(w, agent) {
   const list = readJson(file, []).filter(u => u.agent !== agent);
   writeFileSync(file, JSON.stringify([...list, { agent, reviewer: entry.reviewer, missing: 'all', failed: true }], null, 2));
   return { recorded: 'uncovered.json', agent };
+}
+
+// Typical tokens per agent, from measured runs (SYM-10359, November 2026). An estimate to ask on, not a budget.
+export const TYPICAL_TOKENS = { reviewer: 160000, verify: 200000, recheck: 50000 };
+export const ESTIMATE_ASK = 2000000;
+
+export function estimateFor({ agents, spent = 0, recheck = true }) {
+  const total = spent + agents * TYPICAL_TOKENS.reviewer + TYPICAL_TOKENS.verify + (recheck ? TYPICAL_TOKENS.recheck : 0);
+  return { agents, spentSoFar: spent, estimate: Math.round(total / 100000) * 100000, ask: total > ESTIMATE_ASK, askOver: ESTIMATE_ASK };
+}
+
+export function estimate(w, opts = {}) {
+  const env = loadWork(w, opts);
+  const list = readJson(join(env.W, 'dispatch.json'), null);
+  if (!list) throw new Error(`no dispatch.json in ${w}; run dispatch.mjs reviewers first`);
+  const spent = Object.values(readJson(join(env.W, 'usage.json'), {})).reduce((n, v) => n + (Number(v) || 0), 0);
+  return { level: env.level, model: levelOf(env.level).reviewerModel, ...estimateFor({ agents: list.length, spent, recheck: levelOf(env.level).recheck }) };
 }
 
 export function usage(w, key, tokens) {
@@ -730,6 +802,7 @@ const USAGE = `usage:
   dispatch.mjs triage <W>                        write <W>/triage-hints.json and fill the triage prompt, or { skip: true } under ${SMALL} lines
   dispatch.mjs triage-check <W>                  check <W>/triage.json; on ok writes <W>/triage-checked.json for reviewers
   dispatch.mjs reviewers <W>                     fill a reviewer prompt per agent (splits > ${LARGE} changed lines into <W>/chunks)
+  dispatch.mjs estimate <W>                      typical tokens for the dispatched roster; ask: true over the threshold
   dispatch.mjs coverage <W> <agent>              check that agent's ledger; counts rounds, records <W>/uncovered.json
   dispatch.mjs needs <W> [--dest <branch>]       handle needs-*.json: auto-add refs, list asks and skips
   dispatch.mjs needs-answer <W> <ws/repo> <ref>  add the branch the user picked for an ask
@@ -759,6 +832,7 @@ function main(argv) {
     case 'triage': return triage(w);
     case 'triage-check': return triageCheck(w);
     case 'reviewers': return reviewers(w);
+    case 'estimate': return estimate(w);
     case 'coverage': return rest[0] ? coverage(w, rest[0]) : usageExit();
     case 'needs': return needs(w, { dest });
     case 'needs-answer': return rest.length === 2 ? needsAnswer(w, rest[0], rest[1]) : usageExit();

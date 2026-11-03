@@ -1,0 +1,56 @@
+# Opengrep/Semgrep rules from confirmed review findings. metadata.kind: "candidate" goes to verify as a
+# finding with no reviewer spent on it; "lead" is handed to triage and the reviewers to confirm.
+rules:
+  - id: afxbeginthread-null-check-only
+    languages: [cpp]
+    severity: WARNING
+    message: AfxBeginThread returns non-NULL even when InitInstance later fails and MFC deletes the thread object.
+    pattern-either:
+      - pattern: $P = ($T *) AfxBeginThread(...);
+      - pattern: $P = AfxBeginThread(...);
+    metadata:
+      kind: candidate
+      dimension: concurrency-races
+      severity: Medium
+      claim: A NULL check on the AfxBeginThread result doesn't catch a worker whose InitInstance fails; the pointer is left dangling.
+      failure: InitInstance returns FALSE (a database or COM open fails), MFC deletes the auto-delete thread object, and the next call through the still non-NULL pointer uses freed memory.
+      issue: "`AfxBeginThread` only returns NULL when the thread can't be created; if `InitInstance` fails, MFC deletes the auto-delete thread object and this pointer still points at it."
+      impact: Work handed to the thread after a failed start goes to freed memory instead of any fallback.
+      fix: Start the thread `CREATE_SUSPENDED`, resume it, and wait on a caller-owned event `InitInstance` sets or on the thread handle; treat an exit before the event as a failed start.
+
+  - id: worker-execute-send-without-catch
+    languages: [cpp]
+    severity: WARNING
+    message: A message-queue send on a worker task's Execute with no try/catch around it.
+    patterns:
+      - pattern-inside: |
+          void $C::Execute(...) { ... }
+      - pattern-either:
+          - pattern: $Q->AddToMessageQueue(...);
+          - pattern: $Q.AddToMessageQueue(...);
+          - pattern: $Q->SendMessage(...);
+          - pattern: $Q.SendMessage(...);
+      - pattern-not-inside: |
+          try { ... } catch (...) { ... }
+    metadata:
+      kind: candidate
+      dimension: correctness
+      severity: Medium
+      claim: An MSMQ send on a worker thread can throw a raw HRESULT that nothing on that thread catches.
+      failure: A SafeArray call inside SendMessage fails, SendMessage runs `throw hres`, nothing on the worker catches an HRESULT, and the uncaught exception terminates the process.
+      issue: "`CMessageQueue::SendMessage` can `throw hres`, a raw HRESULT its own `catch(_com_error&)` misses, and this worker task's `Execute` has no handler around the send."
+      impact: One failed send ends the service process and loses every task still queued on its workers.
+      fix: Wrap the send in `try { ... } catch (...)` and log the failure to the event log, leaving the worker running.
+
+  - id: msmq-time-to-be-received
+    languages: [cpp]
+    severity: INFO
+    message: MSMQ messages on this queue now expire.
+    pattern-either:
+      - pattern: SetTimeToBeReceived(...);
+      - pattern: $Q->SetTimeToBeReceived(...);
+      - pattern: $Q.SetTimeToBeReceived(...);
+    metadata:
+      kind: lead
+      dimension: regression
+      lead: "Messages that expire: check what the consumer does when a peeked message expires before its receive, whether notification is re-armed after a failed read, and whether a drop is logged or dead-lettered."

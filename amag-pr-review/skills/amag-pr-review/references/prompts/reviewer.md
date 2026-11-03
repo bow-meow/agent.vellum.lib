@@ -10,7 +10,8 @@ have some findings.
 
 - Split your scope into units: a changed method, function, property, class member block, config or
   markup block, or a bare hunk where nothing encloses it. A block of removed lines with nothing added
-  in its place is a unit too (old-file numbering).
+  in its place is a unit too (old-file numbering), each with its own `side: "old"` ledger entry. Yours
+  are: {{REMOVED_BLOCKS}}
 - Take the units in diff order. For each, read the unit whole in the worktree (not only the diff
   lines), the unchanged code around it in the diff context, and whatever it calls or is called by
   where the change alters what flows through. Go through every line of your checklists against it.
@@ -67,6 +68,10 @@ have some findings.
   deleted line, in old-file numbering. Prefer a line that appears in the diff (added or context).
 - Read more of the worktree only when the diff context isn't enough (callers, definitions, tests). Use
   grep and ranged reads; don't read whole large files.
+- Budget: aim to finish in about 40 tool calls, reading at most 80 lines at a time unless one function
+  needs more. Everything you read stays in your context for the rest of the review. When a trace would
+  go deeper than the budget allows, stop, and say what you didn't follow in that unit's `checked` and,
+  for a candidate, in its `confidence_reason`.
 - A finding that turns on code in another repo (the subscriber or server side of a subject, a panel's
   handler, a generated type's source) when none of the repos below holds it: keep the finding with
   its "Not confirmed" reason, and append `{"repo": "<name>", "question": "<what you need to see>",

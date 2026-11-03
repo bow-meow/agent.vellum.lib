@@ -119,7 +119,7 @@ test('parseArgs takes W and comma-separated --siblings slugs', () => {
   assert.equal(parseArgs(['/w', '--other']), null);
 });
 
-function fakeRunners({ search = {}, deps = {}, plan = [], addFail = [], fetchFail = false } = {}) {
+function fakeRunners({ search = {}, deps = {}, plan = [], addFail = [], fetchFail = false, staticOut = null } = {}) {
   const calls = [];
   const ok = stdout => ({ status: 0, stdout, stderr: '' });
   const node = (script, args) => {
@@ -138,6 +138,8 @@ function fakeRunners({ search = {}, deps = {}, plan = [], addFail = [], fetchFai
     if (script === 'sql-index-map.mjs') return ok('{"tables":{},"noIndexFound":[]}');
     if (script === 'forward-scan.mjs') return ok(JSON.stringify({ dest: args[2], branches: [] }));
     if (script === 'styles-scan.mjs') return ok('{"counts":{},"facts":[]}');
+    if (script === 'callers.mjs') return ok('{}');
+    if (script === 'static.mjs') return ok(JSON.stringify(staticOut ? staticOut(args) : { skipped: true, why: 'no opengrep or semgrep found', candidates: [], leads: [] }));
     throw new Error(`unexpected ${script}`);
   };
   const git = args => {
@@ -272,4 +274,23 @@ test('run in local mode uses the ticket key, per-repo diffs and the reviewed bra
   assert.match(readFileSync(join(w, 'commits.txt'), 'utf8'), /^## a\n--- abc123[\s\S]*## b\n/);
   for (const f of ['deps-a.json', 'deps-b.json', 'forward-a.json', 'forward-b.json']) assert.ok(existsSync(join(w, f)), f);
   assert.deepEqual(calls.filter(c => c[0] === 'forward-scan.mjs').map(c => c[3]), ['release/11.1.0-x', 'main']);
+  assert.deepEqual(calls.filter(c => c[0] === 'callers.mjs').map(c => c.slice(-2)), [['--prefix', 'a'], ['--prefix', 'b']]);
+  assert.ok(ctx.notes.some(n => /Static analysis: no opengrep/.test(n)));
+});
+
+test('run collects static-analysis candidates into cand-static.json and leads into static-leads.json', () => {
+  const w = join(mkdtempSync(join(tmpdir(), 'ctx-')), '.work', 'local-SYM-9');
+  mkdirSync(w, { recursive: true });
+  writeFileSync(join(w, 'a.diff'), fileDiff('A.cpp', ['x']));
+  writeFileSync(join(w, 'context.diff'), fileDiff('A.cpp', ['x']));
+  writeFileSync(join(w, 'repos.json'), JSON.stringify({ mode: 'local', pr: null, ticketKey: 'SYM-9', ticketDir: null,
+    repos: [{ name: 'a', ws: 'w', repo: 'r', clone: '/t/a', wt: '/t/a', dest: 'main', mb: 'ccccccc3', head: null, diff: join(w, 'a.diff') }] }));
+  const { runners } = fakeRunners({ staticOut: args => ({ tool: 'og', errors: 0,
+    candidates: [{ repo: args.at(-1), severity: 'Medium', dimension: 'correctness', path: 'a/A.cpp', line: 1, claim: 'c' }],
+    leads: [{ rule: 'r', dimension: 'sql', path: 'a/A.cpp', from: 1, to: 1, lead: 'l' }] }) });
+  const ctx = run(w, {}, runners);
+  assert.deepEqual(ctx.static, { tool: 'og', candidates: 1, leads: 1 });
+  const cands = JSON.parse(readFileSync(join(w, 'cand-static.json'), 'utf8'));
+  assert.deepEqual(cands.map(c => [c.id, c.repo, c.path]), [['static-1', 'a', 'a/A.cpp']]);
+  assert.equal(JSON.parse(readFileSync(join(w, 'static-leads.json'), 'utf8')).length, 1);
 });

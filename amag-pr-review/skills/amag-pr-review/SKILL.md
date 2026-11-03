@@ -32,9 +32,9 @@ S=<this skill's base directory, POSIX>   MODEL: see references/severity.md
   defined in this plugin's `agents/pr-review-reader.md`). The prompt is one line pointing at the
   `promptFile` a script names: `Your full task is in <promptFile>. Read that file first and follow it
   exactly; it is written for you by the review orchestrator.` Don't read the file into this
-  conversation. If that type isn't available this session, use `general-purpose` with
-  `model: "opus"` and say so in the terminal. Agents write to files in `$W`; don't read their full
-  output into this conversation.
+  conversation. When a script's entry names a `model`, pass it on the Agent call. If that type isn't
+  available this session, use `general-purpose` with the entry's `model` (else `"opus"`) and say so in
+  the terminal. Agents write to files in `$W`; don't read their full output into this conversation.
 - Text you write for the PR (the joke, an edited body, a push-back reply) goes in a file in `$W` with
   the Write tool, never on a command line.
 - If the user says a finding was wrong or noise: fix what they asked, then say you'll add the pattern
@@ -57,7 +57,7 @@ S=<this skill's base directory, POSIX>   MODEL: see references/severity.md
 
 | Level | For | What changes |
 |---|---|---|
-| `low` ("quick look") | early feedback, small follow-ups | no tests-design, claims, docs or recheck; specialists always merged. **Never approves** and never counts as reviewing the commit, so the next review reads the whole change |
+| `low` ("quick look") | early feedback, small follow-ups | Sonnet reviewers: a `quick` reviewer (correctness, concurrency, resources, security) and regression per chunk, sql scoped by script hints, ticket-fit; no triage agent, tests-design, claims, docs or recheck. **Never approves** and never counts as reviewing the commit, so the next review reads the whole change |
 | `medium` | the normal review | as described below |
 | `high` ("thorough") | threading, data, money, security | ±40 lines of diff context, specialists never merged, and a second independent `failure-paths` pass beside correctness |
 
@@ -105,10 +105,13 @@ more changed lines than one ticket): stop and ask.
 ## 4. Context pack (both modes)
 
 ```bash
-node $S/scripts/context.mjs $W [--siblings ws/repo,...]   # → context.json: changed, languages, ticketKey, notes
+node $S/scripts/context.mjs $W [--siblings ws/repo,...]   # → context.json: changed, languages, ticketKey, static, notes
 ```
 
-Show its `notes`. Then the **ticket**, which only you can read: with `ticketKey` from `context.json`,
+Besides the scans reviewers read, this runs **static analysis**: Opengrep (or Semgrep) with this skill's
+`rules/`, on the changed files. Hits of a `candidate` rule are written to `cand-static.json` and go to
+verify like any reviewer's findings, at no agent cost; `lead` hits become triage hints. No tool found
+(`OPENGREP`, `~/tools/opengrep/opengrep.exe` or on PATH) is a note, not a failure. Show its `notes`. Then the **ticket**, which only you can read: with `ticketKey` from `context.json`,
 read it with the Atlassian MCP (`getAccessibleAtlassianResources` for the cloud id, then
 `getJiraIssue`, including comments). Write the full issue (summary, description, acceptance criteria,
 repro steps, comments, linked issues) to `$W/ticket.md` and a 3-line summary to
@@ -129,8 +132,8 @@ that concern them, or don't run when none do:
 node $S/scripts/dispatch.mjs triage $W      # → {skip, why} or {promptFile, usageKey, model}
 ```
 
-`skip: true` (under 200 changed lines, where one combined reviewer reads everything): go straight to
-`reviewers`. Otherwise dispatch one agent with the prompt as usual but `model: "sonnet"` (usage key
+`skip: true` (under 200 changed lines, where one combined reviewer reads everything, or low level,
+where a script scopes sql instead): go straight to `reviewers`. Otherwise dispatch one agent with the prompt as usual but `model: "sonnet"` (usage key
 `triage`), then:
 
 ```bash
@@ -142,10 +145,15 @@ agent failing twice → `dispatch.mjs failed $W triage`, and every reviewer read
 before. Keep `scoped` and `notRun` for the terminal's Triage line.
 
 ```bash
-node $S/scripts/dispatch.mjs reviewers $W   # → [{agent, usageKey, promptFile, coverage, scope}]
+node $S/scripts/dispatch.mjs reviewers $W   # → [{agent, usageKey, promptFile, model, coverage, scope}]
+node $S/scripts/dispatch.mjs estimate $W    # → {agents, estimate, ask}
 ```
 
-Dispatch every listed agent in parallel, in one message. As each one finishes, follow
+`ask: true` (a typical run of this roster passes 2M tokens): before dispatching anything, show the
+estimate and ask with AskUserQuestion: go ahead, rerun at `low` (back to step 2 or 3 with
+`--level low`), or stop. Otherwise show the estimate in one line and go on.
+
+Dispatch every listed agent in parallel, in one message, each on its entry's `model`. As each one finishes, follow
 [references/after-dispatch.md](references/after-dispatch.md): retries, coverage send-backs, repo
 requests and token usage. No reviewer counts as done until its coverage check passes or it is
 recorded as uncovered.
@@ -200,8 +208,13 @@ Print, in this order: the header `## <PR #id: title | Local review: TICKET> · <
 2–3 sentence overview of what the change does plus `Strengths: <one line>`, then the script's output
 as it stands, then these lines: `Uncovered: <from uncovered.json, or none>   Ticket: <key or "none found">
 Incremental: <step 2's result, or no>`, `Triage: <reviewer: n ranges, m changed lines; not run:
-reviewers | skipped (under 200 lines) | failed: every reviewer read the whole diff>`, `Packages:` and
-`Other repos:` from `context.json` and the repo requests.
+reviewers | skipped (under 200 lines) | failed: every reviewer read the whole diff>`, `Static: <n
+candidates, m leads | not run: why>`, `Packages:` and `Other repos:` from `context.json` and the repo
+requests.
+
+When verify confirms a finding whose class is a matchable code pattern (a call checked the wrong way,
+a missing handler around a known throwing call), say so in one line: it's a candidate for a rule in
+`rules/`, which catches it on every later PR for free.
 
 The overview describes the change. A reviewer's "checked and not raised" note never went through
 verify, so don't present it as confirmed ("both reviewers confirmed X can't happen").

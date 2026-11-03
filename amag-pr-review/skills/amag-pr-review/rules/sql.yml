@@ -1,0 +1,14 @@
+# T-SQL has no Opengrep parser, so these match text in generic mode.
+rules:
+  - id: proc-if-else-two-selects
+    languages: [generic]
+    severity: INFO
+    message: A stored procedure that returns its rows from IF/ELSE branches.
+    paths:
+      include: ["*.sql"]
+    # A generic-mode "..." spans about ten lines, too few for a SELECT's column list.
+    pattern-regex: (?is)\bIF\b[^\n]*\n\s*(BEGIN\s+)?SELECT\b.*?\n\s*(END\s+)?ELSE\b\s+(BEGIN\s+)?SELECT\b
+    metadata:
+      kind: lead
+      dimension: sql
+      lead: "Two SELECTs under IF/ELSE: SQL Server won't open a server-side (dynamic or keyset) cursor on a proc with more than one SELECT; check how callers open it (OpenRecordset, CRecordset)."

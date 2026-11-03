@@ -20,9 +20,10 @@ test('levelName defaults to medium and refuses an unknown level', () => {
   assert.throws(() => levelName('extreme'), /unknown level "extreme"/);
 });
 
-test('low drops tests-design, claims, docs and styles but keeps regression separate', () => {
+test('low runs a quick reviewer beside regression, sql and ticket-fit, and nothing else', () => {
   const low = names(roster(big, 0, 'low'));
-  assert.deepEqual(low, ['correctness', 'regression', 'concurrency-races', 'resources-performance', 'sql', 'security', 'ticket-fit']);
+  assert.deepEqual(low, ['quick', 'regression', 'sql', 'ticket-fit']);
+  assert.deepEqual(names(roster({ ...big, changed: 1500 }, 2, 'low')), ['quick-1', 'regression-1', 'sql-1', 'quick-2', 'regression-2', 'sql-2', 'ticket-fit']);
   assert.deepEqual(names(roster({ ...big, changed: 50 }, 0, 'low')), ['combined', 'ticket-fit']);
 });
 
@@ -37,13 +38,13 @@ test('high adds a failure-paths pass beside correctness, per chunk over 1000 lin
   assert.deepEqual(names(roster({ ...big, changed: 50 }, 0, 'high')), ['combined', 'failure-paths', 'ticket-fit', 'claims']);
 });
 
-test('the merge threshold follows the level: low merges everything, high never merges', () => {
+test('the merge threshold follows the level: medium merges small scopes, low and high never merge', () => {
   const list = ['concurrency-races', 'resources-performance', 'sql'].map(reviewer => ({ reviewer, chunk: null }));
   const runs = [{ path: 'a.cs', side: 'new', from: 1, to: 3000 }];
   const r = (from, to) => [{ path: 'a.cs', side: 'new', from, to, why: 'w' }];
   const triaged = { 'concurrency-races': r(1, 100), 'resources-performance': r(200, 300), sql: r(1000, 1900) };
   const at = level => applyTriage(list, triaged, { runs, chunkRuns: [], mergeMax: levelOf(level).mergeMax }).map(a => a.reviewer);
-  assert.deepEqual(at('low'), ['specialists']);
+  assert.deepEqual(at('low'), ['concurrency-races', 'resources-performance', 'sql']);
   assert.deepEqual(at('medium'), ['specialists', 'sql']);
   assert.deepEqual(at('high'), ['concurrency-races', 'resources-performance', 'sql']);
 });

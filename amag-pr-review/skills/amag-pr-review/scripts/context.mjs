@@ -243,8 +243,31 @@ export function run(wArg, { siblings: extra = [] } = {}, runners = defaultRunner
     scan('styles-scan.mjs', [r.wt, r.diff, r.mb, ...libs.get(r.name).flatMap(p => ['--lib', p])], `styles-facts-${r.name}.json`, { counts: {}, facts: [] }, `Stylesheet scan of ${r.name} failed`);
   }
 
+  // Local mode's context.diff prefixes every path with its repo; PR mode's doesn't.
+  const prefixArgs = r => (meta.mode === 'local' ? ['--prefix', r.name] : []);
+  for (const r of repos)
+    scan('callers.mjs', [r.wt, '--diff', r.diff, ...prefixArgs(r)], `callers-${r.name}.json`, {}, `Callers of ${r.name} failed`);
+
+  const staticCands = [], staticLeads = [];
+  let staticTool = null;
+  for (const r of repos) {
+    const out = scan('static.mjs', [r.wt, '--diff', r.diff, ...prefixArgs(r)], `static-${r.name}.json`, { candidates: [], leads: [] }, `Static analysis of ${r.name} failed`);
+    if (!out) continue;
+    let res;
+    try { res = JSON.parse(out); } catch { notes.push(`Static analysis of ${r.name}: unreadable output`); continue; }
+    if (res.skipped) { notes.push(`Static analysis: ${res.why}`); break; }
+    staticTool = res.tool;
+    if (res.errors) notes.push(`Static analysis of ${r.name}: ${res.errors} file(s) the tool couldn't read`);
+    staticCands.push(...res.candidates.map(c => ({ ...c, repo: c.repo ?? r.name })));
+    staticLeads.push(...res.leads);
+  }
+  // A reviewer's candidate file: verify reads it like any other, and no reviewer tokens went into it.
+  if (staticCands.length) writeFileSync(join(w, 'cand-static.json'), JSON.stringify(staticCands.map((c, i) => ({ id: `static-${i + 1}`, ...c })), null, 2));
+  writeFileSync(join(w, 'static-leads.json'), JSON.stringify(staticLeads, null, 2));
+  const staticSummary = { tool: staticTool, candidates: staticCands.length, leads: staticLeads.length };
+
   if (!ticketKey) notes.push('Ticket: none found; no sibling search');
-  const context = { changed, styles, languages, sql, ticketKey, siblings: siblings.length, packages, otherRepos, notes };
+  const context = { changed, styles, languages, sql, ticketKey, siblings: siblings.length, packages, otherRepos, static: staticSummary, notes };
   writeFileSync(join(w, 'context.json'), JSON.stringify(context, null, 2));
   return context;
 }
