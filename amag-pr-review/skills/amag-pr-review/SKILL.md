@@ -214,7 +214,8 @@ requests.
 
 When verify confirms a finding whose class is a matchable code pattern (a call checked the wrong way,
 a missing handler around a known throwing call), say so in one line: it's a candidate for a rule in
-`rules/`, which catches it on every later PR for free.
+`rules/`, which catches it on every later PR for free. A rule ships with `ruleid:`/`ok:` lines in its
+fixture (`rules/<name>.<ext>`), checked by `opengrep scan --test rules/`.
 
 The overview describes the change. A reviewer's "checked and not raised" note never went through
 verify, so don't present it as confirmed ("both reviewers confirmed X can't happen").

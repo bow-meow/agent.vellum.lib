@@ -1,0 +1,16 @@
+# NatsCodeGen rules, path-scoped to its cli/ (and to natscodegen.cs, this file's fixture).
+rules:
+  - id: natscodegen-definition-error
+    languages: [csharp]
+    severity: WARNING
+    message: A definition error raised with something other than DefinitionValidationException.
+    paths:
+      include: ["cli/**/*.cs", "**/natscodegen/cli/**/*.cs", "natscodegen.cs"]
+    pattern-either:
+      - pattern: throw new InvalidOperationException(...);
+      - pattern: throw new Exception(...);
+      - pattern: Environment.Exit(...);
+    metadata:
+      kind: lead
+      dimension: correctness
+      lead: "NatsCodeGen: if this reports a bad definition, it must throw DefinitionValidationException (clean message, exit 1, watch mode keeps running), not InvalidOperationException, Exception or Environment.Exit."

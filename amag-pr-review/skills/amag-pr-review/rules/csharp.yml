@@ -1,0 +1,328 @@
+# C# rules from the csharp-dotnet checklist, its team history and confirmed findings. "candidate" rules
+# go to verify as findings; "lead" rules point triage and reviewers at code to check.
+# csharp.cs pins what each rule matches: opengrep scan --test rules/
+rules:
+  - id: async-void-not-event-handler
+    languages: [csharp]
+    severity: WARNING
+    message: An async void method that isn't an event handler.
+    patterns:
+      - pattern: |
+          async void $M(...) { ... }
+      - pattern-not: |
+          async void $M(object $S, $E $A) { ... }
+      - pattern-not: |
+          async void $M(object? $S, $E $A) { ... }
+      # WinForms OnLoad(EventArgs) and the like are raised as events.
+      - pattern-not: |
+          override async void $M(...) { ... }
+      - pattern-not-regex: async\s+void\s+\w+\s*\([^)]*EventArgs
+    metadata:
+      kind: candidate
+      dimension: concurrency-races
+      severity: Medium
+      claim: An async void method that isn't an event handler can't be awaited, and an exception it throws after its first await ends the process.
+      failure: Anything after the first await throws; with no Task to carry it, the exception is raised on the thread pool or the sync context and terminates the process, while the caller has already moved on.
+      issue: "`async void` on a method that isn't an event handler: callers can't await it or see its exceptions."
+      impact: An exception after its first await crashes the process, and callers carry on before its work has finished.
+      fix: Return `Task` and await it at each call site; keep `async void` only for event handlers.
+
+  - id: throw-caught-exception-variable
+    languages: [csharp]
+    severity: WARNING
+    message: Rethrowing the caught exception variable resets its stack trace.
+    patterns:
+      - pattern: throw $E;
+      - pattern-either:
+          - pattern-inside: |
+              try { ... } catch ($T $E) { ... }
+          - pattern-inside: |
+              try { ... } catch ($T $E) { ... } finally { ... }
+    metadata:
+      kind: candidate
+      dimension: correctness
+      severity: Low
+      claim: "`throw ex;` replaces the exception's stack trace with this line."
+      issue: "`throw` of the caught exception variable resets the stack trace to this catch block."
+      impact: Logs and crash reports point here instead of at the code that actually failed.
+      fix: Use a bare `throw;` to rethrow, or wrap it as the inner exception of a new one.
+
+  - id: httpclient-per-call
+    languages: [csharp]
+    severity: WARNING
+    message: A new HttpClient created for a local or a using block inside a method.
+    patterns:
+      - pattern-either:
+          - pattern: var $V = new HttpClient(...);
+          - pattern: using (var $V = new HttpClient(...)) { ... }
+          - pattern: using var $V = new HttpClient(...);
+          - pattern: $X.$M(..., new HttpClient(...), ...)
+      - pattern-inside: |
+          $R $F(...) { ... }
+      - pattern-not-inside: |
+          static $R $F(...) { ... }
+    metadata:
+      kind: candidate
+      dimension: resources-performance
+      severity: Medium
+      claim: A new HttpClient per call leaves each connection's socket in TIME_WAIT after disposal.
+      failure: The method runs often under load; each call opens a new connection whose socket lingers after the client is disposed, until the host runs out of ephemeral ports and requests fail with SocketException.
+      issue: "`new HttpClient()` inside a method opens a fresh connection pool on every call."
+      impact: Under load the host runs out of sockets and outgoing requests fail.
+      fix: Use one shared `HttpClient`, or `IHttpClientFactory`, for the life of the service.
+
+  - id: empty-catch
+    languages: [csharp]
+    severity: WARNING
+    message: A catch block that does nothing.
+    pattern-either:
+      - pattern: |
+          try { ... } catch ($T $E) { }
+      - pattern: |
+          try { ... } catch { }
+    metadata:
+      kind: candidate
+      dimension: correctness
+      severity: Low
+      claim: An empty catch block swallows the failure with no log and no handling.
+      issue: An empty `catch` swallows every exception the `try` throws.
+      impact: A failure here leaves no trace, so the caller carries on with a half-done operation.
+      fix: Catch only the exception you expect, and log it or handle it; let the rest propagate.
+
+  - id: regex-dollar-anchor
+    languages: [csharp]
+    severity: WARNING
+    message: A regex ending in $, which also matches before a trailing newline.
+    patterns:
+      - pattern-either:
+          - pattern: new Regex($P, ...)
+          - pattern: Regex.IsMatch($X, $P, ...)
+          - pattern: Regex.Match($X, $P, ...)
+          - pattern: Regex.Matches($X, $P, ...)
+          - pattern: Regex.Replace($X, $P, ...)
+      - metavariable-regex:
+          metavariable: $P
+          # Anchored at both ends: the validation shape. A bare suffix match ("ies$") is usually intended.
+          regex: ^@?"\^[^"]*(?<!\\)\$"$
+    metadata:
+      kind: candidate
+      dimension: correctness
+      severity: Low
+      claim: In .NET, a pattern ending in `$` also matches before a trailing newline, so "value\n" passes.
+      issue: The pattern ends in `$`, which in .NET also matches just before a final newline.
+      impact: A value with a trailing newline passes validation and reaches storage or a protocol unchanged.
+      fix: End the pattern with `\z`, and wrap a top-level alternation in a group so both ends anchor it.
+
+  - id: blocking-on-task
+    languages: [csharp]
+    severity: INFO
+    message: Blocking on a Task.
+    pattern-either:
+      - pattern: $T.Wait()
+      - pattern: $T.Wait($X)
+      - pattern: $T.GetAwaiter().GetResult()
+      # .Result is usually a DTO property: only a receiver named *task or a call to an *Async method.
+      - pattern-regex: (?i)\b\w*task\s*\.\s*Result\b
+      - pattern-regex: \b\w+Async\s*\([^()]*\)\s*\.\s*Result\b
+    metadata:
+      kind: lead
+      dimension: concurrency-races
+      lead: "Blocking on a Task: can this run on a thread with a sync context (UI, old ASP.NET) or inside async code, where it deadlocks or starves the pool?"
+
+  - id: disposable-without-using
+    languages: [csharp]
+    severity: INFO
+    message: A disposable created without using.
+    patterns:
+      - pattern: $TY $V = new $C(...);
+      - metavariable-regex:
+          metavariable: $C
+          regex: ^(SqlConnection|SqlCommand|SqlDataReader|SqlTransaction|CancellationTokenSource|FileStream|StreamReader|StreamWriter|MemoryStream|Process|SemaphoreSlim)$
+      - pattern-inside: |
+          $R $F(...) { ... }
+      - pattern-not-inside: |
+          using (...) { ... }
+      - pattern-not-inside: |
+          using ($TY $V = new $C(...)) $S
+      - pattern-not-inside: |
+          $TY $V = new $C(...);
+          ...
+          $V.Dispose();
+      - pattern-not-inside: |
+          $TY $V = new $C(...);
+          ...
+          return $V;
+    metadata:
+      kind: lead
+      dimension: resources-performance
+      lead: "A disposable created without `using`: is it disposed on every path, including exceptions, or handed to an owner that disposes it?"
+
+  - id: datetime-now
+    languages: [csharp]
+    severity: INFO
+    message: DateTime.Now is local time.
+    pattern: DateTime.Now
+    metadata:
+      kind: lead
+      dimension: correctness
+      lead: "`DateTime.Now` is local time: is this value stored, compared with UTC, or sent to another machine?"
+
+  - id: lambda-event-subscription
+    languages: [csharp]
+    severity: INFO
+    message: An event subscribed with a lambda, which can't be unsubscribed.
+    paths:
+      exclude: ["*.Designer.cs"]
+    pattern-either:
+      - pattern: $O.$E += (...) => $B;
+      - pattern: $O.$E += $P => $B;
+      - pattern: $O.$E += delegate { ... };
+    metadata:
+      kind: lead
+      dimension: resources-performance
+      lead: "A lambda event subscription can never be removed: does the publisher outlive this subscriber, keeping it and what it captures alive?"
+
+  - id: fire-and-forget-task
+    languages: [csharp]
+    severity: INFO
+    message: A task started and not awaited.
+    pattern-either:
+      - pattern: _ = $X.$M(...);
+      - pattern: _ = $M(...);
+      - patterns:
+          - pattern-either:
+              - pattern: Task.Run(...);
+              - pattern: Task.Factory.StartNew(...);
+          # Kept, awaited or returned: someone holds the task.
+          - pattern-not-inside: $V = $E;
+          - pattern-not-inside: var $V = $E;
+          - pattern-not-inside: $TY $V = $E;
+          - pattern-not-inside: await $E;
+          - pattern-not-inside: return $E;
+    metadata:
+      kind: lead
+      dimension: concurrency-races
+      lead: "A task started and not awaited: who observes its exceptions, and what stops it overlapping the next one?"
+
+  - id: file-replace-then-cleanup
+    languages: [csharp]
+    severity: INFO
+    message: File.Replace inside a try with a finally.
+    patterns:
+      - pattern-inside: |
+          try { ... } finally { ... }
+      - pattern: File.Replace(...)
+    metadata:
+      kind: lead
+      dimension: correctness
+      lead: "File.Replace can fail after it has removed the destination: does the finally clean-up delete the only remaining copy?"
+
+  - id: sql-built-from-strings
+    languages: [csharp]
+    severity: ERROR
+    message: SQL text built by concatenation or interpolation.
+    patterns:
+      - pattern-either:
+          - pattern: new SqlCommand($Q, ...)
+          - pattern: new SqlDataAdapter($Q, ...)
+          - pattern: $C.CommandText = $Q
+          - pattern: $DB.ExecuteSqlRaw($Q, ...)
+          - pattern: $DB.FromSqlRaw($Q, ...)
+          - pattern: $DB.ExecuteSqlCommand($Q, ...)
+      - metavariable-pattern:
+          metavariable: $Q
+          pattern-either:
+            - pattern: $A + $B
+            - pattern: string.Format(...)
+            - pattern: String.Format(...)
+            - pattern-regex: ^\$@?"
+            - pattern-regex: ^@\$"
+      # Concatenated literals are fixed text, not input.
+      - metavariable-pattern:
+          metavariable: $Q
+          patterns:
+            - pattern-not: '"..." + "..."'
+    metadata:
+      kind: candidate
+      dimension: security
+      severity: High
+      claim: SQL text is built from a variable, so a value containing a quote changes the statement.
+      failure: A value that reaches this string contains a single quote followed by SQL; the database runs it as part of the statement.
+      issue: The SQL is built by concatenating or interpolating values into the command text instead of passing them as parameters.
+      impact: A value with a quote in it can change or extend the statement, from a failed query up to reading or changing other rows.
+      fix: Keep the SQL text constant and pass each value with `Parameters.AddWithValue` (or `FromSqlInterpolated` in EF).
+
+  - id: logging-formatter-named-overload
+    languages: [csharp]
+    severity: WARNING
+    message: A console formatter set through a named overload.
+    pattern-either:
+      - pattern: $B.AddSimpleConsole(...)
+      - pattern: $B.AddJsonConsole(...)
+      - pattern: $B.AddSystemdConsole(...)
+    metadata:
+      kind: candidate
+      dimension: correctness
+      severity: Medium
+      claim: A named console-formatter overload overrides the formatter the settings file selects.
+      failure: Logging:Console:FormatterName is set in appsettings; this overload registers its own FormatterName after configuration has bound, so the configured formatter is silently replaced.
+      issue: "`AddSimpleConsole`/`AddJsonConsole` sets `FormatterName` after `Logging:Console` has been bound from configuration."
+      impact: A formatter chosen in the settings file is ignored, so log output isn't in the format operators configured.
+      fix: Call plain `AddConsole()` and set defaults through `Configure<TFormatterOptions>`, applied only while the option is still unset.
+
+  - id: culture-case-comparison
+    languages: [csharp]
+    severity: INFO
+    message: A case-insensitive comparison done with ToLower/ToUpper or without a StringComparison.
+    pattern-either:
+      - pattern: $A.ToLower() == $B
+      - pattern: $A == $B.ToLower()
+      - pattern: $A.ToUpper() == $B
+      - pattern: $A == $B.ToUpper()
+      - pattern: $A.ToLower() != $B
+      - pattern: $A.ToUpper() != $B
+      - pattern: $A.ToLower().Equals($B)
+      - pattern: $A.ToUpper().Equals($B)
+      - pattern: string.Equals($A, $B)
+      - pattern: String.Equals($A, $B)
+    metadata:
+      kind: lead
+      dimension: correctness
+      lead: "Is this a protocol, DB or identifier value? Then compare with StringComparison.OrdinalIgnoreCase (or Ordinal): ToLower/ToUpper follow the current culture (Turkish dotless i) and allocate."
+
+  - id: count-compared-with-zero
+    languages: [csharp]
+    severity: INFO
+    message: Count() compared with zero where Any() stops at the first item.
+    pattern-either:
+      - pattern: $X.Count() > 0
+      - pattern: $X.Count() != 0
+      - pattern: $X.Count() >= 1
+      - pattern: 0 < $X.Count()
+      - pattern: $X.Count() == 0
+    metadata:
+      kind: candidate
+      dimension: resources-performance
+      severity: Low/nit
+      claim: "`Count()` enumerates every item, or runs a COUNT on a database query, only to compare with zero."
+      issue: "`Count()` compared with zero counts every item when `Any()` stops at the first."
+      impact: On a database query or a long lazy sequence this does a full count or scan for a yes/no answer.
+      fix: Use `Any()` (or `!Any()` for the zero case).
+
+  - id: whenany-delay-timeout
+    languages: [csharp]
+    severity: INFO
+    message: A timeout that stops waiting without stopping the work.
+    patterns:
+      - pattern-either:
+          - pattern: Task.WhenAny($T, Task.Delay(...))
+          - pattern: Task.WhenAny(Task.Delay(...), $T)
+          - pattern: $T.WaitAsync($X)
+      # A TaskCompletionSource's Task is a notification, not work: waiting on it with a timeout leaves nothing running.
+      - pattern-not: $S.Task.WaitAsync(...)
+      # SemaphoreSlim.WaitAsync(token) is a cancellable wait, not a timeout.
+      - pattern-not-regex: WaitAsync\(\s*(\w*[Tt]oken\w*|ct)\s*\)
+    metadata:
+      kind: lead
+      dimension: concurrency-races
+      lead: "This timeout stops waiting but the operation runs on, unobserved: pass a CancellationToken to the call itself where the API takes one, and keep this only as a backstop."
