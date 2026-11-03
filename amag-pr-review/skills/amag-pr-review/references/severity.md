@@ -9,21 +9,8 @@ MODEL = Opus 5.5
 | High, Medium, Low, Low/nit | `change` | `<area icon> **<Area> · change needed**` | yes |
 | Info | `note` | `<area icon> **<Area> · note**` | no |
 
-Severity is internal. It drives verify's gate, recheck, ordering and the incremental rules, but the
-author only sees whether a change is needed. Every change is expected to be addressed, by a fix or a
-reply saying why not, so raise a Low/nit only when it's worth that round trip.
-
-`scripts/factcheck.mjs` builds every posted body from the severity, `issue`, `impact` and `fix`; nobody types the
-header or footer. We only write in a thread to disagree: a fix that holds or a push-back we accept
-is a silent resolve (choosing.md). A follow-up (`scripts/comment.mjs followup`) has no header: one
-sentence opening with what happened, then the same footer. `**Still applies** at L<n>.` when the code
-changed and the finding stands, `**Still a problem:** <verify's reply>` answering a push-back.
-Comments posted before this layout used a dot header (`🔵 **note**`), a
-`🤖 AI:<model>` header, a `[status, AI:model]` prefix, a plain `**status** · AI:model` header, or one
-of the retired statuses (`critical`, `blocking`, `suggestion`, `nit`, `info`); all are recognised as
-ours. A header or opening without our footer is not.
-The in-progress notice (`comment.mjs progress`) is `⏳ **Review in progress**`, a start timestamp, a
-`🃏` joke line when SKILL.md step 2 wrote one, and the footer; it isn't a finding, and `split-comments` keeps it out of both comment lists.
+Every change is expected to be addressed, by a fix or a reply saying why not, so raise a Low/nit only
+when it's worth that round trip. How a finding becomes a posted comment is in posting.md (verify's).
 
 ## Rubric
 
@@ -49,29 +36,19 @@ The in-progress notice (`comment.mjs progress`) is `⏳ **Review in progress**`,
 High/Medium must state a concrete failure: the input, state or interleaving, and what goes wrong. No
 concrete failure → Low.
 
-## Comment layout
+## Comment text
 
-A posted comment is the header, then labelled lines, one per part, each label beside its text
-(`formatComment` puts a blank line between them), then the footer `_AI review · <MODEL>_`. A
-note or a follow-up reply is one unlabelled sentence between header and footer.
+A posted comment is a header a script builds (posting.md), then these labelled lines:
 
-1. Header line: `<icon> **<area> · <change needed | note>**`. The area comes from the finding's
-   `dimension` when it names a checklist (correctness 🐛, tests-history 🧪, design-quality 🏗️,
-   security 🔒, concurrency-races 🧵, resources-performance ⚡, sql 🗄️, docs 📄, styles 🎨,
-   ticket-fit 🎫, regression 🔁, claims 📝), else from the first reviewer that raised it, else `🔎 Review`. Reviewer names,
-   confidence and tokens aren't posted. The terminal table shows them, and the run log
-   (`runlog.mjs`, under `C:\repos\ai-review\.log`) keeps them with every finding for tuning.
-   A finding's tokens are its share of the run: each reviewer's tokens split over the findings it
-   raised, plus an even share of verify, recheck and any reviewer with no finding.
-2. `**Issue:**` the defect only: what's wrong and where, one sentence. Not what it causes.
-3. `**Impact:**` one sentence naming a concrete consequence: who or what breaks, and when. For a
+1. `**Issue:**` the defect only: what's wrong and where, one sentence. Not what it causes.
+2. `**Impact:**` one sentence naming a concrete consequence: who or what breaks, and when. For a
    missing or weak test, the regression it would let through unnoticed, not "coverage is lower".
    "Could cause bugs", "hurts maintainability" and "may confuse readers" name nothing: say which
    reader is misled into what, or which change breaks. Required on every change-needed finding
    (`factcheck.mjs` refuses one without it); a note leaves it out.
-4. Medium confidence only: `**Not confirmed:**` plus the finding's `confidence_reason`, the one thing
+3. Medium confidence only: `**Not confirmed:**` plus the finding's `confidence_reason`, the one thing
    that kept it from high.
-5. `**Fix:**` the suggested fix: one sentence, or a short code snippet (a snippet drops below its
+4. `**Fix:**` the suggested fix: one sentence, or a short code snippet (a snippet drops below its
    label). Left out only for an Info finding with nothing to change.
 
 Short and sweet: each part is one sentence within a word budget, a code span counting as one word.
@@ -79,18 +56,6 @@ Issue 30, Impact 20, Not confirmed 15, Fix 25 (a snippet below its label isn't c
 thing and say what goes wrong, not how the code gets there: the author can read the code. One
 example at most, never a list of variants; no parenthetical asides; no caveats about edge cases or
 rollout. `styleIssues` flags a part over budget and an aside in the same `style` list as an AI tell.
-
-```
-🧪 **Tests · change needed**
-
-**Issue:** `Find` drops an import whose expanded path doesn't exist, and no import test uses `$(ProjectDir)` or `$(Configuration)`.
-
-**Impact:** edits to a property sheet imported that way never rebuild the row, so the build keeps stale output.
-
-**Fix:** add a test importing `$(ProjectDir)$(Configuration).$(Platform).props` and assert the file is returned.
-
-_AI review · Opus 5.5_
-```
 
 ## Confidence
 

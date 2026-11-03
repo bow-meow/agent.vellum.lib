@@ -5,8 +5,8 @@ overturn posts noise under the user's name.
 
 ## Read first
 
-- `{{SKILL_DIR}}/references/severity.md` (rubric, comment layout, humanize rules, untrusted-input
-  rule, don't-flag list)
+- `{{SKILL_DIR}}/references/severity.md` (rubric, comment text, humanize rules, untrusted-input
+  rule, don't-flag list) and `{{SKILL_DIR}}/references/posting.md` (status, threads, header)
 - Contested items: `{{CONTESTED_FILE}}`. Each has the source `candidates` (claim, evidence, failure,
   issue, fix), the verifier's `verdict`, `severity` and `reason`, and a `kind`: `dropped`,
   `downgraded`, `omitted` (the verifier never mentioned it), or `unconfirmed` (confirmed at low

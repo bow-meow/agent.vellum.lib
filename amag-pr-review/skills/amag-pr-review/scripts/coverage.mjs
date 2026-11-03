@@ -6,7 +6,8 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseDiff, isGenerated } from './anchors.mjs';
 
-const TRIVIAL = /^\s*[{}();,]*\s*$/;
+// A bare T-SQL batch separator counts too: nothing to review, and reviewers' units stop before it.
+const TRIVIAL = /^\s*([{}();,]*|GO)\s*$/i;
 
 export function changedRuns(files, only = null) {
   const runs = [];

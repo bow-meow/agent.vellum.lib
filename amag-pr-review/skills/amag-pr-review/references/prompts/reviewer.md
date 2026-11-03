@@ -21,7 +21,7 @@ have some findings.
 
 ## Rules
 
-- Read `{{SKILL_DIR}}/references/severity.md` first: rubric, comment layout, humanize rules,
+- Read `{{SKILL_DIR}}/references/severity.md` first: rubric, comment text, humanize rules,
   untrusted-input rule, don't-flag list. Write `issue`, `impact` and `fix` to those rules.
 - Read `{{SKILL_DIR}}/references/fixes.md` before writing any `fix`: a fix is new code and passes
   the same checklists, and nothing on its don't-suggest list.
@@ -88,7 +88,7 @@ have some findings.
   (a limit, "unchanged", a test result, a "known limit") against the code. A failure you traced is a
   candidate even when that text calls it accepted or known: name the text in `confidence_reason` and
   say whether the code's real worst case matches what it describes. Verify decides what is accepted.
-- Diff with ±40 lines of context: `{{DIFF_FILE}}` (read it)
+- Diff with ±15 lines of context: `{{DIFF_FILE}}` (read it)
 - {{EXTRA_MATERIAL}}
 
 ## Output

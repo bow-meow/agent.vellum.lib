@@ -42,6 +42,15 @@ test('changedRuns lists added runs on the new side and removal-only runs on the 
   ]);
 });
 
+test('changedRuns skips a bare GO batch separator like a blank line', () => {
+  const sql = ['diff --git a/T.sql b/T.sql', '--- a/T.sql', '+++ b/T.sql', '@@ -1,1 +1,4 @@', ' keep',
+    '+CREATE INDEX IX_A ON T (A)', '+go', '+ALTER TABLE T ADD B int', ''].join('\n');
+  assert.deepEqual(changedRuns(parseDiff(sql)), [
+    { path: 'T.sql', side: 'new', from: 2, to: 2 },
+    { path: 'T.sql', side: 'new', from: 4, to: 4 },
+  ]);
+});
+
 test('uncovered returns the lines no ledger entry spans, merged into ranges', () => {
   const runs = changedRuns(parseDiff(diff));
   const ledger = [

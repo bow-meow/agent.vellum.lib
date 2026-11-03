@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseDiff, stats } from './anchors.mjs';
+import { DIFF_CONTEXT, parseDiff, stats } from './anchors.mjs';
 import { BbError, findAccountId, findCreds, makeClient } from './bb.mjs';
 import { progress, readModel } from './comment.mjs';
 import { nativePath, posixPath, prEnv, shellQuote } from './env.mjs';
@@ -181,7 +181,7 @@ export async function preparePr({ ws, repo, id, ar = DEFAULT_AR, skill, dryRun =
   }
   git(['-C', c, 'worktree', 'add', '-q', '--detach', t, head]);
   const mb = git(['-C', t, 'merge-base', `origin/${dest}`, 'HEAD']).trim();
-  const diff = git(['-C', t, 'diff', '-U40', mb, 'HEAD']);
+  const diff = git(['-C', t, 'diff', `-U${DIFF_CONTEXT}`, mb, 'HEAD']);
   writeFileSync(at('context.diff'), diff + textDiff(t, mb, 'HEAD', diff));
   const headLines = `HEAD_SHA=${shellQuote(head)}\nMB=${shellQuote(mb)}\n`;
   appendFileSync(at('env.sh'), headLines);
@@ -261,9 +261,9 @@ export function chooseDest({ branch, prs = [], override = null, closest = null }
 }
 
 export function localRepoDiff(R, mb, { git = runGit, textDiff = sqlTextDiff } = {}) {
-  let diff = git(['-C', R, 'diff', '-U40', mb]);
+  let diff = git(['-C', R, 'diff', `-U${DIFF_CONTEXT}`, mb]);
   const untracked = git(['-C', R, 'ls-files', '--others', '--exclude-standard', '-z']).split('\0').filter(Boolean);
-  for (const f of untracked) diff += git(['-C', R, 'diff', '--no-index', '-U40', '--', '/dev/null', f], { ok: [0, 1] });
+  for (const f of untracked) diff += git(['-C', R, 'diff', '--no-index', `-U${DIFF_CONTEXT}`, '--', '/dev/null', f], { ok: [0, 1] });
   return diff + textDiff(R, mb, null, diff);
 }
 

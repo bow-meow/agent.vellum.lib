@@ -88,9 +88,9 @@ export function roster({ changed, ticket, prDescription, sql, styles }, chunks =
 
 export const agentName = ({ reviewer, chunk }) => (chunk ? `${reviewer}-${chunk}` : reviewer);
 
-export function checklistFiles(reviewer, { skillDir, languages = [], styles = 0 }) {
+export function checklistFiles(reviewer, { skillDir, languages = [], styles = 0 }, dimensions = dimensionsOf(reviewer)) {
   const ref = (...p) => winPath(join(skillDir, 'references', ...p));
-  const files = dimensionsOf(reviewer).map(d => ref('dimensions', `${d}.md`));
+  const files = dimensions.map(d => ref('dimensions', `${d}.md`));
   if (reviewer === 'styles' || (reviewer === 'combined' && styles > 0)) files.push(ref('languages', 'stylesheets.md'));
   for (const l of languages) if (l !== 'stylesheets') files.push(ref('languages', `${l}.md`));
   return files;
@@ -105,12 +105,13 @@ export function languagesOf(paths) {
   return out;
 }
 
-export function extraMaterial(reviewer, { sql, material: m }) {
+export function extraMaterial(reviewer, { sql, material: m }, dimensions = dimensionsOf(reviewer)) {
   const parts = [];
   const list = xs => xs.join(', ');
+  const coversSql = reviewer === 'sql' || (reviewer === 'specialists' && dimensions.includes('sql'));
   if (reviewer === 'ticket-fit' && m.siblings) parts.push(`Sibling PRs: ${m.siblings}`);
-  if ((reviewer === 'sql' || (reviewer === 'combined' && sql)) && m.indexMaps.length) parts.push(`Index maps: ${list(m.indexMaps)}`);
-  if (['sql', 'correctness', 'combined'].includes(reviewer) && m.forward.length) parts.push(`Forward-scan: ${list(m.forward)}`);
+  if ((coversSql || (reviewer === 'combined' && sql)) && m.indexMaps.length) parts.push(`Index maps: ${list(m.indexMaps)}`);
+  if ((coversSql || ['correctness', 'combined'].includes(reviewer)) && m.forward.length) parts.push(`Forward-scan: ${list(m.forward)}`);
   if (['combined', 'tests-design'].includes(reviewer)) {
     if (m.history) parts.push(`History file: ${m.history}`);
     if (m.commits) parts.push(`Commit messages: ${m.commits}`);
@@ -137,7 +138,7 @@ export const formatLines = lines => (lines.length === 1 ? lines[0] : lines.map(l
 const oneLine = s => String(s).trim().replace(/\s*\r?\n\s*/g, ' ');
 
 // env: what the work dir holds, already resolved to slot text (see loadWork).
-export function reviewerSlots({ reviewer, chunk, diffFile, scope = null }, env) {
+export function reviewerSlots({ reviewer, chunk, diffFile, scope = null, dimensions = dimensionsOf(reviewer) }, env) {
   const agent = agentName({ reviewer, chunk });
   const blind = reviewer === 'regression';
   const mode = env.mode === 'pr'
@@ -148,7 +149,7 @@ export function reviewerSlots({ reviewer, chunk, diffFile, scope = null }, env) 
     REVIEWER: reviewer,
     SKILL_DIR: winPath(env.skillDir),
     ID_START: chunk ? `${chunk}01` : '1',
-    CHECKLIST_FILES: existing(checklistFiles(reviewer, env)),
+    CHECKLIST_FILES: existing(checklistFiles(reviewer, env, dimensions)),
     MODE: mode,
     REPOS: env.repos,
     NEEDS_FILE: `${env.w}/needs-${agent}.json`,
@@ -159,8 +160,10 @@ export function reviewerSlots({ reviewer, chunk, diffFile, scope = null }, env) 
     SCOPE: scopeText(scope),
     OUT_FILE: `${env.w}/cand-${agent}.json`,
     COVERAGE_FILE: `${env.w}/cov-${agent}.json`,
-    EXTRA_MATERIAL: extraMaterial(reviewer, env),
-    EXTRA_RULES: EXTRA_RULES[reviewer] ?? 'none',
+    EXTRA_MATERIAL: extraMaterial(reviewer, env, dimensions),
+    EXTRA_RULES: reviewer === 'specialists'
+      ? `You cover the checklists ${dimensions.join(', ')}. Go through every one of them on each unit, and set each candidate's \`dimension\` to the checklist it falls under, never \`specialists\`.`
+      : EXTRA_RULES[reviewer] ?? 'none',
   };
 }
 
@@ -392,22 +395,70 @@ export function triageCheck(w, opts = {}) {
 export function scopeText(scope) {
   if (!scope) return 'Your scope is every changed unit in the diff.';
   return 'Your scope is the ranges below, which a triage pass picked from the diff for your dimension. '
-    + 'The rest of the diff is context: read it as you need to, but your units, your ledger and the coverage '
-    + 'check cover these ranges only. A defect in your dimension that you see outside them while tracing '
-    + 'is still a candidate.'
+    + 'Your diff holds only the hunks around them; read the worktree for anything else you need. Your units, '
+    + 'your ledger and the coverage check cover these ranges only. A defect in your dimension that you see '
+    + 'outside them while tracing is still a candidate.'
     + scope.map(s => `\n  - ${s.path} lines ${s.from}-${s.to} (${s.side}): ${s.why}`).join('');
 }
 
+// The hunks of a diff that overlap any scope range, each with its file header.
+export function scopedDiff(files, scope) {
+  const parts = [];
+  for (const f of files.values()) {
+    const mine = scope.filter(s => samePath(s.path, f.path) || ((s.side ?? 'new') === 'old' && samePath(s.path, f.oldPath)));
+    if (!mine.length) continue;
+    const head = [], hunks = [];
+    let cur = null;
+    for (const line of f.raw) {
+      const m = line.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
+      if (m) {
+        const span = (start, n) => [+start, +start + (n === undefined ? 1 : +n) - 1];
+        cur = { lines: [line], old: span(m[1], m[2]), new: span(m[3], m[4]) };
+        hunks.push(cur);
+      } else (cur ? cur.lines : head).push(line);
+    }
+    const keep = hunks.filter(h => mine.some(s => {
+      const [a, b] = h[s.side ?? 'new'];
+      return +s.from <= b && a <= +s.to;
+    }));
+    if (keep.length) parts.push([...head, ...keep.flatMap(h => h.lines)].join('\n').replace(/\n+$/, ''));
+  }
+  return parts.join('\n') + '\n';
+}
+
+// Specialists whose ranges add up to no more than this run as one agent with all their checklists,
+// which pays the fixed reading and the tracing of shared code once.
+export const MERGE_MAX = 400;
+
+function mergeSpecialists(present, triaged, runs) {
+  const picked = [];
+  let union = [];
+  for (const r of TRIAGED) {
+    if (!present.has(r) || !triaged[r]?.length) continue;
+    const next = mergeRanges([...union, ...triaged[r].map(s => ({ ...s, why: `${r}: ${s.why}` }))]);
+    if (changedLines(runs, next) > MERGE_MAX) continue;
+    picked.push(r);
+    union = next;
+  }
+  return picked.length > 1 ? { reviewer: 'specialists', chunk: null, scope: union, dimensions: picked } : null;
+}
+
 // A triaged reviewer runs only where triage gave it ranges. Over 1000 lines, one whose ranges fit in a
-// chunk's worth of changed lines runs once over the whole diff instead of once per chunk.
+// chunk's worth of changed lines runs once over the whole diff instead of once per chunk. Specialists
+// with small scopes are merged into one agent (MERGE_MAX).
 export function applyTriage(list, triaged, { runs, chunkRuns }) {
   if (!triaged) return list.map(a => ({ ...a, scope: null }));
   const out = [];
   const once = new Set();
+  const merged = mergeSpecialists(new Set(list.map(a => a.reviewer)), triaged, runs);
   for (const a of list) {
     const ranges = TRIAGED.includes(a.reviewer) && Array.isArray(triaged[a.reviewer]) ? triaged[a.reviewer] : null;
     if (!ranges) { out.push({ ...a, scope: null }); continue; }
     if (!ranges.length) continue;
+    if (merged?.dimensions.includes(a.reviewer)) {
+      if (!once.has('specialists')) { once.add('specialists'); out.push(merged); }
+      continue;
+    }
     if (!a.chunk) { out.push({ ...a, scope: ranges }); continue; }
     if (changedLines(runs, ranges) <= CHUNK_SIZE) {
       if (!once.has(a.reviewer)) { once.add(a.reviewer); out.push({ reviewer: a.reviewer, chunk: null, scope: ranges }); }
@@ -450,7 +501,12 @@ export function reviewers(w, opts = {}) {
     triaged, { runs: triaged ? changedRuns(files()) : [], chunkRuns });
   const out = list.map(a => {
     const agent = agentName(a);
-    const diffFile = a.chunk ? chunkFiles[a.chunk - 1] : whole;
+    let diffFile = a.chunk ? chunkFiles[a.chunk - 1] : whole;
+    if (a.scope) {
+      mkdirSync(join(env.W, 'scoped'), { recursive: true });
+      writeFileSync(join(env.W, 'scoped', `${agent}.diff`), scopedDiff(files(), a.scope));
+      diffFile = `${env.w}/scoped/${agent}.diff`;
+    }
     const slots = reviewerSlots({ ...a, diffFile }, env);
     const promptFile = writePrompt(env, agent, fill(template, slots));
     return {

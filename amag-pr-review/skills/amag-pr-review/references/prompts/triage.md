@@ -33,7 +33,7 @@ What each one needs, at least:
 
 ## Method
 
-- Read the diff: `{{DIFF_FILE}}` (±40 lines of context).
+- Read the diff: `{{DIFF_FILE}}` (±15 lines of context).
 - Read the hints: `{{HINTS_FILE}}`. A script matched keywords on the added lines; each hint is
   `{reviewer, path, side, from, to, sample}`. Every hint must end up inside one of that reviewer's
   ranges, or in `dismissed` with a reason ("`Task` here is a type name in a DTO, nothing runs").

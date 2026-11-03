@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { parseDiff } from '../anchors.mjs';
 import { changedRuns, clipRuns } from '../coverage.mjs';
 import {
-  hintsOf, checkTriage, applyTriage, scopeText, triage, triageCheck, reviewers, coverage, failed, TRIAGED, CHUNK_SIZE,
+  hintsOf, checkTriage, applyTriage, scopeText, scopedDiff, triage, triageCheck, reviewers, coverage, failed, TRIAGED, CHUNK_SIZE, MERGE_MAX,
 } from '../dispatch.mjs';
 
 const SKILL = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -121,12 +121,60 @@ test('reviewers drops triaged reviewers with no ranges, scopes the rest, and lea
   assert.ok(names.includes('correctness') && names.includes('regression'));
   assert.equal(out.find(o => o.agent === 'correctness').scope, null);
   assert.match(readFileSync(out.find(o => o.agent === 'correctness').promptFile, 'utf8'), /Your scope is every changed unit in the diff\./);
-  const conc = out.find(o => o.agent === 'concurrency-races');
-  assert.match(readFileSync(conc.promptFile, 'utf8'), /src\/A\.cs lines 2-6 \(new\): lock around a shared counter/);
+  assert.ok(!names.includes('concurrency-races') && !names.includes('sql'), 'small scopes merge');
+  const spec = out.find(o => o.agent === 'specialists');
+  const prompt = readFileSync(spec.promptFile, 'utf8');
+  assert.match(prompt, /src\/A\.cs lines 2-6 \(new\): concurrency-races: lock around a shared counter/);
+  assert.match(prompt, /dimensions[\\/]concurrency-races\.md.*dimensions[\\/]sql\.md/);
+  assert.match(prompt, /set each candidate's `dimension` to the checklist it falls under/);
 
-  assert.deepEqual(coverage(w, 'concurrency-races'), { ok: false, missing: [{ path: 'src/A.cs', side: 'new', from: 2, to: 4 }, { path: 'src/A.cs', side: 'new', from: 6, to: 6 }], round: 1 });
-  writeFileSync(conc.covFile.replace(/^\/([a-z])\//i, '$1:/'), JSON.stringify([{ path: 'src/A.cs', side: 'new', from: 1, to: 7, checked: 'lock' }]));
-  assert.deepEqual(coverage(w, 'concurrency-races'), { ok: true, missing: [] });
+  const scoped = readFileSync(join(w, 'scoped', 'specialists.diff'), 'utf8');
+  assert.match(scoped, /src\/A\.cs/);
+  assert.match(scoped, /src\/B\.cs/);
+  assert.ok(!scoped.includes('src/C.cs'), 'a file outside the scope is left out');
+
+  assert.deepEqual(coverage(w, 'specialists').missing.filter(m => m.path === 'src/A.cs'),
+    [{ path: 'src/A.cs', side: 'new', from: 2, to: 4 }, { path: 'src/A.cs', side: 'new', from: 6, to: 6 }]);
+  writeFileSync(join(w, 'cov-specialists.json'), JSON.stringify([
+    { path: 'src/A.cs', side: 'new', from: 1, to: 7, checked: 'lock' },
+    { path: 'src/B.cs', side: 'new', from: 2, to: 2, checked: 'query' },
+  ]));
+  assert.deepEqual(coverage(w, 'specialists'), { ok: true, missing: [] });
+});
+
+test('scopedDiff keeps only the hunks that overlap a range, with their file header', () => {
+  const diff = [
+    'diff --git a/src/A.cs b/src/A.cs', '--- a/src/A.cs', '+++ b/src/A.cs',
+    '@@ -1,2 +1,3 @@', ' a', '+b', ' c',
+    '@@ -50,2 +51,3 @@', ' x', '+y', ' z',
+    'diff --git a/src/B.cs b/src/B.cs', '--- a/src/B.cs', '+++ b/src/B.cs',
+    '@@ -1,2 +1,1 @@', ' keep', '-gone',
+    '',
+  ].join('\n');
+  const files = parseDiff(diff);
+  assert.equal(scopedDiff(files, [{ path: 'src/A.cs', side: 'new', from: 52, to: 52 }]),
+    ['diff --git a/src/A.cs b/src/A.cs', '--- a/src/A.cs', '+++ b/src/A.cs', '@@ -50,2 +51,3 @@', ' x', '+y', ' z', ''].join('\n'));
+  const old = scopedDiff(files, [{ path: 'src/B.cs', side: 'old', from: 2, to: 2 }]);
+  assert.match(old, /^diff --git a\/src\/B\.cs/);
+  assert.match(old, /-gone/);
+  const reparsed = changedRuns(parseDiff(old));
+  assert.deepEqual(reparsed, [{ path: 'src/B.cs', side: 'old', from: 2, to: 2 }]);
+});
+
+test('applyTriage merges specialists up to MERGE_MAX changed lines and leaves a large one on its own', () => {
+  const list = ['correctness', 'concurrency-races', 'resources-performance', 'security', 'sql'].map(reviewer => ({ reviewer, chunk: null }));
+  const runs = [{ path: 'a.cs', side: 'new', from: 1, to: 2000 }];
+  const r = (from, to) => [{ path: 'a.cs', side: 'new', from, to, why: 'w' }];
+  const triaged = { 'concurrency-races': r(1, 100), 'resources-performance': r(50, 250), security: [], sql: r(1000, 1000 + MERGE_MAX) };
+  const out = applyTriage(list, triaged, { runs, chunkRuns: [] });
+  assert.deepEqual(out.map(a => a.reviewer), ['correctness', 'specialists', 'sql']);
+  const spec = out[1];
+  assert.deepEqual(spec.dimensions, ['concurrency-races', 'resources-performance']);
+  assert.deepEqual(spec.scope.map(s => [s.from, s.to]), [[1, 250]]);
+  assert.match(spec.scope[0].why, /concurrency-races: w; resources-performance: w/);
+
+  const alone = applyTriage(list, { ...triaged, 'resources-performance': [] }, { runs, chunkRuns: [] });
+  assert.deepEqual(alone.map(a => a.reviewer), ['correctness', 'concurrency-races', 'sql'], 'one small specialist is not "merged"');
 });
 
 test('a failed or unchecked triage leaves every reviewer reading the whole diff', () => {
