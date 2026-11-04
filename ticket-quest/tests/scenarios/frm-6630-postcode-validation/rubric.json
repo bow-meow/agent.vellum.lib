@@ -31,5 +31,17 @@
     "mean": 4.5,
     "min": 4
   },
-  "history": []
+  "history": [
+    {
+      "date": "2026-11-04",
+      "skill": "84c8b6b baseline (before regression suite)",
+      "scores": [
+        3,
+        2,
+        2
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "regression-planned, gate-duplicate, handover-rows 0 in all three runs"
+    }
+  ]
 }
