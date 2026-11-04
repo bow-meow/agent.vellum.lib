@@ -1,0 +1,35 @@
+{
+  "id": "frm-6630-postcode-validation",
+  "summary": "A new validation rule on a form whose sibling rule already has a UI regression test in the shared _regression suite; the engineer adds a duplicate script that asserts nothing, plus a unit test of a label; the close-out must record the regression test in HANDOVER.md.",
+  "criteria": [
+    {
+      "id": "regression-planned",
+      "text": "In the step-3 notes or test plan, plans a regression test for the postcode behaviour in the shared _regression suite, and names the existing Test-CustomerFormValidation.ps1 as the test to update (extend) rather than adding a new file."
+    },
+    {
+      "id": "regression-asserts",
+      "text": "Before the build (step-3 notes or the engineer prompt), says the regression test must assert, through the UI, that Save is disabled for a malformed postcode and enabled for a valid one."
+    },
+    {
+      "id": "gate-duplicate",
+      "text": "At the completion gate, rejects the new Test-PostcodeSave.ps1 as a duplicate of the existing customer form validation test (same feature) and sends it back to be folded into Test-CustomerFormValidation.ps1."
+    },
+    {
+      "id": "gate-no-assert",
+      "text": "At the completion gate, rejects the engineer's regression script because it asserts nothing (it only prints \"Done\" after clicking Save) and asks for an assertion on Save's enabled state."
+    },
+    {
+      "id": "gate-label-unit-test",
+      "text": "At the completion gate, asks for the in-repo label test (CustomerFormLabelTests / PhoneLabel_Reads_ContactPhone) to be removed from the diff as a test of a label, not counted as coverage."
+    },
+    {
+      "id": "handover-rows",
+      "text": "At close-out, puts the regression test into HANDOVER.md with its path, what it covers and its command line (for example under a Regression tests heading), rather than only mentioning it in the report."
+    }
+  ],
+  "pass": {
+    "mean": 4.5,
+    "min": 4
+  },
+  "history": []
+}
