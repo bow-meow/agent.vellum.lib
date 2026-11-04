@@ -126,7 +126,7 @@ test('parseArgs takes W and comma-separated --siblings slugs', () => {
   assert.equal(parseArgs(['/w', '--other']), null);
 });
 
-function fakeRunners({ search = {}, deps = {}, plan = [], addFail = [], fetchFail = false, staticOut = null } = {}) {
+function fakeRunners({ search = {}, deps = {}, plan = [], addFail = [], fetchFail = false, staticOut = null, iftttOut = null } = {}) {
   const calls = [];
   const ok = stdout => ({ status: 0, stdout, stderr: '' });
   const node = (script, args) => {
@@ -146,6 +146,7 @@ function fakeRunners({ search = {}, deps = {}, plan = [], addFail = [], fetchFai
     if (script === 'forward-scan.mjs') return ok(JSON.stringify({ dest: args[2], branches: [] }));
     if (script === 'styles-scan.mjs') return ok('{"counts":{},"facts":[]}');
     if (script === 'callers.mjs') return ok('{}');
+    if (script === 'ifttt.mjs') return ok(JSON.stringify(iftttOut ? iftttOut(args) : { skipped: true, why: 'no ifttt-lint found', candidates: [] }));
     if (script === 'static.mjs') return ok(JSON.stringify(staticOut ? staticOut(args) : { skipped: true, why: 'no opengrep or semgrep found', candidates: [], leads: [] }));
     throw new Error(`unexpected ${script}`);
   };
@@ -300,4 +301,21 @@ test('run collects static-analysis candidates into cand-static.json and leads in
   const cands = JSON.parse(readFileSync(join(w, 'cand-static.json'), 'utf8'));
   assert.deepEqual(cands.map(c => [c.id, c.repo, c.path]), [['static-1', 'a', 'a/A.cpp']]);
   assert.equal(JSON.parse(readFileSync(join(w, 'static-leads.json'), 'utf8')).length, 1);
+});
+
+test('run adds ifttt-lint candidates to cand-static.json, run against each repo from its merge base', () => {
+  const w = join(mkdtempSync(join(tmpdir(), 'ctx-')), '.work', 'local-SYM-9');
+  mkdirSync(w, { recursive: true });
+  writeFileSync(join(w, 'a.diff'), fileDiff('A.cpp', ['x']));
+  writeFileSync(join(w, 'context.diff'), fileDiff('A.cpp', ['x']));
+  writeFileSync(join(w, 'repos.json'), JSON.stringify({ mode: 'local', pr: null, ticketKey: 'SYM-9', ticketDir: null,
+    repos: [{ name: 'a', ws: 'w', repo: 'r', clone: '/t/a', wt: '/t/a', dest: 'main', mb: 'ccccccc3', head: null, diff: join(w, 'a.diff') }] }));
+  const { calls, runners } = fakeRunners({
+    staticOut: () => ({ tool: 'og', errors: 0, candidates: [{ severity: 'Low', path: 'a/A.cpp', line: 1, claim: 's' }], leads: [] }),
+    iftttOut: () => ({ tool: 'il', candidates: [{ repo: 'a', severity: 'Medium', path: 'a/A.cpp', line: 1, claim: 'i', rule: 'ifttt-lint' }] }),
+  });
+  run(w, {}, runners);
+  assert.deepEqual(calls.filter(c => c[0] === 'ifttt.mjs').map(c => c.slice(2)), [['--base', 'ccccccc3', '--prefix', 'a']]);
+  const cands = JSON.parse(readFileSync(join(w, 'cand-static.json'), 'utf8'));
+  assert.deepEqual(cands.map(c => [c.id, c.claim]), [['static-1', 's'], ['static-2', 'i']]);
 });

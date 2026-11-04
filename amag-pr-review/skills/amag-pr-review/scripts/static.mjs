@@ -19,7 +19,7 @@ export function findTool(explicit = null, { exists = existsSync, which = whichOn
   return null;
 }
 
-function whichOnPath(name) {
+export function whichOnPath(name) {
   try {
     const cmd = process.platform === 'win32' ? 'where' : 'which';
     return execFileSync(cmd, [name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split(/\r?\n/)[0].trim() || null;

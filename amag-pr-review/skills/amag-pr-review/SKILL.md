@@ -119,7 +119,10 @@ node $S/scripts/context.mjs $W [--siblings ws/repo,...]   # → context.json: ch
 Besides the scans reviewers read, this runs **static analysis**: Opengrep (or Semgrep) with this skill's
 `rules/`, on the changed files. Hits of a `candidate` rule are written to `cand-static.json` and go to
 verify like any reviewer's findings, at no agent cost; `lead` hits become triage hints. No tool found
-(`OPENGREP`, `~/tools/opengrep/opengrep.exe` or on PATH) is a note, not a failure. Show its `notes`. Then the **ticket**, which only you can read: with `ticketKey` from `context.json`,
+(`OPENGREP`, `~/tools/opengrep/opengrep.exe` or on PATH) is a note, not a failure. It also runs
+**ifttt-lint** (the `LINT.IfChange`/`ThenChange` check symmetryclassic's pipeline runs) from each repo's
+merge base, into the same `cand-static.json`; missing (`IFTTT_LINT`, `~/tools/ifttt-lint/bin`) is a
+note. Show its `notes`. Then the **ticket**, which only you can read: with `ticketKey` from `context.json`,
 read it with the Atlassian MCP (`getAccessibleAtlassianResources` for the cloud id, then
 `getJiraIssue`, including comments). Write the full issue (summary, description, acceptance criteria,
 repro steps, comments, linked issues) to `$W/ticket.md` and a 3-line summary to

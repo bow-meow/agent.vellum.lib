@@ -277,6 +277,15 @@ export function run(wArg, { siblings: extra = [] } = {}, runners = defaultRunner
     staticCands.push(...res.candidates.map(c => ({ ...c, repo: c.repo ?? r.name })));
     staticLeads.push(...res.leads);
   }
+  for (const r of repos) {
+    if (!r.mb || !SHA.test(r.mb)) { notes.push(`IfChange lint of ${r.name}: no merge base`); continue; }
+    const out = scan('ifttt.mjs', [r.wt, '--base', r.mb, ...prefixArgs(r)], `ifttt-${r.name}.json`, { candidates: [] }, `IfChange lint of ${r.name} failed`);
+    if (!out) continue;
+    let res;
+    try { res = JSON.parse(out); } catch { notes.push(`IfChange lint of ${r.name}: unreadable output`); continue; }
+    if (res.skipped) { notes.push(`IfChange lint: ${res.why}`); break; }
+    staticCands.push(...res.candidates.map(c => ({ ...c, repo: c.repo ?? r.name })));
+  }
   // A reviewer's candidate file: verify reads it like any other, and no reviewer tokens went into it.
   if (staticCands.length) writeFileSync(join(w, 'cand-static.json'), JSON.stringify(staticCands.map((c, i) => ({ id: `static-${i + 1}`, ...c })), null, 2));
   writeFileSync(join(w, 'static-leads.json'), JSON.stringify(staticLeads, null, 2));

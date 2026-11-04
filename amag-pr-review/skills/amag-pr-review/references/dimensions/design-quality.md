@@ -29,7 +29,8 @@
   on contact"): for each class the diff edits, check the guides (CLAUDE.md at the root and in the
   touched directories) for such rules and whether the change applies them. Rules about the commit
   itself (a message line required with a version bump, files that must change together) count too:
-  check them against the commit messages file.
+  check them against the commit messages file. Skip `LINT.IfChange`/`ThenChange` pairs: ifttt-lint
+  already checked those and its findings are in verify.
 - Premature abstraction: interfaces, factories or generics with one implementation and no second use.
 - God methods: a change that pushes a method well past what fits on a screen with mixed concerns.
 - Misplaced logic: code the change adds that belongs on another type. A method that mostly reads or
