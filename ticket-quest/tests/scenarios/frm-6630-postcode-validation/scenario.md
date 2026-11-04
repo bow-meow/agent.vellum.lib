@@ -54,11 +54,11 @@ box and asserts the Save button's enabled state through UI Automation.
 
 ## What to produce
 
-Write, in order, at most about 750 words in total (part D may be terse):
+Write, in order, at most about 750 words in total (the close-out in C may be terse):
 
 A. Your step-3 notes (open items, behaviour baseline, impact list), the test plan, and your routing
    decision.
 B. The prompt you send the engineer.
 C. After the engineer's report above: your step-7 completion-gate verdict, item by item, and what
-   you send back.
-D. Your step-8 close-out: what goes into `HANDOVER.md`, as the rows and headings you would write.
+   you send back; then your step-8 close-out: what goes into `HANDOVER.md`, as the rows and headings
+   you would write.
