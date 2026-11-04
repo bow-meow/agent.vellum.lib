@@ -50,8 +50,9 @@ tickets progress at different speeds; never block one on another.
    and confirm the branch **slug**.
 2. **Isolate — one git worktree per repo per ticket** (see [Worktree mechanics](#worktree-mechanics)).
    Detect a pre-existing ticket dir or branch and ask build-on vs start-fresh rather than clobbering.
-   On build-on, read the ticket dir's `HANDOVER.md` before anything else; on a new ticket, create it
-   (see [Handover and tools](#handover-and-tools)).
+   On build-on, read the ticket dir's `HANDOVER.md` before anything else, then run its `Regression
+   tests` rows before changing code; on a new ticket, create it (see
+   [Handover and tools](#handover-and-tools)).
 3. **Establish context yourself** — or, when the user asked to be quizzed, through
    [Quiz mode](#quiz-mode). Search, read the relevant sections, locate the implementation,
    note exact files and lines, prior attempts, and what QA saw. When a search hit sits under a
@@ -75,7 +76,11 @@ tickets progress at different speeds; never block one on another.
    - **Test plan:** each behaviour from the baseline and impact list, marked risk or no risk by
      [Risk-based testing](#risk-based-testing), with a one-line reason. A risk gets tests, and a
      risky path with no test gets a characterization test pinning today's behaviour, written before
-     the change. A no-risk behaviour gets no test of any kind.
+     the change. A no-risk behaviour gets no repo test of any kind.
+   - **Regression test:** whatever the risks, the `<root>\_regression\` test to update (its index
+     Feature covers what the ticket changes) or else add: path, kind, what it asserts of the
+     ticket's behaviour. Read that `README.md` and
+     [references/regression-suite.md](references/regression-suite.md) first.
 
    When verifying needs a script (repro, load driver, seeding), read
    `<root>\_tools\README.md` now and note the shared script, by path, that does each job; only a
@@ -94,21 +99,21 @@ tickets progress at different speeds; never block one on another.
    goal; worktree path(s) and base; the files, lines, and evidence you found; the path of every
    module `CLAUDE.md` the task touches; the behaviour baseline, impact list and open items this
    task covers; the test plan, naming the tests to write and each behaviour that gets none; the
-   path of [references/engineering-guidelines.md](references/engineering-guidelines.md) for the
-   engineer to follow; constraints (compatibility, conventions, generated
+   regression test line and [references/regression-suite.md](references/regression-suite.md);
+   the path of [references/engineering-guidelines.md](references/engineering-guidelines.md) for
+   the engineer to follow; constraints (compatibility, conventions, generated
    artifacts to leave alone); each shared script from step 3 by path and exact command (never a
    ticket script or wrapper for its job), and each new helper's kind and place from the
    [helper table](#handover-and-tools);
    exactly which build and tests to run and in which
    environment (see [Non-negotiables](#non-negotiables)); and that it returns the
    [engineer report](#engineer-report). Give it your findings, not the whole conversation. One
-   engineer per ticket at a time. Parallel engineers only across tickets or on genuinely
-   independent work; never two mutating the same files — parallel investigation, sequential
-   mutation.
+   engineer per ticket at a time; never two mutating the same files.
 5. **Verify the report yourself** before accepting it: `git status` and `git diff --stat` in each
    worktree, read the diff, run the build and the targeted tests (or read the pasted output
-   critically), reproduce the original bug where possible. Revert regenerated artifacts so the
-   diff is only the real change, then update `HANDOVER.md`. For significant or risky work, dispatch
+   critically), reproduce the original bug where possible. Run the regression test yourself: exit 0
+   on the change, exit 1 against the unchanged behaviour. Revert regenerated artifacts so the diff
+   is only the real change, then update `HANDOVER.md`. For significant or risky work, dispatch
    **one fresh engineer** to
    review the diff — never the one that wrote it. A gap goes back to step 4 with the specific gap
    named; a trigger goes to step 6.
@@ -118,10 +123,14 @@ tickets progress at different speeds; never block one on another.
 7. **Completion gate**, per ticket. All must hold, or you report exactly which do not:
    - the requested behaviour exists and is integrated;
    - build and checks succeed and the appropriate tests pass, verified by you;
-   - every risk in the test plan has its tests, and nothing else got one: a test the change added
-     for a no-risk behaviour (a label, a constant, a log line, a mock verifying a call) is sent
-     back to be removed from the diff, not counted as coverage. A missing test on a no-risk
+   - every risk in the test plan has its tests, and nothing else got one: a repo test the change
+     added for a no-risk behaviour (a label, a constant, a log line, a mock verifying a call) is
+     sent back to be removed from the diff, not counted as coverage. A missing test on a no-risk
      behaviour fails nothing;
+   - the ticket's regression test, one item: added or updated in `<root>\_regression\`, asserts
+     the ticket's behaviour, shown failing once, passed when you ran it (or listed `written, not
+     run`, with why); no duplicate of a feature the index covers (fold it into that test); its
+     index row current;
    - the characterization tests from step 3 were added before the change and still pass, or each
      one the change deliberately alters is listed with its old and new behaviour;
    - for each risk, at least one test reaches the change through the entry point it is used by (the
@@ -132,8 +141,9 @@ tickets progress at different speeds; never block one on another.
    - no known blocking issue, no temporary or debug code in the repos, and the diff is coherent
      and scoped to the ticket, with any module-map change (see [Module maps](#module-maps))
      verified and listed apart from the ticket change;
-   - copy the report's files-changed list and label each path `fix`, `test` or `helper` (anything
-     else, repro scripts too): a `helper` or `justfile` path in a worktree fails this item. Then
+   - copy the report's files-changed list and label each path `fix`, `test`, `regression` (a
+     `_regression\` path) or `helper` (anything else, repro scripts too): a `helper` or
+     `justfile` path in a worktree fails this item. Then
      a row per `helper`, and one per shared script the task ran: `path | kind | goes to | command
      line`, from the [helper table](#handover-and-tools) (shared: kind `shared`, stays). A
      `duplicate` fails this item. No row says "or".
@@ -144,10 +154,11 @@ tickets progress at different speeds; never block one on another.
    deliberately alters, and which module
    maps were added or refreshed — they go in their own commit in the same PR when the user commits.
    Write it into `HANDOVER.md` and say in the report what went under each heading: `Changed and
-   verified`, `Left and next step`, `Tools`: the step-7 rows bar duplicates, copied in at their
+   verified`, `Left and next step`, `Regression tests`: `path | covers | command line`,
+   `Tools`: the step-7 rows bar duplicates, copied in at their
    final paths as `path | what it does | command line`, e.g.
    `<root>\_tools\net\Send-Traffic.ps1 | sends requests at a set rate | Send-Traffic.ps1 -Rate 50`.
-   Notes never go on Jira. If the ticket taught a reusable technique, write an article by
+   If the ticket taught a reusable technique, write an article by
    `C:\repos\articles\WRITING.md` when it exists.
 
 ## Quiz mode
@@ -163,10 +174,10 @@ The ticket dir (`<root>\<TICKET>\`, beside the worktrees, in no repo, never comm
 
 - **`HANDOVER.md`**: created with the worktrees, updated after each verified task and at close-out,
   read first on pickup. Headings, each filled: `Goal and repos` · `Open items, baseline, impact`
-  (each with its state) · `Changed and verified` · `Left and next step` · `Tools` (rows as in
-  step 8). Each update rewrites every heading to the current state, a snapshot: stale lines
-  replaced, done or superseded ones removed; history is in git. Handover notes live only here,
-  never on the Jira ticket.
+  (each with its state) · `Changed and verified` · `Left and next step` · `Regression tests` ·
+  `Tools` (rows as in step 8). Each update rewrites every heading to the current state, a
+  snapshot: stale lines replaced, done or superseded ones removed; history is in git. Handover
+  notes live only here, never on the Jira ticket.
 - **`tools\`**: this ticket's `repro` and `seed` helpers (below).
 
 Every helper is a `.ps1` with a help block (`.SYNOPSIS`, `.EXAMPLE`) and parameters, never a repo
@@ -276,23 +287,18 @@ Each of these is here because an agent was observed violating it, not because it
 |---|---|
 | "The cause is obviously X, let me write the fix." | On a bug that already failed QA, confirm X first. Obvious-but-unconfirmed is how the third QA failure happens. |
 | "My unit test reproduces it, so it's fixed." | Your test reproduces *your hypothesis*, not necessarily the field bug. |
-| "This can't be built/tested in this environment." | Did you try its *real* build environment? Test the claim before stating it. |
-| "The engineer said N files changed and the tests pass." | Did *you* `git status` the worktree and run them? The report is a lead, not a fact. |
-| "I've already read the code; quicker to fix it than to write the delegation." | Reading is your job. Building is not. Hand the engineer your diagnosis as context. |
-| "It's a big ticket, better ask the advisor before starting." | Size is not a trigger. Decompose and delegate. |
 | "Let the engineer try one more thing." | A reasonable attempt and a reasonable correction have failed. Escalate; variations burn context. |
 | "I'll hand the engineer the whole ticket and let it drive." | Bounded tasks. The engineer builds; you own the plan. |
-| "The advisor already understands the problem, I'll have it implement." | The advisor advises; the engineer implements. |
 | "The engineer can review its own diff, it knows the change best." | That is why it cannot. A review pass is a fresh engineer or nothing. |
 | "The ticket already proposes the fix; build it as written." | The proposal covers what the ticket asked. Most regressions are behaviour nobody listed: the baseline and impact list are still yours to write. |
 | "Clear cause, bounded change, approved and tested: routine, the open items are just verification." | Observed in testing: written right after noting the change blocks its callers. A new wait on a caller's thread, a contract change or shared code goes to the advisor, whoever approved it and whenever it's due. |
 | "It has no tests, so there's nothing to break." | No tests means nothing will tell you it broke. Pin today's behaviour on the risky paths you touch before changing them. |
 | "More tests can't hurt." / "They're written and pass; leave them." | Each is upkeep. A test of a label, constant or log call fails only on a deliberate edit. Not in the plan, out of the diff. |
-| "It's a one-line change, it doesn't need a test." | Size isn't risk. One line changing how money rounds is the risk. |
+| "It's only a label change, no regression test." | Every ticket gets one; here it asserts the label. |
+| "It clicked through without errors, so it passes." | A test without an assertion verifies nothing. |
 | "The repro script is a tool QA needs, not production code; it can stay in the repo." | Not the fix and not its test, so it's a helper: it leaves the repo and is redone as `tools\<name>.ps1`, listed in `HANDOVER.md`. |
 | "It's hardcoded for this ticket, so it stays in `tools\`." | Observed in testing. Only a repro or seed stays; hardcoded values become parameters. |
 | "The tests pass." | Through which entry point, and which failure? Tests that use an internal shortcut, or only a mild form of the failure, pass while the real path breaks. |
-| "I'll commit/push so it's ready when they're back." | Commit, push, and PR are the user's explicit call, never a default. |
 | "The grep hit is right there, I'll open the code." | The module's `CLAUDE.md` is ~400 tokens and names the trap you are about to re-derive over five reads. Read it first. |
 
 ## Red Flags — STOP and re-check
@@ -302,14 +308,14 @@ Each of these is here because an agent was observed violating it, not because it
 - About to dispatch a third variation after a corrective attempt failed.
 - About to send the advisor a question without Evidence and Attempts.
 - Consulting the advisor on something the engineer has not tried.
-- Two engineers about to touch the same file.
-- Asking the implementing engineer to review its own diff.
 - About to commit, push, or transition to a done-ish status without the user asking.
 - About to delegate a change with no behaviour baseline or impact list, or with an open item that
   has no owner.
 - About to change code on an untested risky path before a characterization test pins it.
-- About to ask for, or accept, a test of a label, constant, log line or UI default.
+- About to ask for, or accept, a repo test of a label, constant, log line or UI default.
 - About to skip a test on a risk because the diff is small.
+- About to close a ticket with no `_regression\` test added or updated.
+- About to add a regression test for a feature the index already covers.
 - Quiz mode: building before the user answered, or asking what a convention settles.
 - A test that reaches the change in a way users and the system never do.
 - About to run `git worktree add` by hand instead of `mk-worktree.mjs`.
@@ -319,6 +325,3 @@ Each of these is here because an agent was observed violating it, not because it
 
 - Agent ping-pong: agents asked to reassess the same information. You decide unless there is
   genuinely new evidence or expertise.
-- One giant plan for all tickets. Each ticket is its own worktree, lane, and verification.
-- Assuming the base branch, the repo set, or a build environment's limits instead of asking or
-  testing.

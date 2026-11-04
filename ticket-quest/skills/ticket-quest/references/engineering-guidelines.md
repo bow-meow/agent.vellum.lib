@@ -24,7 +24,8 @@ writes a handover; those belong to ticket-quest's workflow.
 
 A test costs upkeep for as long as the code lives. Write one only where its absence is a risk: where a
 regression would be **silent or found late**, and would **cost something** when it is found. Every
-other behaviour gets no new test, characterization or otherwise.
+other behaviour gets no new test, characterization or otherwise. These rules govern tests in product
+repos; ticket-quest's regression suite is a separate obligation (its `references/regression-suite.md`).
 
 **A risk, so it gets a test:**
 
