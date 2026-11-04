@@ -27,6 +27,7 @@ S=<this skill's base directory, POSIX>   MODEL: see references/severity.md
   them changes what is reviewed, posted or approved.
 - Never merge, push, edit reviewers or draft state. Never post a general/summary PR comment other
   than the in-progress notice. Never touch `C:\repos\<repo>`; the scripts work under `C:\repos\ai-review`.
+  The one exception is this skill's own source checkout, which step 9's spend repair edits.
 - Never add `safe.directory` or change git config; report instead.
 - All review agents: Agent tool, `subagent_type: "amag-pr-review:pr-review-reader"` (read-only, no shell, Opus;
   defined in this plugin's `agents/pr-review-reader.md`). The prompt is one line pointing at the
@@ -220,7 +221,7 @@ write it as [references/rules.md](references/rules.md) says: rule, fixture, `--t
 The overview describes the change. A reviewer's "checked and not raised" note never went through
 verify, so don't present it as confirmed ("both reviewers confirmed X can't happen").
 
-**Local mode**: run step 9's `cleanup` now; the output's "Which should I fix?" waits for the user. On
+**Local mode**: run step 9's spend check and `cleanup` now; the output's "Which should I fix?" waits for the user. On
 an answer, follow step 10.
 
 **PR mode, dry run**: the output ends with "Dry run: would …"; go to step 9.
@@ -234,6 +235,10 @@ choosing.md's last section: `post.mjs decide`, the y/n, `post.mjs apply-decision
 level, nothing open is a hold, not an approval: say a medium or high review is needed to approve.
 
 ## 9. Finish (always, and after errors)
+
+**Spend check**, before `cleanup` removes `$W`: read [references/spend.md](references/spend.md) and
+follow it. It compares this run's tokens with logged runs of the same level and size, settles earlier
+repair notes, and when the run was high, makes and commits one repair and leaves a note for the next review.
 
 ```bash
 node $S/scripts/finish.mjs state $W      # PR mode, not dry run; → {saved} or {skipped, why}

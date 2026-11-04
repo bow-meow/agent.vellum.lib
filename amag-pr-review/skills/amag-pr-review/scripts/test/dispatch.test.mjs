@@ -280,6 +280,7 @@ test('usage adds tokens under a key in usage.json', () => {
   const w = workDir();
   usage(w, 'correctness', 1000);
   assert.deepEqual(usage(w, 'correctness', 500), { correctness: 1500 });
+  assert.deepEqual(JSON.parse(readFileSync(join(w, 'usage-calls.json'), 'utf8')), { correctness: 2 });
 });
 
 test('verify skips when there is nothing to verify, else fills the prompt', () => {

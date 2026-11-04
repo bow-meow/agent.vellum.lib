@@ -660,10 +660,14 @@ export function estimate(w, opts = {}) {
   return { level: env.level, model: levelOf(env.level).reviewerModel, ...estimateFor({ agents: list.length, spent, recheck: levelOf(env.level).recheck }) };
 }
 
+// usage-calls.json counts the reports per key, so spend.mjs can see retries and coverage send-backs.
 export function usage(w, key, tokens) {
-  const file = join(nativePath(trimDir(w)), 'usage.json');
+  const W = nativePath(trimDir(w));
+  const file = join(W, 'usage.json');
   const next = addUsage(readJson(file, {}), key, tokens);
   writeFileSync(file, JSON.stringify(next, null, 2));
+  const callsFile = join(W, 'usage-calls.json');
+  writeFileSync(callsFile, JSON.stringify(addUsage(readJson(callsFile, {}), key, 1), null, 2));
   return next;
 }
 

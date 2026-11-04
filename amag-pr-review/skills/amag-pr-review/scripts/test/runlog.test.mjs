@@ -54,8 +54,8 @@ test('runContext reads the reviewers, chunks, diff size and recheck load from th
   writeFileSync(join(w, 'chunks', '2.diff'), '');
   writeFileSync(join(w, 'contested.json'), JSON.stringify([{ id: 'f1' }]));
   writeFileSync(join(w, 'context.diff'), 'diff --git a/x.cs b/x.cs\n--- a/x.cs\n+++ b/x.cs\n@@ -1,1 +1,2 @@\n a\n+b\n');
-  assert.deepEqual(runContext(w), { changed: 1, reviewers: ['correctness', 'ticket-fit'], chunks: 2, recheckItems: 1, level: 'medium' });
-  assert.deepEqual(runContext(join(w, 'missing')), { changed: null, reviewers: [], chunks: 0, recheckItems: 0, level: 'medium' });
+  assert.deepEqual(runContext(w), { changed: 1, reviewers: ['correctness', 'ticket-fit'], chunks: 2, recheckItems: 1, level: 'medium', calls: {} });
+  assert.deepEqual(runContext(join(w, 'missing')), { changed: null, reviewers: [], chunks: 0, recheckItems: 0, level: 'medium', calls: {} });
   writeFileSync(join(w, 'repos.json'), JSON.stringify({ level: 'high' }));
   assert.equal(runContext(w).level, 'high');
 });
