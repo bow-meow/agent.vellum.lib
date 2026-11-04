@@ -78,6 +78,16 @@ set `BITBUCKET_ACCOUNT_ID`.
 Not the same plugin as `amag-pr-review` in the AMAG team marketplace, which posts its findings with
 no confirmation step. The two share a name, so install only one.
 
+### `visual-inspection`
+Looks at screenshots and screen recordings without paying to send whole images to the model. A
+Node helper compares before/after screenshots locally, crops each changed region into a
+before | after strip, samples a recording into one contact sheet, and finds scene changes or
+stretches where the picture stays still. The skill then views only those crops, within a default
+budget of one overview and two detail images.
+
+Needs Node 18+ and ImageMagick 7 (`magick`); video also needs FFmpeg and ffprobe. Run the helper's
+`doctor` command to check what it found. It does not capture the screen itself.
+
 ## Layout
 
 ```

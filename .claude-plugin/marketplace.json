@@ -38,6 +38,11 @@
       "name": "amag-pr-review",
       "source": "./amag-pr-review",
       "description": "Review a Bitbucket pull request or a ticket worktree under C:\\repos\\ticket-work with Sonnet reviewers per dimension (Opus at high), an Opus verify pass, and incremental re-review. Built for AMAG's Symmetry and Sentinel repos. AMAG-specific."
+    },
+    {
+      "name": "visual-inspection",
+      "source": "./visual-inspection",
+      "description": "Inspect screenshots and local screen recordings on a small token budget — compare before/after UI screenshots, crop and zoom the changed regions, sample video frames, and find scene changes or static stretches, all prepared locally with ImageMagick and FFmpeg."
     }
   ]
 }

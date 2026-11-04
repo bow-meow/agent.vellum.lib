@@ -1,0 +1,7 @@
+{
+  "name": "visual-inspection",
+  "description": "Inspect screenshots and local screen recordings on a small token budget — compare before/after UI screenshots, crop and zoom the changed regions, sample video frames, and find scene changes or static stretches, all prepared locally with ImageMagick and FFmpeg.",
+  "author": {
+    "name": "bow-meow"
+  }
+}
