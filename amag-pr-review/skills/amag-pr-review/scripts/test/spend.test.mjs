@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { assess, bandOf, baseline, commit, findSource, loadNotes, median, note, openNotes, report, settle } from '../spend.mjs';
+import { assess, bandOf, baseline, commit, compare, findSource, loadNotes, median, modelOfEntry, note, openNotes, report, settle } from '../spend.mjs';
 
 const entry = (level, changed, usage) => ({ run: { level, changed }, usage });
 const past = [
@@ -19,6 +19,7 @@ function workDir(usage, extra = {}) {
   mkdirSync(join(w, 'prompts'), { recursive: true });
   writeFileSync(join(w, 'usage.json'), JSON.stringify(usage));
   writeFileSync(join(w, 'repos.json'), JSON.stringify({ mode: 'local', ticketKey: 'SYM-1', level: 'medium', ...extra.repos }));
+  writeFileSync(join(w, 'dispatch.json'), JSON.stringify([{ agent: 'correctness', usageKey: 'correctness', model: 'opus' }]));
   writeFileSync(join(w, 'context.diff'), `diff --git a/x.cs b/x.cs\n--- a/x.cs\n+++ b/x.cs\n@@ -1,1 +1,${extra.lines ?? 250} @@\n a\n${'+b\n'.repeat((extra.lines ?? 250) - 1)}`);
   for (const [f, v] of Object.entries(extra.files ?? {})) writeFileSync(join(w, f), typeof v === 'string' ? v : JSON.stringify(v));
   return w;
@@ -60,7 +61,7 @@ test('assess does not judge agents against a thin baseline', () => {
 
 test('report writes spend.json with prompt sizes and the run key, and skips without usage', () => {
   const w = workDir({ correctness: 400000, verify: 80000 }, {
-    files: { 'dispatch.json': [{ agent: 'correctness-1', usageKey: 'correctness' }, { agent: 'correctness-2', usageKey: 'correctness' }],
+    files: { 'dispatch.json': [{ agent: 'correctness-1', usageKey: 'correctness', model: 'opus' }, { agent: 'correctness-2', usageKey: 'correctness', model: 'opus' }],
       'usage-calls.json': { correctness: 2, verify: 1 } } });
   writeFileSync(join(w, 'prompts', 'correctness-1.md'), 'x'.repeat(2048));
   writeFileSync(join(w, 'prompts', 'correctness-2.md'), 'x'.repeat(2048));
@@ -153,4 +154,27 @@ test('commit refuses a dirty or moved tree, changes outside the plugin, and roll
   assert.ok(calls.includes('checkout -- amag-pr-review'));
   assert.deepEqual(removed, [join('src', 'amag-pr-review/new.md')]);
   assert.ok(!calls.some(c => c.startsWith('commit')));
+});
+
+test('baseline compares only runs on the same reviewer model, reading old runs as opus at medium', () => {
+  const runs = [...past, { run: { level: 'medium', changed: 260, reviewerModel: 'sonnet' }, usage: { correctness: 50000 } }];
+  assert.deepEqual([modelOfEntry(past[0]), modelOfEntry(past[4]), modelOfEntry(runs.at(-1))], ['opus', 'sonnet', 'sonnet']);
+  assert.equal(baseline(runs, 'medium', 260, 'opus').sample, 3);
+  assert.deepEqual([baseline(runs, 'medium', 260, 'sonnet').sample, baseline(runs, 'medium', 260, 'sonnet').thin], [1, true]);
+});
+
+test('compare groups a level by size band and setting, with tokens and findings per run', () => {
+  const f = (verdict, severity) => ({ verdict, severity });
+  const runs = [
+    { run: { level: 'medium', changed: 200, context: 15 }, usage: { a: 100000 }, findings: [f('confirmed', 'High'), f('confirmed', 'Low'), f('dropped', 'Low')] },
+    { run: { level: 'medium', changed: 300, context: 5 }, usage: { a: 60000 }, findings: [f('confirmed', 'Medium')] },
+    { run: { level: 'medium', changed: 300 }, usage: { a: 90000 }, findings: [] },
+    { run: { level: 'low', changed: 300, context: 5 }, usage: { a: 1 }, findings: [] },
+  ];
+  assert.deepEqual(compare(runs, { level: 'medium', by: 'context' }), [
+    { lines: '100-399', context: 15, runs: 1, tokens: 100000, tokensPer100Lines: 50000, confirmedHighMedium: 1, confirmed: 2, dropped: 1 },
+    { lines: '100-399', context: 5, runs: 1, tokens: 60000, tokensPer100Lines: 20000, confirmedHighMedium: 1, confirmed: 1, dropped: 0 },
+    { lines: '100-399', context: 'not logged', runs: 1, tokens: 90000, tokensPer100Lines: 30000, confirmedHighMedium: 0, confirmed: 0, dropped: 0 },
+  ]);
+  assert.throws(() => compare(runs, { level: 'medium', by: 'colour' }), /compare by context or model/);
 });

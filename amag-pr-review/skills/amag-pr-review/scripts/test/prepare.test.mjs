@@ -360,3 +360,10 @@ test('prepareLocal flags a diff far bigger than one ticket', async () => {
 test('prepareLocal reports an unknown ticket as a user error', async () => {
   await assert.rejects(prepareLocal('SYM-404', {}, { ticketBase: tmp('prep-tw-') }), UserError);
 });
+
+test('parseArgs takes --context as a line count', () => {
+  assert.equal(parseArgs(['local', 'SYM-1', '--context', '5']).context, 5);
+  assert.equal(parseArgs(['local', 'SYM-1']).context, null);
+  assert.throws(() => parseArgs(['local', 'SYM-1', '--context', 'lots']), UserError);
+  assert.throws(() => parseArgs(['local', 'SYM-1', '--context', '500']), UserError);
+});

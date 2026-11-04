@@ -125,7 +125,7 @@ test('low level scopes sql from script hints without a triage agent, and reviewe
   assert.deepEqual([e.level, e.model, e.agents, e.estimate], ['low', 'sonnet', 3, 700000]);
 });
 
-test('medium reviewers stay on opus', () => {
-  const out = reviewers(workDir('medium'), { skillDir: SKILL });
-  assert.ok(out.every(o => o.model === 'opus'));
+test('medium reviewers run on sonnet; high reviewers stay on opus', () => {
+  assert.ok(reviewers(workDir('medium'), { skillDir: SKILL }).every(o => o.model === 'sonnet'));
+  assert.ok(reviewers(workDir('high'), { skillDir: SKILL }).every(o => o.model === 'opus'));
 });

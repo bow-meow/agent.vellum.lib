@@ -4,7 +4,9 @@ export const LEVELS = {
   // script hints instead of a triage agent, Sonnet reviewers, no recheck. It never approves and never
   // counts as the review of a commit, so the next review reads the whole change again.
   low: { context: 15, mergeMax: 0, lean: true, quick: true, llmTriage: false, reviewerModel: 'sonnet', recheck: false, approve: false, secondPass: false },
-  medium: { context: 15, mergeMax: 400, lean: false, quick: false, llmTriage: true, reviewerModel: 'opus', recheck: true, approve: true, secondPass: false },
+  // Sonnet finds the candidates and Opus verify and recheck decide them: the two-stage split low already
+  // used. mergeMax matches CHUNK_SIZE, what one agent traces in full.
+  medium: { context: 15, mergeMax: 800, lean: false, quick: false, llmTriage: true, reviewerModel: 'sonnet', recheck: true, approve: true, secondPass: false },
   // A second, independent correctness pass catches what only one reviewer reaches on a given run.
   high: { context: 40, mergeMax: 0, lean: false, quick: false, llmTriage: true, reviewerModel: 'opus', recheck: true, approve: true, secondPass: true },
 };

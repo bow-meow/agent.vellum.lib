@@ -7,6 +7,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseDiff, stats } from './anchors.mjs';
 import { readModel } from './comment.mjs';
+import { levelOf } from './levels.mjs';
 import { confidenceOf } from './recheck.mjs';
 import { stateRoot } from './state.mjs';
 
@@ -37,14 +38,25 @@ export function runContext(w) {
   const reviewers = [...new Set(files.filter(f => /^cand-.+\.json$/.test(f)).map(f => f.slice(5, -5).replace(/-\d+$/, '')))].sort();
   const chunksDir = join(w, 'chunks');
   const diff = join(w, 'context.diff');
+  const repos = readJson(join(w, 'repos.json'), {});
+  const level = repos?.level ?? 'medium';
   return {
     changed: existsSync(diff) ? stats(parseDiff(readFileSync(diff, 'utf8'))).changed : null,
     reviewers,
     chunks: existsSync(chunksDir) ? readdirSync(chunksDir).length : 0,
     recheckItems: readJson(join(w, 'contested.json'), []).length,
-    level: readJson(join(w, 'repos.json'), {})?.level ?? 'medium',
+    level,
+    context: repos?.context ?? levelOf(level).context,
+    reviewerModel: reviewerModelOf(readJson(join(w, 'dispatch.json'), [])),
     calls: readJson(join(w, 'usage-calls.json'), {}),
   };
+}
+
+// The model most of the dispatched reviewers ran on; ticket-fit and the like can differ.
+export function reviewerModelOf(dispatched) {
+  const counts = {};
+  for (const a of dispatched ?? []) if (a.model) counts[a.model] = (counts[a.model] ?? 0) + 1;
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 }
 
 export function logEntry({ key, mode, pr = null, ticket = null, head = null, skill, run, verified, built, usage = null,

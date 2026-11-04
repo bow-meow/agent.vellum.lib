@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { dropFormattingOnly } from './anchors.mjs';
 import { parseHeader } from './comment.mjs';
 import { filterDelta } from './delta.mjs';
 import { nativePath } from './env.mjs';
@@ -165,9 +166,10 @@ function runScope(W) {
   if (r.gone) return record({ gone: true });
   writeFileSync(join(W, 'pr-u3.diff'), r.prU3);
   writeFileSync(join(W, 'since.diff'), r.since);
-  writeFileSync(join(W, 'context.diff'), r.context);
+  const formatted = dropFormattingOnly(r.context);
+  writeFileSync(join(W, 'context.diff'), formatted.text);
   console.error(JSON.stringify(r.kept));
-  return record({ gone: false, since: state.reviewedCommit, keptHunks: r.kept, empty: r.context === '' });
+  return record({ gone: false, since: state.reviewedCommit, keptHunks: r.kept, formattingOnly: formatted.dropped, empty: formatted.text.trim() === '' });
 }
 
 const invoked = process.argv[1] && resolve(process.argv[1]).toLowerCase();

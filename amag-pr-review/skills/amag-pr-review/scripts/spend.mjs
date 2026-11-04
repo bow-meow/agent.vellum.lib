@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { loadEntries } from './calibrate.mjs';
 import { nativePath } from './env.mjs';
 import { runlogArgs } from './finish.mjs';
-import { levelName } from './levels.mjs';
+import { levelName, levelOf } from './levels.mjs';
 import { logDir, runContext, skillVersion } from './runlog.mjs';
 import { stateRoot } from './state.mjs';
 
@@ -35,9 +35,14 @@ export function median(xs) {
 
 export const bandOf = changed => SIZE_BANDS.findIndex(b => changed < b);
 
-// Runs logged before levels existed have no run.level; they were medium.
-export function baseline(entries, level, changed) {
-  const atLevel = entries.filter(e => (e.run?.level ?? 'medium') === level && e.usage && e.run?.changed != null);
+// Runs logged before levels existed have no run.level; they were medium. Runs logged before the reviewer
+// model was recorded ran Sonnet at low and Opus otherwise.
+export const levelOfEntry = e => e.run?.level ?? 'medium';
+export const modelOfEntry = e => e.run?.reviewerModel ?? (levelOfEntry(e) === 'low' ? 'sonnet' : 'opus');
+
+// Only runs on the same reviewer model compare: a model change moves every agent's tokens at once.
+export function baseline(entries, level, changed, model = null) {
+  const atLevel = entries.filter(e => levelOfEntry(e) === level && (!model || modelOfEntry(e) === model) && e.usage && e.run?.changed != null);
   const band = atLevel.filter(e => bandOf(e.run.changed) === bandOf(changed));
   const thin = band.length < MIN_SAMPLE;
   const perKey = {};
@@ -139,11 +144,12 @@ export function report(w, { entries = loadEntries(logDir()).entries, notes = loa
   const run = runContext(W);
   const level = levelName(run.level);
   const { expectedCalls, promptBytes } = dispatchFacts(W);
-  const base = baseline(entries, level, run.changed ?? 0);
+  const model = run.reviewerModel ?? levelOf(level).reviewerModel;
+  const base = baseline(entries, level, run.changed ?? 0, model);
   const a = assess({ usage, calls: run.calls, expectedCalls, promptBytes, base });
   const repos = readJson(join(W, 'repos.json'), null);
   const runKey = repos ? runlogArgs(repos, [])[0] : null;
-  const out = { level, changed: run.changed, chunks: run.chunks, runKey, ...a, installed,
+  const out = { level, model, context: run.context, changed: run.changed, chunks: run.chunks, runKey, ...a, installed,
     source, notes: openNotes(notes, { level, a, source: source?.path, installed, git }) };
   writeFileSync(join(W, 'spend.json'), JSON.stringify(out, null, 2));
   return out;
@@ -173,6 +179,35 @@ export function settle(w, id, verdict, why, { path = notesPath(), now = new Date
   const after = spend && !spend.skipped ? { total: spend.total, ratio: spend.ratio, changed: spend.changed, agents: ratiosFor(spend, n.targets ?? []) } : null;
   appendFileSync(path, JSON.stringify({ type: 'settle', id, at: now.toISOString(), verdict, why: why || null, runKey: spend?.runKey ?? null, after }) + '\n');
   return { settled: id, verdict };
+}
+
+export const COMPARE_BY = {
+  context: e => e.run?.context ?? 'not logged',
+  model: modelOfEntry,
+};
+
+// Logged runs of one level side by side, per size band, grouped by a setting: what the setting costs in
+// tokens and what it finds. Runs differ in what they review, so read it as a trend, not a verdict.
+export function compare(entries, { level, by }) {
+  if (!COMPARE_BY[by]) throw new Error(`compare by ${Object.keys(COMPARE_BY).join(' or ')}`);
+  const rows = new Map();
+  for (const e of entries.filter(e => levelOfEntry(e) === level && e.usage && e.run?.changed != null)) {
+    const [band, value] = [bandOf(e.run.changed), COMPARE_BY[by](e)];
+    const key = `${band}|${value}`;
+    if (!rows.has(key)) rows.set(key, { band, value, runs: [] });
+    rows.get(key).runs.push(e);
+  }
+  return [...rows.values()].map(({ band, value, runs }) => {
+    const confirmed = e => (e.findings ?? []).filter(f => f.verdict === 'confirmed');
+    return {
+      lines: `${band > 0 ? SIZE_BANDS[band - 1] : 0}-${SIZE_BANDS[band] === Infinity ? '' : SIZE_BANDS[band] - 1}`, [by]: value, runs: runs.length,
+      tokens: median(runs.map(e => sum(e.usage))),
+      tokensPer100Lines: median(runs.map(e => Math.round(sum(e.usage) / Math.max(e.run.changed, 1) * 100))),
+      confirmedHighMedium: median(runs.map(e => confirmed(e).filter(f => /^(High|Medium)$/.test(f.severity ?? '')).length)),
+      confirmed: median(runs.map(e => confirmed(e).length)),
+      dropped: median(runs.map(e => (e.findings ?? []).filter(f => f.verdict === 'dropped').length)),
+    };
+  }).sort((a, b) => a.lines.localeCompare(b.lines, undefined, { numeric: true }) || String(a[by]).localeCompare(String(b[by])));
 }
 
 const statusPaths = text => text.split('\n').filter(Boolean).map(l => ({ code: l.slice(0, 2), path: l.slice(3).replace(/^"|"$/g, '').split(' -> ').at(-1) }));
@@ -216,13 +251,15 @@ if (invoked === fileURLToPath(import.meta.url).toLowerCase()) {
   const usageText = 'usage: spend.mjs report <W>                          this run against logged runs of its level and size → spend.json\n'
     + '       spend.mjs note <W> <note.json>               record a repair: {cause, repair, targets, commit?, expect?}\n'
     + '       spend.mjs settle <W> <id> <' + VERDICTS.join('|') + '> <why>\n'
-    + '       spend.mjs commit <W> <message-file>          test and commit the repair in the source checkout';
+    + '       spend.mjs commit <W> <message-file>          test and commit the repair in the source checkout\n'
+    + '       spend.mjs compare <level> <context|model>    logged runs of a level by size band and setting: tokens and findings';
   const [cmd, w, ...rest] = process.argv.slice(2);
   const run = () => {
     if (cmd === 'report' && w) return report(w);
     if (cmd === 'note' && w && rest[0]) return note(w, rest[0]);
     if (cmd === 'settle' && w && rest.length >= 2) return settle(w, rest[0], rest[1], rest.slice(2).join(' '));
     if (cmd === 'commit' && w && rest[0]) return commit(w, rest[0]);
+    if (cmd === 'compare' && w && rest[0]) return compare(loadEntries(logDir()).entries, { level: levelName(w), by: rest[0] });
     console.error(usageText);
     process.exit(2);
   };

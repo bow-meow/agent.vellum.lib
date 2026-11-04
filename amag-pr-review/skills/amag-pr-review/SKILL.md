@@ -5,14 +5,14 @@ description: >-
   worktree under C:\repos\ticket-work. Triggers — "review pr", a pasted bitbucket.org pull-requests
   link, "review SYM-1234", "review my changes for ESG-…", "just show me". SKIP for replying to
   reviewer comments on your own PR (amag-pr-respond).
-argument-hint: "<pr-url | TICKET-KEY | worktree-path> [--dry-run] [--level low|medium|high]"
+argument-hint: "<pr-url | TICKET-KEY | worktree-path> [--dry-run] [--level low|medium|high] [--context <lines>]"
 ---
 
 # PR review
 
 The arguments are: $ARGUMENTS
 
-Reviews a Bitbucket PR (**PR mode**) or a ticket worktree (**local mode**) with Opus subagents. The
+Reviews a Bitbucket PR (**PR mode**) or a ticket worktree (**local mode**) with Sonnet and Opus subagents. The
 review is the same in both modes; only intake and output differ. Scripts in `scripts/` do every
 mechanical step and print JSON; this file is the loop that runs them and the judgement between them.
 Don't redo by hand what a script does, and don't hand-write the JSON files they own.
@@ -59,15 +59,21 @@ S=<this skill's base directory, POSIX>   MODEL: see references/severity.md
 | Level | For | What changes |
 |---|---|---|
 | `low` ("quick look") | early feedback, small follow-ups | Sonnet reviewers: a `quick` reviewer (correctness, concurrency, resources, security) and regression per chunk, sql scoped by script hints, ticket-fit; no triage agent, tests-design, claims, docs or recheck. **Never approves** and never counts as reviewing the commit, so the next review reads the whole change |
-| `medium` | the normal review | as described below |
-| `high` ("thorough") | threading, data, money, security | ±40 lines of diff context, specialists never merged, and a second independent `failure-paths` pass beside correctness |
+| `medium` | the normal review | as described below: Sonnet reviewers find candidates, Opus verify and recheck decide them |
+| `high` ("thorough") | threading, data, money, security | Opus reviewers, ±40 lines of diff context, specialists never merged, and a second independent `failure-paths` pass beside correctness |
 
 Map the user's words to a level ("quick" → low, "thorough" → high); ask only if they conflict.
+
+`--context <lines>` overrides the level's diff context (15, or 40 at high). It is for measuring what
+context costs and finds (`spend.mjs compare <level> context`); use it only when the user asks.
+
+Formatting-only hunks (whitespace, line endings, reflow) are left out of the diff before any agent
+reads it; `prepare.mjs` names them in `notes`.
 
 ## 2. PR mode: prepare
 
 ```bash
-node $S/scripts/prepare.mjs pr "<url>" [--dry-run] [--level <l>]   # → {w, level, dryRun, dryRunWhy, incremental, notes}
+node $S/scripts/prepare.mjs pr "<url>" [--dry-run] [--level <l>] [--context <n>]   # → {w, level, dryRun, dryRunWhy, incremental, notes}
 . <w>/env.sh                                            # every later block starts with this
 ```
 
@@ -88,14 +94,15 @@ node $S/scripts/incremental.mjs prepare $W    # → {previous, closed, authorRes
 node $S/scripts/incremental.mjs scope $W      # → {gone, keptHunks, empty}
 ```
 
-Show `closed` as "closed by a human" and the kept hunks per file. `gone: true` → "last reviewed commit
+Show `closed` as "closed by a human", the kept hunks per file, and any `formattingOnly` files as
+left out. `gone: true` → "last reviewed commit
 gone: full re-review". `bestEffort` → say the previous findings were rebuilt from our comments.
 `empty: true` → skip step 5 and go to verify for the re-check.
 
 ## 3. Local mode: prepare
 
 ```bash
-node $S/scripts/prepare.mjs local "<arg>" [--base <repo>=<branch>]... [--level <l>]   # → {w, level, repos, asks, notes, suspicious}
+node $S/scripts/prepare.mjs local "<arg>" [--base <repo>=<branch>]... [--level <l>] [--context <n>]   # → {w, level, repos, asks, notes, suspicious}
 . <w>/env.sh
 ```
 

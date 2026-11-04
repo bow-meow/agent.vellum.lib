@@ -47,6 +47,15 @@ note open for another run rather than settle on it.
 | large `promptKB` for a key | a slot pastes a whole file where a path would do | the slot in `dispatch.mjs` or the template |
 | many agents, each near typical | the roster or chunking fits this size badly | `levels.mjs` or the roster rules in `dispatch.mjs` |
 | `verify` far over typical | too many candidates, mostly dropped | the dropping reviewer's checklist, or `references/severity.md`'s don't-flag list |
+| several specialists, each with a small scope | they each read the same code and references | `mergeMax` in `levels.mjs` (merges them into one agent) |
+| a level's reviewers on Opus, all near typical | the reviewer model, not the prompts | `reviewerModel` in `levels.mjs`; Opus verify keeps the bar |
+| reviewers reading files whose change is layout only | a formatting change the filter misses | `formattingOnly` / `WHITESPACE_MATTERS` in `anchors.mjs` |
+| reviewers reading far around small hunks | diff context the level doesn't need | the level's `context`, only once `spend.mjs compare <level> context` shows a smaller one finds as much |
+| every reviewer reads a reference it rarely uses | a reference read up front instead of when needed | the read instruction in `references/prompts/reviewer.md` |
+
+`spend.mjs compare <level> context|model` sets logged runs of a level side by side per size band:
+median tokens, and confirmed High/Medium findings per run. A setting that cuts tokens and keeps the
+findings is a repair; one that cuts findings is not, whatever it saves.
 
 Not a repair: a cost the user chose (`--level high`, a requested re-run), a one-off cause (a cross-repo
 request, an agent that crashed once), or a diff that is simply large for its band. Say which in the

@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseDiff, placeAnchor, inScope, isGenerated, stats, splitDiff } from '../anchors.mjs';
+import { dropFormattingOnly, formattingOnly, parseDiff, placeAnchor, inScope, isGenerated, stats, splitDiff } from '../anchors.mjs';
 
 const basic = [
   'diff --git a/src/A.cs b/src/A.cs',
@@ -154,4 +154,35 @@ test('C-quoted non-ASCII paths are decoded', () => {
 test('header-only entries keep paths containing " b/"', () => {
   const d = ['diff --git a/dir b/x.bin b/dir b/x.bin', 'Binary files a/dir b/x.bin and b/dir b/x.bin differ', ''].join('\n');
   assert.ok(parseDiff(d).has('dir b/x.bin'));
+});
+
+test('formattingOnly: re-indent, reflow and line endings are formatting; a changed word or joined words are not', () => {
+  assert.equal(formattingOnly(['-  foo(a, b);', '+    foo(a, b);']), true);
+  assert.equal(formattingOnly(['-foo(a,', '-    b);', '+foo(a, b);']), true);
+  assert.equal(formattingOnly(['-x = 1;\r', '+x = 1;']), true);
+  assert.equal(formattingOnly(['-x = "a b";', '+x = "ab";']), false);
+  assert.equal(formattingOnly(['-x = 1;', '+x = 2;']), false);
+  assert.equal(formattingOnly([' keep']), false);
+});
+
+test('dropFormattingOnly drops formatting hunks, empty files and nothing else, and the result still parses', () => {
+  const diff = [
+    'diff --git a/a.cs b/a.cs', 'index 1..2 100644', '--- a/a.cs', '+++ b/a.cs',
+    '@@ -1,3 +1,3 @@', ' keep', '-  foo();', '+    foo();', ' keep',
+    '@@ -20,3 +20,3 @@', ' keep', '-x = 1;', '+x = 2;', ' keep',
+    'diff --git a/b.cs b/b.cs', '--- a/b.cs', '+++ b/b.cs',
+    '@@ -1,2 +1,2 @@', '-int  y;', '+int y;', ' keep',
+    'diff --git a/c.yml b/c.yml', '--- a/c.yml', '+++ b/c.yml',
+    '@@ -1,1 +1,1 @@', '-  a: 1', '+    a: 1',
+    'diff --git a/d.cs b/e.cs', 'similarity index 90%', 'rename from d.cs', 'rename to e.cs', '--- a/d.cs', '+++ b/e.cs',
+    '@@ -1,1 +1,1 @@', '-z;', '+  z;', '',
+  ].join('\n');
+  const { text, dropped } = dropFormattingOnly(diff);
+  assert.deepEqual(dropped, [{ path: 'a.cs', hunks: 1 }, { path: 'b.cs', hunks: 1 }, { path: 'e.cs', hunks: 1 }]);
+  const files = parseDiff(text);
+  assert.deepEqual([...files.keys()], ['a.cs', 'c.yml', 'e.cs']);
+  assert.deepEqual([files.get('a.cs').added, files.get('a.cs').removed, files.get('c.yml').added, files.get('e.cs').added], [1, 1, 1, 0]);
+  assert.ok(files.get('a.cs').newLines.has(21) && !files.get('a.cs').newLines.has(2));
+  assert.ok(text.endsWith('\n') && !/[^\n]diff --git/.test(text));
+  assert.deepEqual(dropFormattingOnly('diff --git a/a.cs b/a.cs\n--- a/a.cs\n+++ b/a.cs\n@@ -1,1 +1,1 @@\n-a\n+b\n'), { text: 'diff --git a/a.cs b/a.cs\n--- a/a.cs\n+++ b/a.cs\n@@ -1,1 +1,1 @@\n-a\n+b\n', dropped: [] });
 });

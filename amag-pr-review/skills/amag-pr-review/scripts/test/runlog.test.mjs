@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { logEntry, logPath, parseArgs, runContext, skillVersion } from '../runlog.mjs';
+import { logEntry, logPath, parseArgs, reviewerModelOf, runContext, skillVersion } from '../runlog.mjs';
 
 const script = fileURLToPath(new URL('../runlog.mjs', import.meta.url));
 
@@ -54,8 +54,8 @@ test('runContext reads the reviewers, chunks, diff size and recheck load from th
   writeFileSync(join(w, 'chunks', '2.diff'), '');
   writeFileSync(join(w, 'contested.json'), JSON.stringify([{ id: 'f1' }]));
   writeFileSync(join(w, 'context.diff'), 'diff --git a/x.cs b/x.cs\n--- a/x.cs\n+++ b/x.cs\n@@ -1,1 +1,2 @@\n a\n+b\n');
-  assert.deepEqual(runContext(w), { changed: 1, reviewers: ['correctness', 'ticket-fit'], chunks: 2, recheckItems: 1, level: 'medium', calls: {} });
-  assert.deepEqual(runContext(join(w, 'missing')), { changed: null, reviewers: [], chunks: 0, recheckItems: 0, level: 'medium', calls: {} });
+  assert.deepEqual(runContext(w), { changed: 1, reviewers: ['correctness', 'ticket-fit'], chunks: 2, recheckItems: 1, level: 'medium', context: 15, reviewerModel: null, calls: {} });
+  assert.deepEqual(runContext(join(w, 'missing')), { changed: null, reviewers: [], chunks: 0, recheckItems: 0, level: 'medium', context: 15, reviewerModel: null, calls: {} });
   writeFileSync(join(w, 'repos.json'), JSON.stringify({ level: 'high' }));
   assert.equal(runContext(w).level, 'high');
 });
@@ -92,4 +92,14 @@ test('CLI append writes one line per run under PR_REVIEW_ROOT, and skips a run t
   const lines = readFileSync(join(root, '.log', 'ws-repo-PR7.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l));
   assert.deepEqual(lines.map(l => [l.mode, l.findings[0].commentId, l.usage]), [['pr', 9, null], ['local', null, null]]);
   assert.match(lines[0].skill.model, /\S/);
+});
+
+test('runContext records the context lines and the reviewers model the run used', () => {
+  const w = mkdtempSync(join(tmpdir(), 'rc-'));
+  writeFileSync(join(w, 'repos.json'), JSON.stringify({ level: 'medium', context: 5 }));
+  writeFileSync(join(w, 'dispatch.json'), JSON.stringify([{ model: 'sonnet' }, { model: 'sonnet' }, { model: 'opus' }]));
+  assert.deepEqual([runContext(w).context, runContext(w).reviewerModel], [5, 'sonnet']);
+  writeFileSync(join(w, 'repos.json'), JSON.stringify({ level: 'high' }));
+  assert.equal(runContext(w).context, 40);
+  assert.equal(reviewerModelOf([]), null);
 });
