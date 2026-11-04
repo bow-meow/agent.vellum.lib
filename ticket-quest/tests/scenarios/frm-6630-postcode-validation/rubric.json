@@ -24,7 +24,7 @@
     },
     {
       "id": "handover-rows",
-      "text": "At close-out, puts the regression test into HANDOVER.md with its path, what it covers and its command line (for example under a Regression tests heading), rather than only mentioning it in the report."
+      "text": "At close-out, HANDOVER.md has a row for the regression test with its path, what it covers and its command line, under a heading about regression tests that is separate from the Tools/helpers heading. A row only under Tools, or a mention only in the report, fails."
     }
   ],
   "pass": {

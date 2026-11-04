@@ -24,8 +24,8 @@ existing "Phone" field label is renamed to "Contact phone".
 
 ## The ticket root (beside the worktrees)
 
-`<root>\` holds `_tools\`, `_regression\` and `FRM-6630\`. `_regression\` is the shared suite of
-UI-driven regression scripts, run with `pwsh`. Its `README.md` index, as it stands:
+`<root>\` holds `_tools\`, `_regression\` and `FRM-6630\`. The `_regression\` folder has a
+`README.md` index, as it stands:
 
 ```
 | Test | Feature | Tickets | MinVersion | Kind |
@@ -54,7 +54,7 @@ box and asserts the Save button's enabled state through UI Automation.
 
 ## What to produce
 
-Write, in order, at most about 600 words in total:
+Write, in order, at most about 750 words in total (part D may be terse):
 
 A. Your step-3 notes (open items, behaviour baseline, impact list), the test plan, and your routing
    decision.
