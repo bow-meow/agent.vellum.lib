@@ -207,6 +207,16 @@
         8
       ],
       "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-04",
+      "skill": "723bfe1 regression suite (every ticket adds or updates a _regression test)",
+      "scores": [
+        8,
+        8,
+        8
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
     }
   ],
   "known_gaps": [
