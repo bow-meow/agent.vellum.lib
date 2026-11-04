@@ -12,8 +12,8 @@ record appears; a hardware-only bug, one against a sim panel. Smaller changes bu
 ticket beside that behaviour don't each need one.
 
 This is separate from the risk-based rules, which govern tests in product repos only. A label is
-still no risk there and gets no repo test; the ticket's regression test may still assert it. The
-no-risk removal rule never applies to `_regression\` paths.
+still no risk there and gets no repo test; the regression test asserts it only when the label is
+what the ticket exists for. The no-risk removal rule never applies to `_regression\` paths.
 
 ## Find before adding
 

@@ -79,7 +79,7 @@ tickets progress at different speeds; never block one on another.
      the change. A no-risk behaviour gets no repo test of any kind.
    - **Regression test:** whatever the risks, the `<root>\_regression\` test to update (its index
      Feature covers what the ticket changes) or else add: path, kind, what it asserts of the
-     ticket's behaviour. Read that `README.md` and
+     behaviour the ticket exists for, not each change it bundles. Read that `README.md` and
      [references/regression-suite.md](references/regression-suite.md) first.
 
    When verifying needs a script (repro, load driver, seeding), read
@@ -128,7 +128,7 @@ tickets progress at different speeds; never block one on another.
      sent back to be removed from the diff, not counted as coverage. A missing test on a no-risk
      behaviour fails nothing;
    - the ticket's regression test, one item: added or updated in `<root>\_regression\`, asserts
-     the ticket's behaviour, shown failing once, passed when you ran it (or listed `written, not
+     the behaviour the ticket exists for, shown failing once, passed when you ran it (or listed `written, not
      run`, with why); no duplicate of a feature the index covers (fold it into that test); its
      index row current;
    - the characterization tests from step 3 were added before the change and still pass, or each
@@ -294,7 +294,7 @@ Each of these is here because an agent was observed violating it, not because it
 | "Clear cause, bounded change, approved and tested: routine, the open items are just verification." | Observed in testing: written right after noting the change blocks its callers. A new wait on a caller's thread, a contract change or shared code goes to the advisor, whoever approved it and whenever it's due. |
 | "It has no tests, so there's nothing to break." | No tests means nothing will tell you it broke. Pin today's behaviour on the risky paths you touch before changing them. |
 | "More tests can't hurt." / "They're written and pass; leave them." | Each is upkeep. A test of a label, constant or log call fails only on a deliberate edit. Not in the plan, out of the diff. |
-| "It's only a label change, no regression test." | Every ticket gets one; here it asserts the label. |
+| "The ticket is only a label change, so no regression test." | Every ticket gets one; when the label is what the ticket exists for, it asserts the label. |
 | "It clicked through without errors, so it passes." | A test without an assertion verifies nothing. |
 | "The repro script is a tool QA needs, not production code; it can stay in the repo." | Not the fix and not its test, so it's a helper: it leaves the repo and is redone as `tools\<name>.ps1`, listed in `HANDOVER.md`. |
 | "It's hardcoded for this ticket, so it stays in `tools\`." | Observed in testing. Only a repro or seed stays; hardcoded values become parameters. |
