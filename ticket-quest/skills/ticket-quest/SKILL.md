@@ -79,8 +79,8 @@ tickets progress at different speeds; never block one on another.
      the change. A no-risk behaviour gets no repo test of any kind.
    - **Regression test:** whatever the risks, the `<root>\_regression\` test to update (its index
      Feature covers what the ticket changes) or else add: path, kind, what it asserts of the
-     behaviour the ticket exists for, not each change it bundles. Read that `README.md` and
-     [references/regression-suite.md](references/regression-suite.md) first.
+     behaviour the ticket exists for, not each change it bundles. **REQUIRED SUB-SKILL:**
+     `symmetry-regression-tests` ([its SKILL.md](../symmetry-regression-tests/SKILL.md)) first.
 
    When verifying needs a script (repro, load driver, seeding), read
    `<root>\_tools\README.md` now and note the shared script, by path, that does each job; only a
@@ -99,7 +99,7 @@ tickets progress at different speeds; never block one on another.
    goal; worktree path(s) and base; the files, lines, and evidence you found; the path of every
    module `CLAUDE.md` the task touches; the behaviour baseline, impact list and open items this
    task covers; the test plan, naming the tests to write and each behaviour that gets none; the
-   regression test line and [references/regression-suite.md](references/regression-suite.md);
+   regression test line, spelled out as that sub-skill says, and its SKILL.md path;
    the path of [references/engineering-guidelines.md](references/engineering-guidelines.md) for
    the engineer to follow; constraints (compatibility, conventions, generated
    artifacts to leave alone); each shared script from step 3 by path and exact command (never a
@@ -128,8 +128,8 @@ tickets progress at different speeds; never block one on another.
      sent back to be removed from the diff, not counted as coverage. A missing test on a no-risk
      behaviour fails nothing;
    - the ticket's regression test, one item: added or updated in `<root>\_regression\`, asserts
-     the behaviour the ticket exists for, shown failing once, passed when you ran it (or listed
-     `written, not run`, with why); no duplicate of a feature the index covers; its index row
+     the behaviour the ticket exists for, written, run and shown failing per the sub-skill (or
+     listed `written, not run`, with why); no duplicate of an indexed feature; its index row
      current;
    - the characterization tests from step 3 were added before the change and still pass, or each
      one the change deliberately alters is listed with its old and new behaviour;

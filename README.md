@@ -46,6 +46,12 @@ attempts. No human gate before implementation unless you ask it to quiz you: the
 maps the code first, and you answer the approach decisions it leaves open before anything is
 built. Commit and push stay on your say-so.
 
+Every ticket also adds or updates a test in a regression suite kept beside the worktrees. How those
+tests are written, run and shown failing is a second skill in the plugin,
+`symmetry-regression-tests`, which also loads on its own when you ask for a regression test or a
+run. It assumes a suite laid out like mine (`_regression\` with its own README, runner and setup
+steps).
+
 Shaped around my own setup — worktree root, branch prefix, and the worktree build-seeding steps are
 conventions you will want to change. The skill flags each one.
 
