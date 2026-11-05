@@ -82,7 +82,7 @@ test('build formats the body from whichever side passed, and lints its style', (
   const [a, b] = build(verified, cands, 'Opus 5.5');
   assert.equal(a.use, 'final');
   assert.equal(a.body, '🔎 **Review · change needed**\n\n**Issue:** Two saves race on BADGE_ID at line 212.\n\n'
-    + '**Impact:** Saves fail.\n\n**Fix:** Add a unique index.\n\n_AI review · Opus 5.5_');
+    + '**Impact:** Saves fail.\n\n**Fix:** Add a unique index.\n\n**Blocking:** yes\n\n_AI review · Opus 5.5_');
   assert.deepEqual(a.style, []);
   assert.equal(b.use, 'draft');
   assert.ok(b.body.startsWith('🔎 **Review · change needed**\n\n**Issue:** Rename `fooBar`'));
@@ -140,7 +140,7 @@ test('a medium finding posts what was not confirmed between the issue and the fi
     fix: 'Skip them.', confidence: 'medium', confidence_reason: 'Whether the import can run before owner sync.' }] };
   const [e] = build(verified, [{ id: 'c-1', issue: 'Import throws on ownerless badges.', fix: 'Skip them.' }], 'Opus 5.5');
   assert.equal(e.body, '🔎 **Review · change needed**\n\n**Issue:** Import throws on ownerless badges.\n\n'
-    + '**Impact:** Saves fail.\n\n**Not confirmed:** Whether the import can run before owner sync.\n\n**Fix:** Skip them.\n\n_AI review · Opus 5.5_');
+    + '**Impact:** Saves fail.\n\n**Not confirmed:** Whether the import can run before owner sync.\n\n**Fix:** Skip them.\n\n**Blocking:** yes\n\n_AI review · Opus 5.5_');
 });
 
 test('build names the area from the finding\'s dimension before the reviewer that raised it', () => {
@@ -153,7 +153,7 @@ test('build names the area from the finding\'s dimension before the reviewer tha
 test('build refuses a change finding with no impact, and lets a note go without one', () => {
   const at = severity => ({ findings: [{ id: 'f1', verdict: 'confirmed', severity, sources: ['c-1'], issue: 'Scope creep.', fix: '' }] });
   assert.throws(() => build(at('Low/nit'), [{ id: 'c-1', issue: 'Scope creep.' }], 'Opus 5.5'), /no impact/);
-  assert.equal(build(at('Info'), [{ id: 'c-1', issue: 'Scope creep.' }], 'Opus 5.5')[0].body, '🔎 **Review · note**\n\nScope creep.\n\n_AI review · Opus 5.5_');
+  assert.equal(build(at('Info'), [{ id: 'c-1', issue: 'Scope creep.' }], 'Opus 5.5')[0].body, '🔎 **Review · note**\n\nScope creep.\n\n**Blocking:** no\n\n_AI review · Opus 5.5_');
 });
 
 test('a high finding posts no not-confirmed line, even with a reason', () => {
@@ -190,7 +190,7 @@ test('CLI build --out writes one body file per finding', () => {
   assert.equal(out[0].id, 'f1');
   writeFileSync(join(dir, 'usage.json'), JSON.stringify({ c: 3000, verify: 1000 }));
   execFileSync('node', [script, 'build', join(dir, 'verified.json'), join(dir, 'cand-x.json'), '--out', dir, '--usage', join(dir, 'usage.json')]);
-  assert.match(readFileSync(join(dir, 'body-f1.txt'), 'utf8'), /^🔎 \*\*Review · note\*\*\n\nScope creep\.\n\n_AI review · .+_$/);
+  assert.match(readFileSync(join(dir, 'body-f1.txt'), 'utf8'), /^🔎 \*\*Review · note\*\*\n\nScope creep\.\n\n\*\*Blocking:\*\* no\n\n_AI review · .+_$/);
 });
 
 test('a fix verify corrected is posted, though it drops the wrong fix\'s identifiers', () => {

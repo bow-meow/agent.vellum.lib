@@ -24,9 +24,9 @@ The in-progress notice (`comment.mjs progress`) is `⏳ **Review in progress**`,
 ## Header
 
 A posted comment is the header, then the labelled lines from severity.md's Comment text, one per
-part, each label beside its text (`formatComment` puts a blank line between them), then the footer
-`_AI review · <MODEL>_`. A note or a follow-up reply is one unlabelled sentence between header and
-footer.
+part, each label beside its text (`formatComment` puts a blank line between them), then
+`**Blocking:** yes|no`, then the footer `_AI review · <MODEL>_`. A note is one unlabelled sentence,
+then `**Blocking:** no` and the footer; a follow-up reply is one unlabelled sentence and the footer.
 
 Header line: `<icon> **<area> · <change needed | note>**`. The area comes from the finding's
 `dimension` when it names a checklist (correctness 🐛, tests-history 🧪, design-quality 🏗️,
@@ -45,6 +45,8 @@ raised, plus an even share of verify, recheck and any reviewer with no finding.
 **Impact:** edits to a property sheet imported that way never rebuild the row, so the build keeps stale output.
 
 **Fix:** add a test importing `$(ProjectDir)$(Configuration).$(Platform).props` and assert the file is returned.
+
+**Blocking:** yes
 
 _AI review · Opus 5.5_
 ```

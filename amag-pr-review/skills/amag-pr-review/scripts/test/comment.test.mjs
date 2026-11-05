@@ -51,6 +51,14 @@ test('formatComment puts a multi-line part, such as a code snippet, below its la
     `🔎 **Review · change needed**\n\n**Issue:** i\n\n**Impact:** b\n\n**Fix:**\n\n${fix}\n\n_AI review · m_`);
 });
 
+test('formatComment puts the blocking verdict above the footer when asked: yes for a change, no for a note', () => {
+  assert.equal(formatComment({ status: 'change', model: 'm', issue: 'i', impact: 'b', fix: 'f', blocking: true }),
+    '🔎 **Review · change needed**\n\n**Issue:** i\n\n**Impact:** b\n\n**Fix:** f\n\n**Blocking:** yes\n\n_AI review · m_');
+  assert.equal(formatComment({ status: 'note', model: 'm', issue: 'Scope creep.', blocking: true }),
+    '🔎 **Review · note**\n\nScope creep.\n\n**Blocking:** no\n\n_AI review · m_');
+  assert.doesNotMatch(formatComment({ status: 'change', model: 'm', issue: 'i', impact: 'b' }), /Blocking/);
+});
+
 test('formatComment leaves a note or follow-up unlabelled', () => {
   assert.equal(formatComment({ status: 'note', model: 'Opus 5.5', area: ['📄', 'Docs'], issue: 'Scope creep.' }), '📄 **Docs · note**\n\nScope creep.' + FOOT);
 });

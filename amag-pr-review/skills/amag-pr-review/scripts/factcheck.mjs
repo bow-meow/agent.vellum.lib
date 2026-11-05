@@ -96,7 +96,7 @@ export function build(verified, candidates, model, usage = null) {
     const reviewers = reviewersById.get(id);
     const tokens = tokensById.get(id) ?? null;
     const area = areaOf(dimension, ...reviewers);
-    const body = formatComment({ status, model, area, issue: chosen.issue, impact: chosen.impact, unconfirmed, fix: chosen.fix });
+    const body = formatComment({ status, model, area, issue: chosen.issue, impact: chosen.impact, unconfirmed, fix: chosen.fix, blocking: true });
     return { id, status, use, tokens, reviewers, confidence, confidenceReason, missing: r.missing, certaintyDropped: r.certaintyDropped, style: styleIssues(body), body };
   });
 }

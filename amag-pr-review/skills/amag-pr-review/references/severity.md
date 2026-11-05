@@ -50,6 +50,8 @@ A posted comment is a header a script builds (posting.md), then these labelled l
    that kept it from high.
 4. `**Fix:**` the suggested fix: one sentence, or a short code snippet (a snippet drops below its
    label). Left out only for an Info finding with nothing to change.
+5. `**Blocking:** yes` for a change, `no` for a note, from the status table above. `factcheck.mjs`
+   adds it to every finding, notes included; nobody writes it.
 
 Short and sweet: each part is one sentence within a word budget, a code span counting as one word.
 Issue 30, Impact 20, Not confirmed 15, Fix 25 (a snippet below its label isn't counted). Name the

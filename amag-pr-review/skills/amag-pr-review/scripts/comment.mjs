@@ -69,10 +69,10 @@ export function stripHeader(text) {
   return s.replace(OLD_HEADER_RE, '').replace(LEGACY_RE, '').trim();
 }
 
-export function formatComment({ status, model, area = NO_AREA, issue, impact = '', unconfirmed = '', fix = '' }) {
+export function formatComment({ status, model, area = NO_AREA, issue, impact = '', unconfirmed = '', fix = '', blocking = false }) {
   if (!STATUSES.includes(status)) throw new Error(`unknown status "${status}"`);
   const head = header(status, area);
-  const foot = footer(model);
+  const foot = blocking ? `**Blocking:** ${status === 'change' ? 'yes' : 'no'}\n\n${footer(model)}` : footer(model);
   const text = v => String(v ?? '').trim();
   const labelled = [['Impact', impact], ['Not confirmed', unconfirmed], ['Fix', fix]].filter(([, v]) => text(v));
   // A note or a follow-up reply is a single statement, so it goes in without labels.
