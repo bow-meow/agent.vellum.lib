@@ -3,6 +3,8 @@
 ## Look for
 - Subscriptions without `takeUntil`/`async` pipe/`DestroyRef` → leaks on component destroy.
 - `any` or non-null assertions `!` hiding real nulls.
+- A test reaching a class's private members by `as unknown as` a hand-written interface: a renamed
+  member still compiles and fails only at runtime. Bracket access (`obj['_field']`) is type-checked.
 - Change detection: mutating inputs in `OnPush` components; heavy work in templates or getters.
 - Race between overlapping HTTP requests (use `switchMap` for search-as-you-type).
 - `innerHTML` / `bypassSecurityTrust*` with untrusted data.
