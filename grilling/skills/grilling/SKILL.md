@@ -27,4 +27,12 @@ Each round the user answers reshapes the tree: settled decisions push the fronti
 
 Finding _facts_ is your job, never the user's. When a frontier question needs a fact from the environment (filesystem, tools, etc.), dispatch a sub-agent with a fresh context window to find it; don't ask the user for anything you could look up yourself. Don't block on it: a running exploration is an unsettled prerequisite, so only the questions downstream of it wait for the sub-agent to report; ask the rest of the frontier now. The _decisions_ are the user's: put each to them and wait.
 
+**Resolve the user's local checkout before exploring.** Work here lives in per-ticket worktrees under `C:\repos\ticket-work`, so a pasted ticket key or PR link names a checkout you must find, never one to clone or read from `main`:
+
+- Ticket key (`SYM-1234`, any case): the folder `C:\repos\ticket-work\<KEY>` (a suffixed sibling like `SYM-1234-j2` is a second worktree for the same ticket). Its git repos are the subfolders holding a `.git`; skip `install`, `build` and symlinks.
+- Bitbucket PR URL (`bitbucket.org/<ws>/<repo>/pull-requests/<id>`): read the PR's source branch and ticket key from Bitbucket, then pick the `C:\repos\ticket-work` worktree whose `git -C <dir> branch --show-current` equals it.
+- No match: say so and explore read-only from what you can reach. Never create a checkout uninvited, and never stash or discard a dirty worktree.
+
+Point every exploring sub-agent at the resolved path. Ticket folders also hold the user's own plans, handovers and `review-findings.json`; read those before asking the user about intent.
+
 The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed. Do not act on it until the user confirms you have reached a shared understanding.

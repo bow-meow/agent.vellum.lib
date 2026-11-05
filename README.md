@@ -99,7 +99,7 @@ Needs Node 18+ and ImageMagick 7 (`magick`); video also needs FFmpeg and ffprobe
 ### `grilling`
 Interviews you about a plan, decision or idea until nothing is left assumed. It maps the decisions
 as a tree and asks every question it can answer the prerequisites for in one round, each with a
-recommended answer, looking up facts itself rather than asking you for them. Copied unchanged from
+recommended answer, looking up facts itself rather than asking you for them. Adapted from
 [Matt Pocock's skills](https://github.com/mattpocock/skills). MIT licensed.
 
 ### `domain-modeling`
