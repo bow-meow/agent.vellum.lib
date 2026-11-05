@@ -43,6 +43,21 @@
       "name": "visual-inspection",
       "source": "./visual-inspection",
       "description": "Inspect screenshots and local screen recordings on a small token budget — compare before/after UI screenshots, crop and zoom the changed regions, sample video frames, and find scene changes or static stretches, all prepared locally with ImageMagick and FFmpeg."
+    },
+    {
+      "name": "grilling",
+      "source": "./grilling",
+      "description": "Stress-test a plan, decision or idea by being interviewed about it — questions asked in rounds over a tree of decisions, each with a recommended answer. From Matt Pocock's skills."
+    },
+    {
+      "name": "domain-modeling",
+      "source": "./domain-modeling",
+      "description": "Build and sharpen a project's domain model while you design — challenge fuzzy or conflicting terms, keep GLOSSARY.md current as terms are settled, and record ADRs for hard-to-reverse decisions. From Matt Pocock's skills."
+    },
+    {
+      "name": "grill-with-docs",
+      "source": "./grill-with-docs",
+      "description": "Run grilling and domain-modeling together with one command, so the interview about a plan also writes the glossary and ADRs as you go. Needs both plugins. From Matt Pocock's skills."
     }
   ]
 }

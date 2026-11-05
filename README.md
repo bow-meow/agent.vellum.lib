@@ -94,6 +94,25 @@ budget of one overview and two detail images.
 Needs Node 18+ and ImageMagick 7 (`magick`); video also needs FFmpeg and ffprobe. Run the helper's
 `doctor` command to check what it found. It does not capture the screen itself.
 
+### `grilling`
+Interviews you about a plan, decision or idea until nothing is left assumed. It maps the decisions
+as a tree and asks every question it can answer the prerequisites for in one round, each with a
+recommended answer, looking up facts itself rather than asking you for them. Copied unchanged from
+[Matt Pocock's skills](https://github.com/mattpocock/skills). MIT licensed.
+
+### `domain-modeling`
+Keeps a project's vocabulary and decisions written down while you design. It challenges terms
+that are vague or that conflict with `GLOSSARY.md`, tests them against invented edge cases and the
+code, updates the glossary as each term is settled, and offers an ADR only for decisions that are
+hard to reverse, surprising, and the result of a real trade-off. Copied unchanged from
+[Matt Pocock's skills](https://github.com/mattpocock/skills). MIT licensed.
+
+### `grill-with-docs`
+Starts `grilling` and `domain-modeling` together, so the interview also leaves a glossary and ADRs
+behind. Run it with `/grill-with-docs`; it never loads on its own. Needs both of those plugins
+installed. From [Matt Pocock's skills](https://github.com/mattpocock/skills), with the two skills it
+loads renamed to their plugin names. MIT licensed.
+
 ## Layout
 
 ```

@@ -1,0 +1,8 @@
+{
+  "name": "grill-with-docs",
+  "description": "Run grilling and domain-modeling together with one command, so the interview about a plan also writes the glossary and ADRs as you go. Needs both plugins. From Matt Pocock's skills.",
+  "author": {
+    "name": "bow-meow"
+  },
+  "license": "MIT"
+}

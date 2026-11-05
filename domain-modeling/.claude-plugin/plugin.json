@@ -1,0 +1,8 @@
+{
+  "name": "domain-modeling",
+  "description": "Build and sharpen a project's domain model while you design — challenge fuzzy or conflicting terms, keep GLOSSARY.md current as terms are settled, and record ADRs for hard-to-reverse decisions. From Matt Pocock's skills.",
+  "author": {
+    "name": "bow-meow"
+  },
+  "license": "MIT"
+}
