@@ -1,0 +1,91 @@
+{
+  "id": "ord-7714-discount-code-charset",
+  "summary": "A character-set rule on a web page whose regression test needs shared setup; the suite has Area and Requires headers, a runner that installs the worktree's database, and a proof script. The engineer's test starts the apps and logs in itself, has no Area, checks only a refused value, and was run directly with no failure proof.",
+  "criteria": [
+    {
+      "id": "plan-two-sided",
+      "text": "Before the build (step-3 notes, test plan or the engineer prompt), says the regression test must assert both sides of the rule through the UI: a refused code (e.g. SUMMER!) shows the error and disables Save, and an accepted code (e.g. SUMMER-25) shows no error with Save enabled."
+    },
+    {
+      "id": "plan-requires-area",
+      "text": "Before the build, says the test declares its setup with the Requires header (the StoreAdmin profile, or its steps) rather than starting the apps or logging in itself, and gives an Area path that reuses the existing 'Store admin > Checkout settings' branch (e.g. 'Store admin > Checkout settings > Pricing tab')."
+    },
+    {
+      "id": "gate-one-sided",
+      "text": "At the completion gate, rejects the engineer's regression test for asserting only the refused value and sends it back to also assert that a valid code is accepted (no error, Save enabled)."
+    },
+    {
+      "id": "gate-setup-header",
+      "text": "At the completion gate, rejects the test's own Start-AppStack call and admin login in favour of Requires (StoreAdmin), and flags the missing Area header (asking for one under 'Store admin > Checkout settings')."
+    },
+    {
+      "id": "gate-runner",
+      "text": "At the completion gate, does not accept the engineer's direct 'powershell -File' run as the regression result: the test must pass through Run-Regression.ps1 against the worktree's build (-BinDir), run by the orchestrator."
+    },
+    {
+      "id": "gate-proofs",
+      "text": "At the completion gate or in what it runs itself, requires the test to be shown failing once for each side of the rule (e.g. two proof.ps1 runs: a valid code given as one that must be refused, and a refused code given as one that must be accepted), because the engineer showed none."
+    }
+  ],
+  "pass": {
+    "mean": 4.5,
+    "min": 4
+  },
+  "history": [
+    {
+      "date": "2026-11-05",
+      "skill": "719c198 baseline (regression suite before Requires/Area/runner/proof guidance)",
+      "scores": [
+        4,
+        4,
+        3
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "gate-setup-header and gate-proofs 0 in all three runs"
+    },
+    {
+      "date": "2026-11-05",
+      "skill": "uncommitted v1: regression-suite.md on Requires, Area, runner, per-side proofs; gate line points to it",
+      "scores": [
+        4,
+        5,
+        4
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "not landed: send-backs named the rule (\"the gaps above\") instead of the Requires profile and Area path"
+    },
+    {
+      "date": "2026-11-05",
+      "skill": "uncommitted v2: v1 plus prompts and send-backs spell out values, Requires, Area and commands",
+      "scores": [
+        4,
+        6,
+        4
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "passes; two runs chose Requires StoreAdminView alone instead of the StoreAdmin profile"
+    },
+    {
+      "date": "2026-11-05",
+      "skill": "uncommitted split: regression how-to moved to the symmetry-regression-tests skill; ticket-quest keeps the rule, the sub-skill link and the gate",
+      "scores": [
+        5,
+        4,
+        5
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "passes on the two regression scenarios only; full suite not yet run"
+    }
+  ],
+  "known_gaps": [
+    {
+      "criteria": [
+        "gate-one-sided",
+        "gate-setup-header"
+      ],
+      "seen": "2026-11-05, runs of v1, v2 and the split",
+      "what": "At the gate the send-back points back to the engineer prompt (\"the rework in B\", \"the gaps above\") instead of restating each value with what it shows, the Requires profile and the Area path.",
+      "tried": "v2 and the split add a recipe: prompts and every send-back spell the test out as its concrete parts. It raised the scores but the back-reference persists in 1-2 of 3 runs."
+    }
+  ]
+}

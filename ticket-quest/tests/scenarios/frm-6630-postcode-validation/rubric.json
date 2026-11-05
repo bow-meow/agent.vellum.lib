@@ -52,6 +52,39 @@
         5
       ],
       "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-05",
+      "skill": "uncommitted v1 (see ord-7714)",
+      "scores": [
+        4,
+        4,
+        3
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "not landed: prompts said \"both sides\" without naming Save enabled state; one run added a new test instead of extending Test-CustomerFormValidation.ps1"
+    },
+    {
+      "date": "2026-11-05",
+      "skill": "uncommitted v2 (see ord-7714)",
+      "scores": [
+        3,
+        6,
+        5
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "not landed: min 3 < 4; run 1 again added a new test (\"covers email validation, not postcode\") instead of extending the existing one"
+    },
+    {
+      "date": "2026-11-05",
+      "skill": "uncommitted split (see ord-7714)",
+      "scores": [
+        5,
+        6,
+        6
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "passes; the find-before-adding line (a new rule on a tested form extends that test) ended the new-file miss"
     }
   ]
 }
