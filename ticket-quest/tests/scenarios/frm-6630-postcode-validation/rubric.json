@@ -85,6 +85,28 @@
       ],
       "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
       "note": "passes; the find-before-adding line (a new rule on a tested form extends that test) ended the new-file miss"
+    },
+    {
+      "date": "2026-11-05",
+      "skill": "uncommitted queue change (see ord-7714)",
+      "scores": [
+        4,
+        6,
+        6
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "passes; run 1 again added a new test instead of extending Test-CustomerFormValidation.ps1"
+    },
+    {
+      "date": "2026-11-05",
+      "skill": "queue change v2: the orchestrator, not the engineer, queues the run and a proof per side; send-backs never point back to the prompt, name the Requires profile and write the Area path in full",
+      "scores": [
+        6,
+        6,
+        5
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "passes; run 3 gate-no-assert 0 (send-back did not name Save enabled state)"
     }
   ]
 }

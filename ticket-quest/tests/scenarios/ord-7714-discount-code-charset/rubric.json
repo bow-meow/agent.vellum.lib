@@ -1,6 +1,6 @@
 {
   "id": "ord-7714-discount-code-charset",
-  "summary": "A character-set rule on a web page whose regression test needs shared setup; the suite has Area and Requires headers, a runner that installs the worktree's database, and a proof script. The engineer's test starts the apps and logs in itself, has no Area, checks only a refused value, and was run directly with no failure proof.",
+  "summary": "A character-set rule on a web page whose regression test needs shared setup; the suite has Area and Requires headers, a runner that installs the worktree's database, and fail proofs as runner runs with -TestArgs. The engineer's test starts the apps and logs in itself, has no Area, checks only a refused value, and was run directly with no failure proof.",
   "criteria": [
     {
       "id": "plan-two-sided",
@@ -24,7 +24,7 @@
     },
     {
       "id": "gate-proofs",
-      "text": "At the completion gate or in what it runs itself, requires the test to be shown failing once for each side of the rule (e.g. two proof.ps1 runs: a valid code given as one that must be refused, and a refused code given as one that must be accepted), because the engineer showed none."
+      "text": "At the completion gate or in what it runs itself, requires the test to be shown failing once for each side of the rule (e.g. two runner runs with -TestArgs: a valid code given as one that must be refused, and a refused code given as one that must be accepted), because the engineer showed none."
     }
   ],
   "pass": {
@@ -75,6 +75,28 @@
       ],
       "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
       "note": "passes on the two regression scenarios only; full suite not yet run"
+    },
+    {
+      "date": "2026-11-05",
+      "skill": "uncommitted on 801cc76: runs queue behind a machine-wide lock; ticket-quest step 5 queues the run, gate reads written, queued; engineer no longer runs it; proofs are runner runs with -TestArgs",
+      "scores": [
+        5,
+        4,
+        3
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "not landed: step 5 does not say the orchestrator queues it, so run 3 sent the engineer to run it with \"a fail proof\" (gate-runner, gate-proofs 0); gate-setup-header still 0 in all three (Area path not written out, or StoreAdminView for StoreAdmin)"
+    },
+    {
+      "date": "2026-11-05",
+      "skill": "queue change v2: the orchestrator, not the engineer, queues the run and a proof per side; send-backs never point back to the prompt, name the Requires profile and write the Area path in full",
+      "scores": [
+        6,
+        6,
+        6
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind",
+      "note": "passes; every criterion met in all three runs"
     }
   ],
   "known_gaps": [
@@ -85,7 +107,8 @@
       ],
       "seen": "2026-11-05, runs of v1, v2 and the split",
       "what": "At the gate the send-back points back to the engineer prompt (\"the rework in B\", \"the gaps above\") instead of restating each value with what it shows, the Requires profile and the Area path.",
-      "tried": "v2 and the split add a recipe: prompts and every send-back spell the test out as its concrete parts. It raised the scores but the back-reference persists in 1-2 of 3 runs."
+      "tried": "v2 and the split add a recipe: prompts and every send-back spell the test out as its concrete parts. It raised the scores but the back-reference persists in 1-2 of 3 runs.",
+      "status": "met in all three runs of queue change v2 (2026-11-05); keep watching"
     }
   ]
 }

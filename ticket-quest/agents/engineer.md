@@ -69,8 +69,9 @@ Return these headings, every one, even when the answer is "none":
 - **Checks run** — each build/test command and its environment.
 - **Results** — pass/fail per check, with the relevant output pasted for anything that failed or
   that you could not run.
-- **Regression test** — its path, added or updated, what it asserts, the exit code of its run on
-  the change and of its failing run against the unchanged behaviour.
+- **Regression test** — its path, added or updated, what it asserts, and the runner commands for
+  its run and each fail proof. Don't run it: the machine fits one run at a time, so the
+  orchestrator queues them.
 - **Tools made** — each script added or changed, by its path (shared folder or ticket `tools\`),
   what it does and how to run it.
 - **Risks** — what remains uncertain or untested.

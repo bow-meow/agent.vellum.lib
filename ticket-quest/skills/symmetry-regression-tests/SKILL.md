@@ -48,13 +48,17 @@ is asserted from both sides: a value it refuses is refused, and a value it accep
 from a clean field. A test of one side passes against a build that refuses everything, or nothing.
 
 Whoever specifies or reviews the test (an engineer prompt, a send-back) spells it out as its
-concrete parts, never as a rule name ("both sides", "per the README"):
+concrete parts, never as a rule name ("both sides", "per the README") or a pointer to an earlier
+message ("as in the prompt", "the gaps above"):
 
 - each value with what the user sees for it: "`SUMMER!`: inline error shown, Save disabled;
   `SUMMER-25`: no error, Save enabled";
-- the `Requires` profile or steps by name, in place of whatever the test starts or logs into itself;
-- the `Area` path, written out under the index's existing branch;
-- the runner and proof commands below.
+- the `Requires` profile by name when one covers the setup (a profile over a single step it
+  contains), in place of whatever the test starts or logs into itself;
+- the `Area` path in full, e.g. "`Area: Store admin > Checkout settings > Pricing tab`" under the
+  index's existing branch; "add an Area" is not enough;
+- the runner commands below, for the run and each proof, which whoever is accountable runs: a
+  send-back asks the engineer to fix the test, never to run it.
 
 ## Writing it
 
@@ -88,12 +92,21 @@ installs that worktree's database and restores the user's afterwards. A direct `
 run of a test is no result: it skips the install and the setup steps. Whoever is accountable for the
 test runs it; an engineer's own run is evidence to check, not the result.
 
+**One run at a time.** The machine has one SQL instance, one Symmetry stack and one desktop, so the
+runner takes a machine-wide lock and a second run waits, shown as queued, until the first has
+restored the databases. Don't run several by hand to save time, and don't stop a queued run to jump
+it. A run is one build: tests of tickets in different worktrees are a run each, queued; tests on the
+same build go in one run (`-Name a,b`). When working several tickets, write each ticket's test as its
+work finishes, start its runs, and carry on with the other tickets while they queue: the ticket isn't
+verified until its runs are back (`written, queued` until then).
+
 The test counts only after it exited 1 once against the unchanged behaviour: the base build, or the
-test's expectation inverted when the base build can't run, through
-`.\runs\proof.ps1 -Test <test> -TestArgs '-<Param> "<value>"'` (double quotes inside: `-File` keeps
-single quotes as part of the value). A test of both sides of a rule needs a proof per side: a value
-it must refuse given as accepted, and the reverse. Check the logged values, then that the failure is
-the assertion the proof aims at. Exit 2 is the environment, not a failure proof.
+test's expectation inverted when the base build can't run, as its own queued run:
+`.\Run-Regression.ps1 -BinDir <worktree bin> -Name <test> -TestArgs '-<Param> "<value>"'` (double
+quotes inside: `-File` keeps single quotes as part of the value). A test of both sides of a rule
+needs a proof per side: a value it must refuse given as accepted, and the reverse. Check the logged
+values, then that the failure is the assertion the proof aims at. Exit 2 is the environment, not a
+failure proof.
 
 When this machine can't run it (no test database, credentials or sim image), it is still written,
 and reported as `written, not run`, with why and the command to run it.
@@ -114,5 +127,6 @@ and reported as `written, not run`, with why and the command to run it.
 | The test starts the apps or logs in itself | `Requires:` the README's profile or steps |
 | Only the refused value is asserted | Assert an accepted value too, each from a clean field |
 | "Ran it, exit 0" from `powershell -File` | `Run-Regression.ps1 -BinDir <worktree bin> -Name <test>`, page open |
+| Several tickets' runs started by hand at once, or a ticket's lane held waiting for its run | Start each run and let the lock queue them; carry on with other tickets meanwhile |
 | One proof for a two-sided test, or a proof that passed | A proof per side; read the logged values; it must exit 1 on its assertion |
 | A send-back that says "fix the gaps above" | Name each value and what it shows, the Requires, the Area path, the commands |

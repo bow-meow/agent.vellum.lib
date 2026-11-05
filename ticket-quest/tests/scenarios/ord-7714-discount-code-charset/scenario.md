@@ -36,8 +36,8 @@ stands:
 >
 > Tests run through `.\Run-Regression.ps1 -BinDir <worktree>\bin` (it installs that build's database
 > and restores yours afterwards); `.\Start-RegressionUi.ps1` opens the page that shows the run.
-> `.\runs\proof.ps1 -Test <test> -TestArgs '<test-only args>'` runs one test with arguments that
-> should make it fail, on the same freshly installed database.
+> One run works at a time on the machine: a second waits, queued, behind a lock. A fail proof is a
+> run of one test with arguments that should make it fail: `-Name <test> -TestArgs '<test-only args>'`.
 >
 > | Test | Feature | Area | Requires | Tickets | MinVersion |
 > |---|---|---|---|---|---|

@@ -111,8 +111,8 @@ tickets progress at different speeds; never block one on another.
    engineer per ticket at a time; never two mutating the same files.
 5. **Verify the report yourself** before accepting it: `git status` and `git diff --stat` in each
    worktree, read the diff, run the build and the targeted tests (or read the pasted output
-   critically), reproduce the original bug where possible. Run the regression test yourself: exit 0
-   on the change, exit 1 against the unchanged behaviour. Revert regenerated artifacts so the diff
+   critically), reproduce the original bug where possible. You, not the engineer, queue its
+   regression run and a proof per side. Revert regenerated artifacts so the diff
    is only the real change, then update `HANDOVER.md`. For significant or risky work, dispatch
    **one fresh engineer** to
    review the diff — never the one that wrote it. A gap goes back to step 4 with the specific gap
@@ -128,9 +128,9 @@ tickets progress at different speeds; never block one on another.
      sent back to be removed from the diff, not counted as coverage. A missing test on a no-risk
      behaviour fails nothing;
    - the ticket's regression test, one item: added or updated in `<root>\_regression\`, asserts
-     the behaviour the ticket exists for, written, run and shown failing per the sub-skill (or
-     listed `written, not run`, with why); no duplicate of an indexed feature; its index row
-     current;
+     the behaviour the ticket exists for, written per the sub-skill, its queued runs
+     back as expected (till then `written, queued`; `written, not run` with why); no
+     duplicate of an indexed feature; index row current;
    - the characterization tests from step 3 were added before the change and still pass, or each
      one the change deliberately alters is listed with its old and new behaviour;
    - for each risk, at least one test reaches the change through the entry point it is used by (the
