@@ -1,7 +1,7 @@
 ---
 name: engineer
 description: Primary engineer for ticket-quest. Use for a bounded implementation task inside a ticket worktree — feature work, bug fixes, refactoring, debugging, test writing, resolving build/test failures, multi-file changes, or a fresh-eyes review of another engineer's diff. Not for orchestration, and not for architecture decisions.
-model: opus
+model: sonnet
 disallowedTools: Agent
 ---
 

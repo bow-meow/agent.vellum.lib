@@ -71,6 +71,16 @@
         6
       ],
       "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
+    },
+    {
+      "date": "2026-11-05",
+      "skill": "8b9b932 + model routing (Haiku scout, Sonnet engineer by default, Opus for hard or security-sensitive work; routing table moved to references/model-routing.md) (passed full suite)",
+      "scores": [
+        6,
+        6,
+        6
+      ],
+      "grader": "grader.md (strict), Opus; runs on Sonnet; blind"
     }
   ]
 }

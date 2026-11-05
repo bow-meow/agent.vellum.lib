@@ -39,9 +39,11 @@ article, when `C:\repos\articles\WRITING.md` exists; that file holds the rules a
 script refuses duplicates.
 
 ### `ticket-quest`
-Runs assigned Jira tickets end to end on three model roles: a Sonnet orchestrator that owns the
-plan and verifies every claim, an Opus engineer that does the building in an isolated git worktree
-per ticket, and a Fable advisor consulted only for architecture, hard diagnosis, or after two failed
+Runs assigned Jira tickets end to end, routing each task to the cheapest model that can do it: a
+Sonnet orchestrator that owns the plan and verifies every claim, a Haiku scout for targeted
+exploration and running builds and tests, a Sonnet engineer that does the building in an isolated
+git worktree per ticket (Opus for architectural, shared-code, hard-to-diagnose and security-sensitive
+changes), and a Fable advisor consulted only for architecture, hard diagnosis, or after two failed
 attempts. No human gate before implementation unless you ask it to quiz you: then a scan agent
 maps the code first, and you answer the approach decisions it leaves open before anything is
 built. Commit and push stay on your say-so.

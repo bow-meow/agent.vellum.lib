@@ -7,20 +7,30 @@ description: >-
 # ticket-quest — Jira tickets to a verified implementation
 
 Run 1..N assigned Jira tickets end to end: an isolated git worktree per ticket, bounded engineering
-tasks delegated to an Opus engineer, a Fable advisor consulted only when the evidence calls for it,
-and you verifying every claim before a ticket is called done. Commit only when the user says so.
-One ticket or ten, the disciplines are the same; with one you run one lane.
+tasks delegated to the cheapest model that can do them, a Fable advisor consulted only when the
+evidence calls for it, and you verifying every claim before a ticket is called done. Commit only
+when the user says so. One ticket or ten, the disciplines are the same; with one you run one lane.
 
-**Sonnet owns. Opus builds. Fable advises.** Delegate execution, not ownership: you stay responsible
-for the plan, the progress, the verification, and the decision that the work is complete.
+**Sonnet owns and builds. Haiku looks and runs. Opus takes the hard and the sensitive. Fable
+advises.** Delegate execution, not ownership: you stay responsible for the plan, the progress, the
+verification, and the decision that the work is complete.
 
 ## Roles
 
 | Role | Who | Does | Does not |
 |---|---|---|---|
-| Orchestrator | You, the main session, on Sonnet. A skill's `model:` lasts one turn, so if your system prompt names another model, ask the user to run `/model sonnet` and wait. | Understands the goal; searches and reads; tracks the plan across tickets; delegates bounded work; integrates; verifies; decides "done". Simple mechanical edits and config changes. | Substantial implementation. |
-| Engineer | `ticket-quest:engineer` (Opus) | Features, bug fixes, refactors, debugging, tests, build/test failures, multi-file changes; a fresh-eyes review of another engineer's diff. | Orchestrate; commit; decide architecture. |
+| Orchestrator | You, the main session, on Sonnet. A skill's `model:` lasts one turn, so if your system prompt names another model, ask the user to run `/model sonnet` and wait. | Understands the goal; plans; tracks the plan across tickets; delegates bounded work; integrates; verifies; decides "done". Simple mechanical edits and config changes. | Substantial implementation. |
+| Scout | `ticket-quest:scout` (Haiku) | Targeted exploration (find files, symbols, callers, dependencies); running builds and tests and reporting the output verbatim. | Edit anything; judge whether a result is good enough. |
+| Engineer | `ticket-quest:engineer` (Sonnet by default; Opus when [model routing](#model-routing) says so) | Features, bug fixes, refactors, debugging, tests, build/test failures, multi-file changes; a fresh-eyes review of another engineer's diff. | Orchestrate; commit; decide architecture. |
 | Advisor | `ticket-quest:advisor` (Fable) | Architecture, design review, hard diagnosis, ambiguity, trade-offs, disagreement between analyses, review of risky cross-cutting change. | Routine work; editing the repo. |
+
+## Model routing
+
+Before the first delegation, read [references/model-routing.md](references/model-routing.md): it
+says which model takes which task. The engineer defaults to Sonnet and you set the model on each
+dispatch. A few risk-free lines in one file you make yourself; a scout only reports, so its claims
+still go through the Iron Law; and after one Sonnet attempt and one corrective attempt the task
+goes to Opus or the advisor, never a third try on the same model.
 
 ## The Iron Law
 
@@ -55,7 +65,8 @@ tickets progress at different speeds; never block one on another.
    [Handover and tools](#handover-and-tools)).
 3. **Establish context yourself** — or, when the user asked to be quizzed, through
    [Quiz mode](#quiz-mode). Search, read the relevant sections, locate the implementation,
-   note exact files and lines, prior attempts, and what QA saw. When a search hit sits under a
+   note exact files and lines, prior attempts, and what QA saw. A sweep across many files, callers
+   or naming conventions goes to a scout; you read what it finds and own the conclusion. When a search hit sits under a
    folder that has its own `CLAUDE.md`, read that file before opening anything else there: a
    worktree outside the launch repo gets no automatic injection of nested `CLAUDE.md` files, so
    nothing loads it for you (see [Module maps](#module-maps)). Move the ticket to In Development
@@ -92,7 +103,8 @@ tickets progress at different speeds; never block one on another.
    a deadline doesn't make a change routine: they say the idea was liked, not what it does to its
    callers. Only the build waits for the advisor: the characterization task (step 4) goes to the
    engineer now, either way: it tests today's code, which no design decision changes.
-4. **Delegate a bounded task to the engineer.** When the test plan names a risky path with no
+4. **Delegate a bounded task to the engineer,** on the model [model routing](#model-routing)
+   gives it. When the test plan names a risky path with no
    test, the first task on the ticket is the characterization task: tests against the unchanged
    code pinning each of those behaviours, done when they pass on the base branch. The change comes
    next, and keeps them passing or lists each one it deliberately alters. The prompt carries: the
@@ -111,11 +123,14 @@ tickets progress at different speeds; never block one on another.
    engineer per ticket at a time; never two mutating the same files.
 5. **Verify the report yourself** before accepting it: `git status` and `git diff --stat` in each
    worktree, read the diff, run the build and the targeted tests (or read the pasted output
-   critically), reproduce the original bug where possible. You, not the engineer, queue its
+   critically; a long or noisy run can go to a scout, whose output you then read yourself),
+   reproduce the original bug where possible. You, not the engineer, queue its
    regression run and a proof per side. Revert regenerated artifacts so the diff
    is only the real change, then update `HANDOVER.md`. For significant or risky work, dispatch
    **one fresh engineer** to
-   review the diff — never the one that wrote it. A gap goes back to step 4 with the specific gap
+   review the diff — never the one that wrote it, on the model the routing table gives that diff
+   (Opus for security-sensitive code). A trivial edit gets no reviewer agent: your own read is the
+   review. A gap goes back to step 4 with the specific gap
    named; a trigger goes to step 6.
 6. **Escalate to the advisor** with the [advisor request](#advisor-request), with the
    characterization task already delegated: the advisor holds up the build, not that task. Convert
