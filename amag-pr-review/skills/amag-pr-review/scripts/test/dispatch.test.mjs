@@ -60,8 +60,27 @@ test('roster over 1000 runs the core set per chunk and ticket-fit, docs and styl
   const n = names(list);
   for (const c of [1, 2]) for (const r of ['correctness', 'regression', 'concurrency-races', 'resources-performance', 'sql', 'tests-design', 'security'])
     assert.ok(n.includes(`${r}-${c}`), `${r}-${c}`);
-  for (const r of ['ticket-fit', 'docs', 'styles']) assert.equal(n.filter(x => x === r).length, 1, r);
-  assert.ok(!n.some(x => /^(ticket-fit|claims|docs|styles)-\d/.test(x)));
+  for (const r of ['ticket-fit', 'approach', 'docs', 'styles']) assert.equal(n.filter(x => x === r).length, 1, r);
+  assert.ok(!n.some(x => /^(ticket-fit|claims|approach|docs|styles)-\d/.test(x)));
+});
+
+test('approach runs once from 200 changed lines at medium and high with a ticket or PR description', () => {
+  const base = { changed: 200, ticket: true, prDescription: true };
+  for (const level of ['medium', 'high']) assert.equal(names(roster(base, 0, level)).filter(x => x === 'approach').length, 1, level);
+  assert.ok(names(roster({ ...base, ticket: false }, 0, 'medium')).includes('approach'));
+  assert.ok(names(roster({ ...base, prDescription: false }, 0, 'medium')).includes('approach'));
+  assert.ok(!names(roster({ ...base, ticket: false, prDescription: false }, 0, 'high')).includes('approach'));
+  assert.ok(!names(roster(base, 0, 'low')).includes('approach'));
+  assert.ok(!names(roster({ ...base, changed: 199 }, 0, 'high')).includes('approach'));
+  assert.deepEqual(coverageOf('approach'), { coverage: 'skip', only: null });
+  assert.equal(extraRules('approach'), EXTRA_RULES.approach);
+  assert.deepEqual(checklistFiles('approach', { skillDir: SKILL }).map(f => f.split('\\').slice(-2).join('/')), ['dimensions/approach.md']);
+});
+
+test('only approach is handed the other reviewers\' comments', () => {
+  const env = { sql: false, material: { indexMaps: [], forward: [], comments: 'W/comments-others.json' } };
+  assert.match(extraMaterial('approach', env), /Other reviewers' comments on this PR: W\/comments-others\.json/);
+  assert.doesNotMatch(extraMaterial('correctness', env), /comments-others/);
 });
 
 test('checklistFiles maps reviewers to dimension files, languages, and stylesheets only for styles and combined', () => {

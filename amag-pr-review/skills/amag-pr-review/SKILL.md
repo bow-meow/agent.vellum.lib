@@ -58,8 +58,8 @@ S=<this skill's base directory, POSIX>   MODEL: see references/severity.md
 
 | Level | For | What changes |
 |---|---|---|
-| `low` ("quick look") | early feedback, small follow-ups | Sonnet reviewers: a `quick` reviewer (correctness, concurrency, resources, security) and regression per chunk, sql scoped by script hints, ticket-fit; no triage agent, tests-design, claims, docs or recheck. **Never approves** and never counts as reviewing the commit, so the next review reads the whole change |
-| `medium` | the normal review | as described below: Sonnet reviewers find candidates, Opus verify and recheck decide them |
+| `low` ("quick look") | early feedback, small follow-ups | Sonnet reviewers: a `quick` reviewer (correctness, concurrency, resources, security) and regression per chunk, sql scoped by script hints, ticket-fit; no triage agent, tests-design, claims, approach, docs or recheck. **Never approves** and never counts as reviewing the commit, so the next review reads the whole change |
+| `medium` | the normal review | as described below: Sonnet reviewers find candidates, Opus verify and recheck decide them; from 200 changed lines with a ticket or PR description, an `approach` reviewer asks whether a simpler design reaches the same goal |
 | `high` ("thorough") | threading, data, money, security | Opus reviewers, ±40 lines of diff context, specialists never merged, and a second independent `failure-paths` pass beside correctness |
 
 Map the user's words to a level ("quick" → low, "thorough" → high); ask only if they conflict.

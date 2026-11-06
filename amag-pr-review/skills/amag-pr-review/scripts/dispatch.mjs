@@ -38,7 +38,7 @@ const MULTI = new Set(['specialists', 'quick', 'failure-paths']);
 const TRACERS = new Set(['correctness', 'regression', 'failure-paths', 'quick', 'combined', 'specialists', 'concurrency-races', 'resources-performance']);
 const dimensionsOf = r => CHECKLISTS[r] ?? [r];
 
-const NO_COVERAGE = new Set(['ticket-fit', 'claims', 'styles']);
+const NO_COVERAGE = new Set(['ticket-fit', 'claims', 'styles', 'approach']);
 
 // Specialists that only see the ranges triage assigns them. The rest always read the whole diff, so a
 // range triage misses can still be caught by correctness or regression.
@@ -57,6 +57,7 @@ export const EXTRA_RULES = {
   'ticket-fit': 'Uncertain coverage goes in with terminal_only: true.',
   claims: 'Your units are the facts in the PR description and the ticket, not the diff. Write one ledger entry per text (path "PR description" or "ticket", side "new", from/to 0) whose checked lists each fact as: fact → holds | doesn\'t hold: <the code\'s worst case>. Each fact that doesn\'t hold is also a candidate, at the code that decides it.',
   'failure-paths': 'You are a second, independent pass over the same code as the correctness and regression reviewers, and you will not see their findings. Work from failure rather than from the checklist order: for each unit, ask what happens when a call it makes fails, times out, returns empty or stale data, runs twice, runs late, or runs at the same time as another, and follow that into the callee and framework code even when it lies outside the diff. Set each candidate\'s `dimension` to correctness or regression, never failure-paths.',
+  approach: 'Your unit is the whole change, not each hunk: work through approach.md\'s steps once, reading the changed files whole. Write a coverage ledger with one entry per changed file (its from/to spanning the changed lines) whose `checked` names the mechanisms it adds; it is not checked against the diff. Write `[]` when no alternative meets the bar, which is the usual outcome.',
   styles: 'Your scope is the changed stylesheets and the template classes they style or that no stylesheet styles; read other files only as context.',
 };
 
@@ -92,12 +93,14 @@ export function roster({ changed, ticket, prDescription, sql, styles, prose }, c
   // logged reviews a separate claims agent found 2 issues no other reviewer did, for 1.7M tokens.
   const once = [ticket ? 'ticket-fit' : !lean && prDescription && 'claims'];
   const entry = reviewer => ({ reviewer, chunk: null, ...(reviewer === 'ticket-fit' && !lean && { dimensions: ['ticket-fit', 'claims'] }) });
+  // No approach below SMALL: there is rarely enough mechanism to replace.
   if (changed < SMALL) return ['combined', ...second, ...once].filter(Boolean).map(entry);
   const perChunk = (quick
     ? ['quick', 'regression', sql && 'sql']
     : ['correctness', 'regression', ...second, 'concurrency-races', 'resources-performance', sql && 'sql', !lean && 'tests-design', 'security']
   ).filter(Boolean);
-  if (!lean) once.push((prose ?? PROSE_REVIEWER_MIN) >= PROSE_REVIEWER_MIN && 'docs', (styles ?? 0) >= STYLES_REVIEWER_MIN && 'styles');
+  // approach judges the design against the goal the ticket or PR description states; with neither it would guess.
+  if (!lean) once.push((ticket || prDescription) && 'approach',(prose ?? PROSE_REVIEWER_MIN) >= PROSE_REVIEWER_MIN && 'docs', (styles ?? 0) >= STYLES_REVIEWER_MIN && 'styles');
   const single = once.filter(Boolean).map(entry);
   if (changed <= LARGE) return [...perChunk.map(reviewer => ({ reviewer, chunk: null })), ...single];
   const out = [];
@@ -129,6 +132,7 @@ export function extraMaterial(reviewer, { sql, material: m }, dimensions = dimen
   const list = xs => xs.join(', ');
   const coversSql = reviewer === 'sql' || (reviewer === 'specialists' && dimensions.includes('sql'));
   if (reviewer === 'ticket-fit' && m.siblings) parts.push(`Sibling PRs: ${m.siblings}`);
+  if (reviewer === 'approach' && m.comments) parts.push(`Other reviewers' comments on this PR: ${m.comments}`);
   if ((coversSql || (reviewer === 'combined' && sql)) && m.indexMaps.length) parts.push(`Index maps: ${list(m.indexMaps)}`);
   if ((coversSql || ['correctness', 'combined', 'failure-paths', 'quick'].includes(reviewer)) && m.forward.length) parts.push(`Forward-scan: ${list(m.forward)}`);
   if (TRACERS.has(reviewer) && m.callers?.length) parts.push(`Callers of the changed functions (read before searching for them yourself): ${list(m.callers)}`);
@@ -286,6 +290,7 @@ export function loadWork(w, { skillDir = OWN_SKILL_DIR, fixFindings = null } = {
     languages: ctx.languages ?? [], styles: ctx.styles ?? 0, sql: !!ctx.sql, changed: ctx.changed, prose: ctx.prose,
     material: {
       siblings: has('siblings.json') ? `${w}/siblings.json` : null,
+      comments: has('comments-others.json') ? `${w}/comments-others.json` : null,
       indexMaps: files(/^index-map-.+\.json$/),
       forward: files(/^forward-.+\.json$/),
       history: has('history.txt') ? `${w}/history.txt` : null,

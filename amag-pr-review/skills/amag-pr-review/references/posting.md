@@ -31,7 +31,7 @@ then `**Blocking:** no` and the footer; a follow-up reply is one unlabelled sent
 Header line: `<icon> **<area> · <change needed | note>**`. The area comes from the finding's
 `dimension` when it names a checklist (correctness 🐛, tests-history 🧪, design-quality 🏗️,
 security 🔒, concurrency-races 🧵, resources-performance ⚡, sql 🗄️, docs 📄, styles 🎨,
-ticket-fit 🎫, regression 🔁, claims 📝), else from the first reviewer that raised it, else `🔎 Review`. Reviewer names,
+ticket-fit 🎫, regression 🔁, claims 📝, approach 💡), else from the first reviewer that raised it, else `🔎 Review`. Reviewer names,
 confidence and tokens aren't posted. The terminal table shows them, and the run log
 (`runlog.mjs`, under `C:\repos\ai-review\.log`) keeps them with every finding for tuning.
 A finding's tokens are its share of the run: each reviewer's tokens split over the findings it
