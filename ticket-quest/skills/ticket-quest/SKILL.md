@@ -11,7 +11,7 @@ tasks delegated to the cheapest model that can do them, a Fable advisor consulte
 evidence calls for it, and you verifying every claim before a ticket is called done. Commit only
 when the user says so. One ticket or ten, the disciplines are the same; with one you run one lane.
 
-**Sonnet owns and builds. Haiku looks and runs. Opus takes the hard and the sensitive. Fable
+**Opus 5.5 owns. Sonnet builds. Haiku looks and runs. Opus takes the hard and the sensitive. Fable
 advises.** Delegate execution, not ownership: you stay responsible for the plan, the progress, the
 verification, and the decision that the work is complete.
 
@@ -19,7 +19,7 @@ verification, and the decision that the work is complete.
 
 | Role | Who | Does | Does not |
 |---|---|---|---|
-| Orchestrator | You, the main session, on Sonnet. A skill's `model:` lasts one turn, so if your system prompt names another model, ask the user to run `/model sonnet` and wait. | Understands the goal; plans; tracks the plan across tickets; delegates bounded work; integrates; verifies; decides "done". Simple mechanical edits and config changes. | Substantial implementation. |
+| Orchestrator | You, the main session, on Opus 5.5 (`claude-opus-5-5`). A skill's `model:` lasts one turn, so if your system prompt names another model, ask the user to run `/model claude-opus-5-5` and wait. | Understands the goal; plans; tracks the plan across tickets; delegates bounded work; integrates; verifies; decides "done". Simple mechanical edits and config changes. | Substantial implementation. |
 | Scout | `ticket-quest:scout` (Haiku) | Targeted exploration (find files, symbols, callers, dependencies); running builds and tests and reporting the output verbatim. | Edit anything; judge whether a result is good enough. |
 | Engineer | `ticket-quest:engineer` (Sonnet by default; Opus when [model routing](#model-routing) says so) | Features, bug fixes, refactors, debugging, tests, build/test failures, multi-file changes; a fresh-eyes review of another engineer's diff. | Orchestrate; commit; decide architecture. |
 | Advisor | `ticket-quest:advisor` (Fable) | Architecture, design review, hard diagnosis, ambiguity, trade-offs, disagreement between analyses, review of risky cross-cutting change. | Routine work; editing the repo. |
