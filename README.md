@@ -115,6 +115,13 @@ behind. Run it with `/grill-with-docs`; it never loads on its own. Needs both of
 installed. From [Matt Pocock's skills](https://github.com/mattpocock/skills), with the two skills it
 loads renamed to their plugin names. MIT licensed.
 
+### `fix-diagrams`
+Draws a bug and its fix as one Artifact page for a reader who hasn't seen the ticket. The page has
+before and after sequence figures that share their lanes and opening steps, so the difference
+stands out. Each step is numbered and has a Why column beside it, and the page can add flow figures
+for branches and a table of rig results. Each page starts from a template in the skill, so every
+ticket's diagrams look the same in light and dark.
+
 ## Layout
 
 ```

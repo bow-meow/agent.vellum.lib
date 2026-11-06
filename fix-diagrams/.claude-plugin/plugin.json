@@ -1,0 +1,7 @@
+{
+  "name": "fix-diagrams",
+  "description": "Diagram a bug and its fix as one Artifact page — before/after sequence figures with lanes, numbered steps and a Why column, flow figures and a rig-results table, all from one house template that works in light and dark.",
+  "author": {
+    "name": "bow-meow"
+  }
+}
