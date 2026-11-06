@@ -275,7 +275,7 @@ settled, read [references/mk-worktree.md](references/mk-worktree.md) for the com
 Exit `3` means the ticket dir or branch exists: the user chooses build-on vs start-fresh; never
 clobber or delete it yourself. For a ticket that needs building or sim-testing, first read
 [references/build-conveniences.md](references/build-conveniences.md): seeding, and the
-`just mk-worktree` that replaces the script when `C:\repos\symmetry.world` exists.
+`just mk-wt` that replaces the script when `C:\repos\symmetry.world` exists.
 
 ### Base defaults
 

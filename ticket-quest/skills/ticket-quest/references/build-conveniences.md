@@ -23,7 +23,7 @@ ticket will need building or sim-testing, wire up the equivalent for the repos i
    this worktree.
 Seed sources must be built first (the matching `symmetry.build` build + main esg). When
 `C:\repos\symmetry.world` exists, create the worktrees there with
-`just mk-worktree <ticket> <slug> --repos classic=<base>[,<other>=<base>...] [--seed <build>]` instead of
+`just mk-wt <ticket> <slug> --repos classic=<base>[,<other>=<base>...] [--seed <build>]` instead of
 `mk-worktree.mjs`: it does all four steps plus the worktrees in one go and needs no console. The seed
 build is inferred from the classic base; pass `--seed` when no `symmetry.build` build matches it.
 It has no `--dry-run` and refuses an existing ticket dir, so show the user the plan first and treat
