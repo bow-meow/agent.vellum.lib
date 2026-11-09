@@ -103,8 +103,10 @@ have some findings.
 
 Write the coverage ledger to `{{COVERAGE_FILE}}`: a JSON array with one entry per unit,
 `{"path": "repo-relative/path.cs", "side": "new" | "old", "from": 120, "to": 164, "checked": "one line: what you checked here"}`.
-`from`/`to` span the unit (new-file lines, or old-file lines for a removed-only block). An entry
-without `checked` doesn't count. Units with nothing to report still get one.
+`from`/`to` span the unit (new-file lines, or old-file lines for a removed-only block). Take them
+from the hunk header's `+start` (or `-start`) counted forward, or from the worktree file itself, never
+from a line's position in the diff file: an entry off by even one line leaves the unit uncovered and
+costs a send-back. An entry without `checked` doesn't count. Units with nothing to report still get one.
 
 Write a JSON array to `{{OUT_FILE}}` (write `[]` if you found nothing), then reply with one line:
 `<n> candidates written, <u> units checked`. Each element:
