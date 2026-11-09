@@ -122,7 +122,7 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
   assembly, docs, another repo. A hand-kept copy is then the only option, so the finding has no fix.
   (Seen on symmetryclassic: "reflect over the `[SdkHidden]` routes in `definitions/*Services.cs`", which
   are code-gen templates, not compiled C#.)
-- A consequence the ticket or its comments already acknowledge as intended: a breaking SDK change with
+- A consequence the ticket, its comments or its attached plan already acknowledge as intended: a breaking SDK change with
   a release note, a deliberate trade-off, a behaviour the triage chose. Check the code does what the
   acknowledgement describes first: raise it for any part they don't cover or describe wrongly (a
   "known limit" whose real worst case is larger than stated), and say what that part is. (Seen on symmetryclassic PR 5362: "making `VisitorInfo`
@@ -176,3 +176,6 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
 - A start or stop that now runs past the progress hint it reports, when the base branch already
   overran that hint on the same path by more, and nothing in the product or the platform's tools acts
   on it.
+- A field left at its default on one load path when no code reads it and that path already leaves the
+  same object's matching fields at their defaults: the new field follows a gap that predates the
+  change. Raise it only when something reads the field.

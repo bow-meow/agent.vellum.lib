@@ -124,9 +124,12 @@ verify like any reviewer's findings, at no agent cost; `lead` hits become triage
 merge base, into the same `cand-static.json`; missing (`IFTTT_LINT`, `~/tools/ifttt-lint/bin`) is a
 note. Show its `notes`. Then the **ticket**, which only you can read: with `ticketKey` from `context.json`,
 read it with the Atlassian MCP (`getAccessibleAtlassianResources` for the cloud id, then
-`getJiraIssue`, including comments). Write the full issue (summary, description, acceptance criteria,
-repro steps, comments, linked issues) to `$W/ticket.md` and a 3-line summary to
-`$W/ticket-summary.txt`. No ticket → write neither; the terminal says "none found".
+`getJiraIssue`, including comments and attachments). Write the full issue (summary, description,
+acceptance criteria, repro steps, comments, linked issues) to `$W/ticket.md` and a 3-line summary to
+`$W/ticket-summary.txt`. No ticket → write neither; the terminal says "none found". The MCP lists
+attachments but can't fetch their content: in local mode, look for each by file name in the ticket
+folder (often a `plans/` subfolder) and append it under `## Attachment: <name> (from <path>)`. List
+any you can't find under `## Attachments not read`, so reviewers know a plan exists that they can't see.
 
 `ticket.md` holds the Jira issue and nothing else. Decisions the user stated this session may follow,
 under `## Decisions the user stated (not from Jira)`, one line each quoting the user (local: plus
