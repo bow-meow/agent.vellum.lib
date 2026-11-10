@@ -69,3 +69,11 @@ judging an applied one. Each line below comes from a fix of ours that later turn
 - A field (a location, an owner) added to the key of some writes into a map or set used to report or
   dedupe, while other writes to it keep the old key: entries that differ only in that field overwrite
   each other, and all but the last report disappear. Give every write the same full key.
+- A client-side recount or re-query to get around a value the server serves stale from a cache
+  (paging the full list to count it, re-reading it at the point of use): every other reader of the
+  cached value stays stale, the client now holds two sources that can disagree, and the workaround
+  brings failure paths of its own. Find the change path that skips the refresh and refresh it there.
+- A sweep, or a rename so a sweep can find it, for a test that puts its rows onto data it didn't
+  create (a borrowed record, the first row a query returns): until the sweep runs the borrowed record
+  carries them, and the sweep removes only what it can name. Give the test a record of its own to
+  use, created and removed by the fixture.

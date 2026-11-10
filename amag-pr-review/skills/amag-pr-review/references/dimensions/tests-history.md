@@ -48,8 +48,10 @@ code and wiring. Size decides nothing: one line changing how money rounds is a r
   (a seeded record, a permission level, a running service) now fails every fixture that inherits it,
   including ones that never use it. Move the requirement to the fixtures that need it.
 - **Tests that change data they didn't create** (an existing role's permission, a seeded user's enabled
-  flag) and restore it in `finally`: a killed run leaves it changed, and later runs pass or skip for the
-  wrong reason. Create throwaway records under a per-run prefix, pre-cleaned by that prefix in setup.
+  flag, a pre-existing record they move or attach their own rows to, such as the first row a query
+  returns) and restore it in `finally` or teardown: a killed run leaves it changed, and later runs pass
+  or skip for the wrong reason. Create throwaway records under a per-run prefix, pre-cleaned by that
+  prefix in setup, including the record the test moves or attaches its own rows to.
 - **History**: the history file in your material lists, per changed file, recent commits whose
   message mentions fix/revert/regress. If one touched the code this change alters, read the current
   code around it and check the change doesn't undo that fix. Name the commit. You have no shell, so

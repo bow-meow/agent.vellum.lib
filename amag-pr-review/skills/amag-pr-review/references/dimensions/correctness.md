@@ -62,6 +62,13 @@
 - A draft or edit copy assigned into the committed state by reference (`saved.x = draft`) rather than
   copied: anything that later writes to the draft, including events firing after the commit, silently
   changes what counts as saved, and the next unrelated save persists it.
+- A value derived from other records (a count, a total, a member list) cached on the record it
+  describes and refreshed only when that record is saved: a change that reaches it through another
+  record's path (a member deleted, moved or reassigned elsewhere) leaves it stale. List every path that
+  changes its inputs and check each one refreshes the cache or publishes the change.
+- A local copy of an entity rebuilt after a write from the request rather than the reply: check every
+  derived field (counts, totals, flags) is recomputed or cleared with the fields the write changed. One
+  carried over from before the write contradicts its neighbours.
 - State recorded from per-item events (the item the user dragged, the rows an event lists as changed)
   when the action also moves other items as a side effect, or read while a responsive view shows a
   reduced form (single column, collapsed, scaled) and written back into the full-size model. Check what
