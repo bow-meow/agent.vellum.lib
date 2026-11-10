@@ -1,20 +1,20 @@
 ---
 name: symmetry-regression-tests
-description: "Use when adding, updating, running or proving a test in the local Symmetry regression suite (<root>\\_regression2\\ beside the ticket worktrees, symui), including ticket-quest's regression step. Triggers — \"write a regression test for SYM-1234\", \"run the regression tests\", \"rerun just this test\", \"prove the test can fail\", a test's requires, params or folder. SKIP for unit tests inside a product repo."
+description: "Use when adding, updating, running or proving a test in the Symmetry end-to-end suite (Source\\Symmetry.EndToEnd\\ in symmetryclassic, symui), including ticket-quest's regression step. Triggers — \"write a regression test for SYM-1234\", \"run the regression tests\", \"rerun just this test\", \"prove the test can fail\", a test's requires, params or folder. SKIP for unit tests inside a product repo."
 ---
 
 # Symmetry regression tests
 
-`<root>\_regression2\` sits beside `_tools\` and the ticket worktrees, in no repo, never committed:
-one test per feature, a JSON file of `symui` steps, runnable cold by an agent, a person or a build
-machine. Its `CLAUDE.md` holds the working rules, `README.md` the ground truth for step verbs,
-locators, setup steps, params, exit codes and the runner, and `HANDOVER.md` where the suite stands.
-Read all three before writing or running a test; where they and this skill disagree, they win.
+The suite is `Source\Symmetry.EndToEnd\` in symmetryclassic. A ticket's test is written in the
+ticket's own `symmetryclassic` worktree and committed with the ticket's change: one test per
+feature, a JSON file of `symui` steps, runnable cold by an agent, a person or a build machine. Its
+`CLAUDE.md` holds the working rules and `README.md` the ground truth for step verbs, locators,
+setup steps, params, exit codes, the runner and what is not done yet. Read both before writing or
+running a test; where they and this skill disagree, they win. Paths below are relative to the
+suite folder.
 
-`<root>\_regression\` (the PowerShell suite) is retired: never add, edit or run a test there. A
-ticket whose test exists only there gets it ported into `_regression2\` (the README's ported-tests
-table maps old to new). Its `state\run.lock` is still the machine-wide run lock; nothing else in it
-is used.
+When the ticket's worktree has no `Source\Symmetry.EndToEnd\` (its base branch predates the suite),
+stop and ask the user where the test goes.
 
 ## Which tests exist
 
@@ -25,7 +25,7 @@ panel. Smaller changes bundled into the ticket beside that behaviour don't each 
 test with no ticket (`"tickets": []`) is reported, not debugged, unless the user asks.
 
 This is separate from the risk-based rules for tests in product repos: a label is still no risk
-there and gets no repo test. The no-risk removal rule never applies to `_regression2\` paths.
+there and gets no repo test. The no-risk removal rule never applies to `Source\Symmetry.EndToEnd\` paths.
 
 ## Find before adding
 
@@ -133,8 +133,8 @@ and reported as `written, not run`, with why and the request to run it.
 
 ## Records
 
-- `_regression2\HANDOVER.md`'s tests table: the test's row with its state, passing run id and proof
-  run id; for a port, the README's ported-tests row too.
+- The test's `description`: its passing run id and each proof with its run id, `to be filled`
+  until the runs are back.
 - For a ticket with a `HANDOVER.md`, its `Regression tests` heading: `path | covers | run`, one row
   per test the ticket added, updated or relies on, the run being the API body (`names`, `binDir`,
   and `params` for each proof).
@@ -143,7 +143,7 @@ and reported as `written, not run`, with why and the request to run it.
 
 | Mistake | Instead |
 |---|---|
-| A test added or edited under `<root>\_regression\` | `_regression2\`; port the old test there |
+| A test written outside the ticket's worktree, or left uncommitted | `Source\Symmetry.EndToEnd\tests\` in the ticket's `symmetryclassic` worktree, committed with the change |
 | A new file for a new rule on a form whose validation already has a test | Extend that test; add the ticket to its `tickets` |
 | The test logs in, onboards or `include`s a scenario for its setup | `requires` the README's profile or steps |
 | Only the refused value is asserted | Assert an accepted value too, each from a clean field |

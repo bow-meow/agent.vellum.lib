@@ -88,7 +88,7 @@ tickets progress at different speeds; never block one on another.
      [Risk-based testing](#risk-based-testing), with a one-line reason. A risk gets tests, and a
      risky path with no test gets a characterization test pinning today's behaviour, written before
      the change. A no-risk behaviour gets no repo test of any kind.
-   - **Regression test:** whatever the risks, the `<root>\_regression2\` test to update (its
+   - **Regression test:** whatever the risks, the `Source\Symmetry.EndToEnd\` test to update (its
      `feature` covers what the ticket changes) or else add: path, kind, what it asserts of the
      behaviour the ticket exists for, not each change it bundles. **REQUIRED SUB-SKILL:**
      `symmetry-regression-tests` ([its SKILL.md](../symmetry-regression-tests/SKILL.md)) first.
@@ -142,10 +142,11 @@ tickets progress at different speeds; never block one on another.
      added for a no-risk behaviour (a label, a constant, a log line, a mock verifying a call) is
      sent back to be removed from the diff, not counted as coverage. A missing test on a no-risk
      behaviour fails nothing;
-   - the ticket's regression test, one item: added or updated in `<root>\_regression2\`, asserts
-     the behaviour the ticket exists for, written per the sub-skill, its queued runs
-     back as expected (till then `written, queued`; `written, not run` with why); no
-     duplicate of a covered feature; its suite `HANDOVER.md` row current;
+   - the ticket's regression test, one item: added or updated in the worktree's
+     `Source\Symmetry.EndToEnd\` and committed with the change, asserts the behaviour the
+     ticket exists for, written per the sub-skill, its queued runs back as expected (till then
+     `written, queued`; `written, not run` with why); no duplicate of a covered feature; its
+     `description` naming the passing and proof run ids;
    - the characterization tests from step 3 were added before the change and still pass, or each
      one the change deliberately alters is listed with its old and new behaviour;
    - for each risk, at least one test reaches the change through the entry point it is used by (the
@@ -157,7 +158,7 @@ tickets progress at different speeds; never block one on another.
      and scoped to the ticket, with any module-map change (see [Module maps](#module-maps))
      verified and listed apart from the ticket change;
    - copy the report's files-changed list and label each path `fix`, `test`, `regression` (a
-     `_regression2\` path) or `helper` (anything else, repro scripts too): a `helper` or
+     `Source\Symmetry.EndToEnd\` path) or `helper` (anything else, repro scripts too): a `helper` or
      `justfile` path in a worktree fails this item. Then
      a row per `helper`, and one per shared script the task ran: `path | kind | goes to | command
      line`, from the [helper table](#handover-and-tools) (shared: kind `shared`, stays). A
@@ -329,7 +330,7 @@ Each of these is here because an agent was observed violating it, not because it
 - About to change code on an untested risky path before a characterization test pins it.
 - About to ask for, or accept, a repo test of a label, constant, log line or UI default.
 - About to skip a test on a risk because the diff is small.
-- About to close a ticket with no `_regression2\` test added or updated.
+- About to close a ticket with no `Source\Symmetry.EndToEnd\` test added or updated.
 - About to add a regression test for a feature an existing test covers.
 - Quiz mode: building before the user answered, or asking what a convention settles.
 - A test that reaches the change in a way users and the system never do.
