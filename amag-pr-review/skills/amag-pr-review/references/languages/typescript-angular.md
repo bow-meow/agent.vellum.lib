@@ -6,6 +6,10 @@
 - A test reaching a class's private members by `as unknown as` a hand-written interface: a renamed
   member still compiles and fails only at runtime. Bracket access (`obj['_field']`) is type-checked.
 - Change detection: mutating inputs in `OnPush` components; heavy work in templates or getters.
+- An `effect()` that writes a signal or form value to keep it consistent with another (forcing one
+  field when a second takes some value): the rule holds only while that component exists, and every
+  other writer of the same model (a save, a copy, a collapsed or unrendered view) skips it. Apply it
+  where the value is written (the change handler, the load, the save), or derive it with `computed`.
 - Race between overlapping HTTP requests (use `switchMap` for search-as-you-type).
 - `innerHTML` / `bypassSecurityTrust*` with untrusted data.
 - Unhandled promise rejections, including one an added `await` now passes up to a caller with no

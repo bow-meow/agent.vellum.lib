@@ -15,6 +15,9 @@ code and wiring. Size decides nothing: one line changing how money rounds is a r
 - **Coverage of risks**: each risky behaviour the change adds or alters has a test that would fail if
   it regressed. Name the behaviour and which kind of risk it is. A no-risk behaviour without a test
   is not a finding.
+- **Tests the change deletes or rewrites**: list what each removed assertion checked, and whether the
+  code still does it (a value carried forward on save, a flag kept). A kept risky behaviour whose only
+  test went with the change can now regress silently.
 - **Do the tests of a risk prove it works?** Read them:
   - Does each new test assert the changed behaviour, or only that nothing throws?
   - Would it still pass against the old code? (If yes, it proves nothing about the fix.)
