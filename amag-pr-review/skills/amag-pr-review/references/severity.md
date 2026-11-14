@@ -148,6 +148,9 @@ changes nothing about what is reviewed, posted or approved. Report it as an Info
 - A retry, poll or redial called unbounded ("indefinitely", "until reload") without checking for a
   higher-level backstop that already ends it: a watchdog, a connection-lost page, a session timeout.
   Name the backstop you checked for; raise it only if none exists or it fires too late to matter.
+- A freshness or staleness check that is broader than it strictly needs to be, when a later gate in the
+  same flow applies the same broad rule: narrowing only one of them moves the failure, it doesn't
+  remove it. Raise it only if every gate that applies the rule is narrowed together.
   A backstop that ends the wait by restarting or killing the process doesn't count when everything
   that thread does stops until it fires, or the restart loses work held in memory: the restart is
   the failure. Nor does one that runs inside the component that may be the one hung.
