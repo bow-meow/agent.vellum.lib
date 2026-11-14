@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -96,6 +96,24 @@ test('scan skips cleanly with no tool, and findTool takes an explicit path first
   assert.equal(scan('/wt', diff, { tool: null }).skipped, true);
   assert.equal(findTool('/x/og.exe', { exists: p => p === '/x/og.exe', which: () => null }), '/x/og.exe');
   assert.equal(findTool(null, { exists: () => false, which: n => (n === 'semgrep' ? '/bin/semgrep' : null) }), '/bin/semgrep');
+});
+
+test('scan hands the tool the staging folder, not a path per file, with the default ignores off', () => {
+  const wt = mkdtempSync(join(tmpdir(), 'static-wt-'));
+  mkdirSync(join(wt, 'src'));
+  mkdirSync(join(wt, 'db'));
+  writeFileSync(join(wt, 'src', 'Q.CPP'), 'x');
+  writeFileSync(join(wt, 'db', 'P.sql'), 'x');
+  let seen;
+  const run = (tool, args, cwd) => {
+    seen = { args, ignore: readFileSync(join(cwd, '.semgrepignore'), 'utf8') };
+    return { results: [{ check_id: 'rules.r', path: 'src\\Q.cpp', start: { line: 11 }, end: { line: 11 }, extra: { lines: 'c', metadata: { kind: 'lead' } } }] };
+  };
+  const out = scan(wt, diff, { tool: 'og', run });
+  assert.equal(seen.args.at(-1), '.');
+  assert.ok(!seen.args.some(a => /Q\.cpp|P\.sql/.test(a)), 'no file paths on the command line');
+  assert.equal(seen.ignore, '');
+  assert.deepEqual(out.leads.map(l => [l.path, l.from]), [['src/Q.CPP', 11]]);
 });
 
 function workDir(level) {

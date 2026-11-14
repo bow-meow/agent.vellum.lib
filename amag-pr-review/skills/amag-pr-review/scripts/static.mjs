@@ -2,7 +2,7 @@
 // Runs Opengrep (or Semgrep) with the skill's rules over one repo's changed files and keeps the hits on
 // added lines. Usage: static.mjs <worktree> --diff <diff> [--prefix <repo>] [--rules <dir>] [--tool <exe>]
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -78,7 +78,10 @@ export function scan(wt, diffText, { prefix = null, rules = RULES_DIR, tool = fi
       copyFileSync(join(wt, p), join(stage, s));
       byStaged.set(s, p);
     }
-    const raw = run(tool, ['scan', '--quiet', '--json', '--config', rules, ...byStaged.keys()], stage);
+    // One path per file overflows the Windows command line on a large diff, so scan the folder. An empty
+    // .semgrepignore turns off the default ignores (tests/, build/, node_modules/...) a folder scan applies.
+    writeFileSync(join(stage, '.semgrepignore'), '');
+    const raw = run(tool, ['scan', '--quiet', '--json', '--config', rules, '.'], stage);
     return { tool, ...sortHits(raw, { runs, byStaged, prefix }), errors: (raw.errors ?? []).filter(e => !/PartialParsing/.test(e.type)).length };
   } finally {
     rmSync(stage, { recursive: true, force: true });
