@@ -160,6 +160,63 @@ class Fixture : Form
         p.Changed += OnChanged;
     }
 
+    void Unsubscribe(Publisher p)
+    {
+        p.Changed -= OnChanged;
+        p.Closed -= new EventHandler(OnClosed);
+    }
+
+    void SubscribeHandlers(Publisher p, Bus bus, int step)
+    {
+        // ruleid: event-subscription-without-unsubscribe
+        bus.MessageReceived += Received;
+        // ruleid: event-subscription-without-unsubscribe
+        p.Saved += new EventHandler(Saved);
+        // ruleid: event-subscription-without-unsubscribe
+        p.Elapsed += Tick;
+        void Tick(object sender, EventArgs e) { }
+        // ok: event-subscription-without-unsubscribe
+        p.Closed += new EventHandler(OnClosed);
+        // ok: event-subscription-without-unsubscribe
+        p.Total += step;
+        // ok: event-subscription-without-unsubscribe
+        p.Total += Count;
+        var created = new Button();
+        // ok: event-subscription-without-unsubscribe
+        created.Click += Saved;
+        var initialised = new Button { Text = "x" };
+        // ok: event-subscription-without-unsubscribe
+        initialised.Click += Saved;
+    }
+
+    void OnChanged(object sender, EventArgs e) { }
+    void OnClosed(object sender, EventArgs e) { }
+    void Received(object sender, EventArgs e) { }
+    void Saved(object sender, EventArgs e) { }
+    int Count => 1;
+
+    async Task Wait(CancellationToken cancellationToken, CancellationToken ct, Container container, TaskCompletionSource<bool> tcs)
+    {
+        // ruleid: cancellation-register-discarded
+        cancellationToken.Register(() => tcs.TrySetCanceled());
+        // ruleid: cancellation-register-discarded
+        _cts.Token.Register(Stop);
+        // ruleid: cancellation-register-discarded
+        ct.Register(Stop);
+        // ok: cancellation-register-discarded
+        using var reg = cancellationToken.Register(() => tcs.TrySetCanceled());
+        // ok: cancellation-register-discarded
+        _registration = cancellationToken.Register(Stop);
+        // ok: cancellation-register-discarded
+        container.Register(typeof(Fixture));
+        // ok: cancellation-register-discarded
+        using (ct.Register(Stop))
+        {
+            await tcs.Task;
+        }
+        await tcs.Task;
+    }
+
     void Fire()
     {
         // ruleid: fire-and-forget-task

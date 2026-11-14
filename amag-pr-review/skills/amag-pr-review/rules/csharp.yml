@@ -182,6 +182,66 @@ rules:
       dimension: resources-performance
       lead: "A lambda event subscription can never be removed: does the publisher outlive this subscriber, keeping it and what it captures alive?"
 
+  - id: event-subscription-without-unsubscribe
+    languages: [csharp]
+    severity: INFO
+    message: An event handler subscribed with no matching -= in the class.
+    paths:
+      exclude: ["*.Designer.cs"]
+    patterns:
+      - pattern-either:
+          - pattern: $O.$E += $H;
+          - pattern: $O.$E += new $D($H);
+      # Without types, += on an event looks like += on a number: the handler must be a method here.
+      - pattern-either:
+          - pattern-inside: |
+              class $C { ... $R $H(...) { ... } ... }
+          - pattern-inside: |
+              class $C { ... void $H(...) { ... } ... }
+          - pattern-inside: |
+              $R $M(...) { ... $R2 $H(...) { ... } ... }
+          - pattern-inside: |
+              $R $M(...) { ... void $H(...) { ... } ... }
+      # Created here, so it dies with this object.
+      - pattern-not-inside: |
+          $O = new $T(...);
+          ...
+      - pattern-not-inside: |
+          var $O = new $T(...);
+          ...
+      - pattern-not-inside: |
+          var $O = new $T{...};
+          ...
+      # $O2, not $O: a parameter in the -= method is a different variable from one in the += method.
+      - pattern-not-inside: |
+          class $C { ... $R $M(...) { ... $O2.$E -= $H; ... } ... }
+      - pattern-not-inside: |
+          class $C { ... $R $M(...) { ... $O2.$E -= new $D2($H); ... } ... }
+    metadata:
+      kind: lead
+      dimension: resources-performance
+      lead: "Nothing in this class removes this handler: does the publisher outlive this subscriber, keeping it alive and its handler firing after it's done?"
+
+  - id: cancellation-register-discarded
+    languages: [csharp]
+    severity: INFO
+    message: A CancellationToken.Register whose registration is never kept or disposed.
+    patterns:
+      # Register is also a DI-container call: only a receiver typed as a token counts.
+      - pattern-either:
+          - pattern: (CancellationToken $T).Register(...);
+          - pattern: $X.Token.Register(...);
+      # Kept: someone can dispose the registration.
+      - pattern-not-inside: $V = $E;
+      - pattern-not-inside: var $V = $E;
+      - pattern-not-inside: $TY $V = $E;
+      - pattern-not-inside: return $E;
+      - pattern-not-inside: using ($E) $S
+    metadata:
+      kind: lead
+      dimension: resources-performance
+      lead: "The registration is dropped, so the callback and what it captures stay on the token's source until it cancels: is that source long-lived (app shutdown, a shared CTS), and should the registration be disposed when this work ends?"
+
   - id: fire-and-forget-task
     languages: [csharp]
     severity: INFO
