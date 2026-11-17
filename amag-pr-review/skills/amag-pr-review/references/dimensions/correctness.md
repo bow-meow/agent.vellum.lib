@@ -4,9 +4,13 @@
 - Logic errors: inverted conditions, wrong operator, off-by-one, wrong variable, early return that skips
   cleanup, state updates or setup a later step relies on (logging started only after the checks whose
   failures it should record), switch/if chains missing a case the change introduced.
-- A busy or re-entry flag set on entry (`if (busy) return; busy = true;`) whose set or reset the
-  change touches: check every exit clears it, the normal path as well as the error path. One left set
-  makes every later call return early, often with nothing logged.
+- A busy, re-entry or run-once flag set on entry (`if (busy) return; busy = true;`) whose set or reset
+  the change touches: check every exit clears it, the normal path as well as the error path, and that
+  a throw between the set and a step that must run (a restore, an unlock) can't skip that step for
+  good. One left set makes every later call return early, often with nothing logged.
+- A safety check before a destructive action (drop, restore over, delete, overwrite) that inspects
+  only some of what the action destroys (one database of the set it drops, one file of a folder it
+  clears): check it covers every object the action touches, read from the code that does the destroying.
 - Null / empty / default handling on new inputs and on values from DB, NATS, config and files.
 - A uniqueness or count check over a mapped value where the mapping can fail to a shared sentinel
   (null, a default, 0): every unparsable input becomes the same value, so several bad inputs also

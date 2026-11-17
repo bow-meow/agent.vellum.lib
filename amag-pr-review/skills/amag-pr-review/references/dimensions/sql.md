@@ -13,7 +13,12 @@ database.
   under `Database/DatabaseSchema/Databases/*/Tables/`; other repos may not): say so in the finding
   rather than claiming it has no index, and keep the severity at Low unless the query shape alone is
   the problem.
-- **Injection**: SQL built by string concatenation or interpolation with any non-constant value.
+- **Injection**: SQL built by string concatenation, interpolation or template expansion (placeholders
+  filled into the query text before it runs) with any non-constant value, including values from
+  config, test data or another service's reply.
+- **Server version**: a server property, function, DMV or syntax newer than the oldest server the code
+  accepts (`SERVERPROPERTY('InstanceDefaultBackupPath')` is SQL Server 2019+): older servers return
+  NULL or fail to parse it. Find the version it arrived in and what the code is known to run against.
 - **Upgrade scripts**: not idempotent (no `IF NOT EXISTS` / `IF COL_LENGTH(...) IS NULL`), schema
   change with no matching upgrade script, data migration that updates a large table in one transaction
   (lock escalation, log growth), dropping/renaming columns still used by procs or code.

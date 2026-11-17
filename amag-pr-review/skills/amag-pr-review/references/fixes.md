@@ -73,6 +73,20 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   (paging the full list to count it, re-reading it at the point of use): every other reader of the
   cached value stays stale, the client now holds two sources that can disagree, and the workaround
   brings failure paths of its own. Find the change path that skips the refresh and refresh it there.
+- Teardown steps gathered into one run-once function (a flag set at the top, then each step in turn)
+  with a step that must happen (a restore, an unlock, a stop) after steps that can throw: one throw
+  skips it, and every later call returns at the flag. Guard each earlier step, or run the one that
+  must happen in its own `finally`.
+- A safety check before a destructive action (drop, restore over, delete, overwrite) that inspects one
+  of the objects the action destroys: the others go unchecked. List what the action destroys, from the
+  code that does it, and check each.
+- A conversion of a stored value (a default, a value derived from other fields) put in the one caller
+  the finding names, when the repo's docs or a sibling rule put that kind of conversion in the server's
+  mapping layer: every other caller still stores the raw value. Put it where the docs and siblings put
+  it, and keep a caller-side change only for a reason of its own.
+- A new rule for a case an older, narrower rule already handles part of (a clamp, a filter, a reset on
+  change), with the older one left in place: two rules for one value, which drift apart. Remove or
+  narrow the older one in the same fix.
 - A sweep, or a rename so a sweep can find it, for a test that puts its rows onto data it didn't
   create (a borrowed record, the first row a query returns): until the sweep runs the borrowed record
   carries them, and the sweep removes only what it can name. Give the test a record of its own to
