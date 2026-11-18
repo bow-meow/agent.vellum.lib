@@ -19,6 +19,8 @@
   - A cap that makes a queue or buffer discard items when full: list every kind of item that shares it.
     Telemetry, or data already persisted elsewhere, can go; a command, change notice or broadcast that
     exists only on that queue must not be the one evicted, whether the policy drops oldest or newest.
+    Check the fallback when the queue holds only protected items: an arriving expendable item must be
+    dropped, not given a protected item's place.
   - A new call to a dependency after an earlier call to it in the same pass has already failed: if
     the client retries or times out internally, each extra call repeats that stall. Check the failure
     skips the follow-up calls.

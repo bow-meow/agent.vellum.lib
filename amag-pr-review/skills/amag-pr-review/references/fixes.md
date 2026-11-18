@@ -91,3 +91,12 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   create (a borrowed record, the first row a query returns): until the sweep runs the borrowed record
   carries them, and the sweep removes only what it can name. Give the test a record of its own to
   use, created and removed by the fixture.
+- A priority eviction for a full queue (evict the expendable kind first, keep the protected kind)
+  whose fallback, when nothing expendable is queued, evicts the oldest item of any kind: an arriving
+  expendable item then pushes out a protected one, the case the rule exists for. In that fallback,
+  drop the arriving item when it is the expendable kind.
+- A stop-and-join moved earlier in a teardown sequence (so the thread finishes before what it uses
+  is torn down) without reading what the join does on timeout: its forced kill (`TerminateThread`, a
+  thread abort) now lands before the rest of teardown, which can hang on a heap, loader or runtime
+  lock the dead thread held; leaving the thread running instead lets it call into objects freed
+  later. Signal and wait early, and keep any forced kill where the old sequence had it.

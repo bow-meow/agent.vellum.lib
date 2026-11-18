@@ -22,6 +22,9 @@
 - A failure or timeout branch reported only through a debug-only macro (`TRACE`, `ATLTRACE`,
   `assert`, `OutputDebugString` under `_DEBUG`) on a path the change makes reachable or more likely:
   release builds record nothing. Use the component's release logger.
+- `TerminateThread` on a thread that can be inside the heap, the loader or a managed runtime: a lock
+  it held stays held, and whatever runs after the kill (more teardown, a runtime drain, process exit)
+  can hang. Check what runs after it, and whether a join moved earlier took its timeout kill with it.
 
 ## Team history
 - Firmware C style (esg-ng-core-m33, esg-ng-ipc): m_ prefix for module-scope variables (not s_), parenthesised return values, brackets around each operand of compound conditions, C-style comments, (void) in parameterless definitions, _t suffix on types, stdint types, camelCase variables and PascalCase functions, continuation lines indented parent+8.
