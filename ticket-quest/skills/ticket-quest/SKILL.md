@@ -88,7 +88,7 @@ tickets progress at different speeds; never block one on another.
      [Risk-based testing](#risk-based-testing), with a one-line reason. A risk gets tests, and a
      risky path with no test gets a characterization test pinning today's behaviour, written before
      the change. A no-risk behaviour gets no repo test of any kind.
-   - **Regression test:** whatever the risks, the `Source\Symmetry.EndToEnd\` test to update (its
+   - **Regression test:** whatever the risks, the `Source\Symmetry.TAS\` test to update (its
      `feature` covers what the ticket changes) or else add: path, kind, what it asserts of the
      behaviour the ticket exists for, not each change it bundles. **REQUIRED SUB-SKILL:**
      `symmetry-regression-tests` ([its SKILL.md](../symmetry-regression-tests/SKILL.md)) first.
@@ -125,7 +125,7 @@ tickets progress at different speeds; never block one on another.
    worktree, read the diff, run the build and the targeted tests (or read the pasted output
    critically; a long or noisy run can go to a scout, whose output you then read yourself),
    reproduce the original bug where possible. You, not the engineer, queue its
-   regression run and a proof per side. Revert regenerated artifacts so the diff
+   regression run and its proofs run. Revert regenerated artifacts so the diff
    is only the real change, then update `HANDOVER.md`. For significant or risky work, dispatch
    **one fresh engineer** to
    review the diff — never the one that wrote it, on the model the routing table gives that diff
@@ -143,10 +143,11 @@ tickets progress at different speeds; never block one on another.
      sent back to be removed from the diff, not counted as coverage. A missing test on a no-risk
      behaviour fails nothing;
    - the ticket's regression test, one item: added or updated in the worktree's
-     `Source\Symmetry.EndToEnd\` and committed with the change, asserts the behaviour the
-     ticket exists for, written per the sub-skill, its queued runs back as expected (till then
-     `written, queued`; `written, not run` with why); no duplicate of a covered feature; its
-     `description` naming the passing and proof run ids;
+     `Source\Symmetry.TAS\` and committed with the change, asserts the behaviour the
+     ticket exists for, written per the sub-skill, its queued runs back as expected and its
+     proofs proved (till then `written, queued`; `written, not run` with why); no duplicate of a
+     covered feature; the passing and proof run ids in `HANDOVER.md`'s `Regression tests` row,
+     never the test's `description`;
    - the characterization tests from step 3 were added before the change and still pass, or each
      one the change deliberately alters is listed with its old and new behaviour;
    - for each risk, at least one test reaches the change through the entry point it is used by (the
@@ -158,7 +159,7 @@ tickets progress at different speeds; never block one on another.
      and scoped to the ticket, with any module-map change (see [Module maps](#module-maps))
      verified and listed apart from the ticket change;
    - copy the report's files-changed list and label each path `fix`, `test`, `regression` (a
-     `Source\Symmetry.EndToEnd\` path) or `helper` (anything else, repro scripts too): a `helper` or
+     `Source\Symmetry.TAS\` path) or `helper` (anything else, repro scripts too): a `helper` or
      `justfile` path in a worktree fails this item. Then
      a row per `helper`, and one per shared script the task ran: `path | kind | goes to | command
      line`, from the [helper table](#handover-and-tools) (shared: kind `shared`, stays). A
@@ -330,7 +331,7 @@ Each of these is here because an agent was observed violating it, not because it
 - About to change code on an untested risky path before a characterization test pins it.
 - About to ask for, or accept, a repo test of a label, constant, log line or UI default.
 - About to skip a test on a risk because the diff is small.
-- About to close a ticket with no `Source\Symmetry.EndToEnd\` test added or updated.
+- About to close a ticket with no `Source\Symmetry.TAS\` test added or updated.
 - About to add a regression test for a feature an existing test covers.
 - Quiz mode: building before the user answered, or asking what a convention settles.
 - A test that reaches the change in a way users and the system never do.
