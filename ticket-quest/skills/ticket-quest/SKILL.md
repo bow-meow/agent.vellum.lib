@@ -56,7 +56,10 @@ tickets progress at different speeds; never block one on another.
    a ticket may span a service repo and a companion/firmware repo. **`symmetryclassic` is always
    in the set**, plus whatever other repos the ticket touches, even when the change lives entirely
    in a companion repo (e.g. `amag.symmetry.nats`): without it the ticket can't be targeted, built,
-   run, or tested end to end. Confirm the **base ref per repo** (see [Base defaults](#base-defaults))
+   run, or tested end to end. When the ticket depends on what the Sentinel panel firmware does (the
+   messages it sends or accepts, its OSDP reader handling, its upgrade flow), `esg-ng-core-linux`
+   from `origin/main` is in the set too, even when nothing in it changes: the answer is read from its
+   code, never guessed or left as a question for the panel team. Confirm the **base ref per repo** (see [Base defaults](#base-defaults))
    and confirm the branch **slug**.
 2. **Isolate — one git worktree per repo per ticket** (see [Worktree mechanics](#worktree-mechanics)).
    Detect a pre-existing ticket dir or branch and ask build-on vs start-fresh rather than clobbering.
