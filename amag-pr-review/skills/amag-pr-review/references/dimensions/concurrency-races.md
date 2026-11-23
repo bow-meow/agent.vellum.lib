@@ -41,7 +41,9 @@ Races are subtle: name the exact interleaving (thread/request/message A does X, 
   - Timers and event handlers firing during or after teardown/dispose, or after a later event has
     superseded the state they were scheduled for (a drop then a fresh reconnect inside the delay). A
     callback that only re-checks a flag when it fires acts on the newer cycle; cancel it on the state
-    change or tag it with a per-cycle counter.
+    change or tag it with a per-cycle counter. This includes an unchanged timer: when the diff adds a
+    new way for a state to end early (a failure, a cancel), find the timeouts and callbacks already
+    armed for that state and check what they do to the next cycle.
   - C++: data races on members touched from D-Bus/NATS callbacks and a worker thread; `std::atomic`
     used for one field but not the invariant it protects. Go: maps written from goroutines, loop
     variable capture, unsynchronised struct fields.
