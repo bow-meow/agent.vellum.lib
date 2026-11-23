@@ -40,6 +40,11 @@ decides which ones the ticket asked for.
   config.
 - **Observability**: log lines, metrics or error messages removed, reworded, or moved to a level
   nothing collects, that support or monitoring rely on to see the behaviour the change touches.
+- **Code the change brings back to life**: a path the base never ran (a listener on a channel or queue
+  nothing created, a handler never registered, a branch behind a flag that was always off) is new
+  behaviour once reachable. Review it as new code: every input that now reaches it, from every sender
+  and not only the one the author had in mind, repeats and replays, and what it does to users or state
+  already mid-task. "It was always meant to run" is not evidence that it is right.
 - **Replaced or removed code**: list what the old branch, option or command did besides its main job
   (cleared a saved record, reset a flag, released something, logged) and check the replacement still
   does it, or that dropping it was intended.
