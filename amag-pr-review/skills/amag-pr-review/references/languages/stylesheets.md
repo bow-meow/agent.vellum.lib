@@ -21,6 +21,9 @@
 - Redundant declarations: a property set to the same value for the same elements by two rules.
 - Computed literals: fractional or measured px values (`25.59375px`) copied from a rendered box, which
   drift with zoom, font or theme changes. Ask for the source token or a relative unit.
+- A literal (`10px`, a hex colour) equal to an existing custom property or token that a sibling rule
+  for the same kind of element reads: it stops following the token when the token changes. Grep the
+  token files for the literal on every added or moved declaration.
 - Direction: physical `left`/`right`/`margin-right`/`padding-left` where the app supports RTL; ask for
   the logical property (`inset-inline-end`, `padding-inline-start`). Report every instance in the diff.
 - `!important` or deep selectors (`::ng-deep`, long descendant chains) added to win a specificity

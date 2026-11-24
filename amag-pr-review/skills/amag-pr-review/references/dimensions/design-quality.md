@@ -70,7 +70,9 @@
     there), or a name that breaks the file's or module's existing term for it.
   - The comment names the replacement (`countValidRows`, `timeoutMs`), not just the problem.
 - Comment noise: comments that restate the code, narrate the change ("added to fix X"), or describe
-  what instead of why. Missing "why" comments on genuinely non-obvious constraints.
+  what instead of why. Missing "why" comments on genuinely non-obvious constraints. The same holds for
+  prose fields in tests and data files (a step's reason, a test description): "the old X is gone", "no
+  longer", "rather than gone" describe the change, not what the product does now.
 - Logging: wrong level (errors at Info, noise at Warning, a failure that retries itself logged as an
   error), missing context (ids) on error logs, sensitive data in logs. An existing function reused on a
   new, more frequent path brings its logs and toasts along: check each is still true and not noise there.

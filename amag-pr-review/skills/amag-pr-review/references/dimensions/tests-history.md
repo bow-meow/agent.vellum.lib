@@ -38,6 +38,9 @@ code and wiring. Size decides nothing: one line changing how money rounds is a r
   - A fix extracted into a small pure helper and tested only there: the call site that applies it (the
     guard reading its result, the order state is updated in, the timer that rechecks it) is the fix.
     Check a test drives the call site; otherwise the helper's tests still pass with the guard removed.
+  - An absence assertion (no element, row, key or log line) that looks for a name or id only the
+    removed code produced: nothing renders it any more, so it passes whatever comes back under a new
+    name. Ask for a positive assertion of what is there now, or for the check to go.
   - A test of a failure the change guards against that only reaches its mild form (slowed, not
     stuck; short of a deadline, not across it), or that enters by an internal call where the system
     enters another way (calling a stop method directly instead of the real shutdown path). It passes
