@@ -75,7 +75,9 @@
   longer", "rather than gone" describe the change, not what the product does now.
 - Logging: wrong level (errors at Info, noise at Warning, a failure that retries itself logged as an
   error), missing context (ids) on error logs, sensitive data in logs. An existing function reused on a
-  new, more frequent path brings its logs and toasts along: check each is still true and not noise there.
+  new, more frequent path brings its logs and toasts along, and so does a shared component placed on
+  more screens that starts loads for data those screens don't show: a failed load toasts there.
+  Check each is still true and not noise there.
 
 ## Severity hints
 - Mostly Low / nit. Duplication of non-trivial logic that will drift → Low. Wrong layer that breaks an

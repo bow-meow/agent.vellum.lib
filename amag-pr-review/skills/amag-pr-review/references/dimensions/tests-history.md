@@ -60,6 +60,10 @@ code and wiring. Size decides nothing: one line changing how money rounds is a r
   returns) and restore it in `finally` or teardown: a killed run leaves it changed, and later runs pass
   or skip for the wrong reason. Create throwaway records under a per-run prefix, pre-cleaned by that
   prefix in setup, including the record the test moves or attaches its own rows to.
+- **Teardown that assumes the test got far**: a cleanup step that acts on state only a run reaching
+  that point has (a control on a page the test opens, a record it creates mid-test) with no check that
+  the state exists: when the test fails early, the teardown fails as well and adds a second error on
+  top of the real one. Guard the step on that state being present.
 - **History**: the history file in your material lists, per changed file, recent commits whose
   message mentions fix/revert/regress. If one touched the code this change alters, read the current
   code around it and check the change doesn't undo that fix. Name the commit. You have no shell, so

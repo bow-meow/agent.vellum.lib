@@ -20,6 +20,9 @@
   `catch` (follow it to the event handler: what the user sees, what state is left), and an added
   `await` whose callers still don't await, which changes nothing; errors swallowed in `catchError`
   without user feedback.
+- `routerLinkActive` with exact path matching on a list's nav link whose create and edit pages are
+  child routes: the item loses its highlight on those pages. Check the route config, and match on the
+  subset, leaving out child routes that have nav items of their own.
 
 ## Team history
 - Busy state that blocks a second operation must live where the operation runs. A field on a routed component resets when the operator navigates away and back, while the `providedIn: 'root'` service doing the work keeps going, so a second run can start beside the first (the firmware upload's `uploadingFileName` on `ManageFirmwareComponent` vs `FirmwareDataService.upload`).
