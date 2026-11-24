@@ -131,3 +131,8 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   starts the load and waits on it, and the subscription never ends, so a source that refreshes only
   while it has subscribers keeps refreshing everywhere. Keep the subscription in the consumer that
   needs the data, scoped to its lifetime, and pass the result in.
+- A rule copied to run in a second place (a server rule repeated in the client, a check moved into a
+  caller) from a summary or an older read of the original: a guard on one of its inputs that the copy
+  leaves out, or that the original has gained since, makes the two sides rate the same input
+  differently. Copy it from the original's current code guard by guard, and bring the original's test
+  cases across with it.

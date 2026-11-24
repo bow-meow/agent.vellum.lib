@@ -42,6 +42,9 @@
   The same drift when the client decides by a different signal than the server: a file's name or
   extension where the server reads its content. A file the server would accept is refused, and a
   renamed one takes the wrong path. Check the client tests what the server tests.
+  When the client repeats a server rule outright (a validity or rating check), compare it guard by
+  guard: a format or range check the server applies to each input but the copy applies to only one
+  puts the same input in a different bucket on each side.
 - "Unknown" outcomes: a lookup that times out, a read caught by `catch`, an empty result. Find what the
   code falls back to, follow that value to the final output (the URL, message or row it ends up in) and
   check it does what the comment on the fallback promises. "Treat it as X when unsure" is a common
