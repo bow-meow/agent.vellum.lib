@@ -86,6 +86,10 @@
   describes and refreshed only when that record is saved: a change that reaches it through another
   record's path (a member deleted, moved or reassigned elsewhere) leaves it stale. List every path that
   changes its inputs and check each one refreshes the cache or publishes the change.
+- State a device or outside source reported (a version, a model, a last reading), kept on a record
+  whose address, owner or protocol can be edited: an edit that points the record at another device
+  must clear it, or the new device is judged by the old one's data. This matters most when a blank
+  report is ignored instead of clearing the value.
 - A local copy of an entity rebuilt after a write from the request rather than the reply: check every
   derived field (counts, totals, flags) is recomputed or cleared with the fields the write changed. One
   carried over from before the write contradicts its neighbours.

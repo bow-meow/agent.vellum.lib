@@ -43,6 +43,9 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   ("nothing is lost", "a growing backlog means the reader stopped") without tracing each fact through
   the code that decides it: support acts on it. List each fact with the code that makes it true,
   including the settings and failure paths that make it false, before proposing the text.
+- A slow path made to return at once (fail fast, fall back without waiting, skip) for callers that
+  used to wait on it: a log line that fired once per wait now fires on every call, and repeats as long
+  as the condition lasts. Log once per occurrence of the condition and drop the repeats to debug.
 - A dirty-read hint (`NOLOCK`, `READ UNCOMMITTED`) added to a query because its sibling queries carry
   one: it trades blocking for uncommitted reads and, when a scan meets concurrent page splits, skipped
   or doubled rows. Suggest it only after naming a writer to that table that holds wide or long locks,
