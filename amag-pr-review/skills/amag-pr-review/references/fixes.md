@@ -64,6 +64,9 @@ judging an applied one. Each line below comes from a fix of ours that later turn
 - A value, reason code or flag renamed to name one case when the condition that produces it still
   covers more: every other case now reports under the narrower name. Narrow the condition in the same
   fix, giving the other cases their own value, or keep a name as broad as the condition.
+- A label, title or text key changed to name something new while the text shown with it (its
+  subtitle, description, tooltip or help line) is left alone: the pair now describes two different
+  things. Check every text displayed beside the one changed, and change it in the same fix.
 - Several kinds of message sent through one shared rate limit (a once-a-minute log throttle) to stop
   a frequent one flooding: the frequent kind uses up the window and hides a rarer, more important one,
   and a suppressed count written only when the next message gets through is lost if none follows.

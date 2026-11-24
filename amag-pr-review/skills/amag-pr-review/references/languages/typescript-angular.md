@@ -5,6 +5,11 @@
   `providedIn: 'root'` service that subscribes in its constructor holds the subscription for the
   whole session: every page that injects the service starts the stream's load, and a source that
   refreshes only while observed keeps refreshing on every page. Subscribe in the component that needs it.
+- A component subscribing to a shared stream (`share`, `shareReplay`, a service's cached observable)
+  that a shorter-lived component also subscribes to, such as a menu and the routed page below it: if
+  the source ends when any one subscriber leaves (a `finalize` placed after the share, a teardown that
+  completes it), the longer-lived one stops updating with no error. Check how the source ends, and that
+  a subscriber outliving the others re-subscribes and re-reads what it missed meanwhile.
 - `any` or non-null assertions `!` hiding real nulls.
 - A test reaching a class's private members by `as unknown as` a hand-written interface: a renamed
   member still compiles and fails only at runtime. Bracket access (`obj['_field']`) is type-checked.

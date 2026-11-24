@@ -30,6 +30,8 @@
 - A failed call's result coalesced to an empty value (`?? []`, `?? {}`, `or []`) where the code then
   acts on the contents: a count, a confirmation or a "nothing to do" branch reports the failure as
   "none", and the action that follows still runs. Check that a failure stops the flow or shows as one.
+  The same holds before the call returns: a count or "no items" text bound to a collection that starts
+  empty reads as none while it loads. Show it only once a load has succeeded.
 - A map or set that collects problems to report, keyed without the field that tells two of them apart
   (the file, owner or instance): a later `set` overwrites an earlier one and only the last is
   reported. Check every write to it uses the same full key.
