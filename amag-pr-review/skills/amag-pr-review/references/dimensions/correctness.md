@@ -12,6 +12,11 @@
   only some of what the action destroys (one database of the set it drops, one file of a folder it
   clears): check it covers every object the action touches, read from the code that does the destroying.
 - Null / empty / default handling on new inputs and on values from DB, NATS, config and files.
+- A comparison whose parser orders what it can't parse rather than rejecting it (a version, date or
+  code where a malformed value sorts first or last): check every operand is shape-checked, not only
+  the one the change controls. A value from another system (a device, a message, a file) is often
+  trusted because today's producer formats it; if that drifts, the result is a confident wrong answer,
+  not an error.
 - A uniqueness or count check over a mapped value where the mapping can fail to a shared sentinel
   (null, a default, 0): every unparsable input becomes the same value, so several bad inputs also
   report a duplicate that isn't there. Check the check runs only over the values that mapped.
