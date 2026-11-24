@@ -13,6 +13,9 @@ Races are subtle: name the exact interleaving (thread/request/message A does X, 
     operation" field, telling a host "busy" then "idle"): two overlapping runs let the first to finish
     clear the second's state. Needs a count, a per-run key, or proof the runs can't overlap. This
     applies to single-threaded JS too, where overlapping `async` calls interleave at every `await`.
+  - A "last good" or fallback copy that every overlapping read overwrites when it finishes: a slow read
+    begun before a write can finish after a newer one and put the pre-write data back. A guard on the
+    main cache (a version check) doesn't cover the fallback; stamp each result and only move forward.
   - A handler for queued events (a message, timer or COM event) re-entered on its own thread: a call
     inside it that pumps messages (a modal loop, a UI or "process pending events" helper, a COM call or
     managed wait on a single-threaded apartment) can dispatch the next event into it mid-run, which

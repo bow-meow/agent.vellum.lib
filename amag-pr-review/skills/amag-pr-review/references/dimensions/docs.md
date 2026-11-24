@@ -17,6 +17,9 @@ check each claim against the code wherever it lives, not only the code next to i
 - Doc comments promising a property the body doesn't provide: de-duplicated, ordered, thread-safe,
   "only for diagnostics" on a helper whose result now gates an action, an overload's exception list
   shorter than the one it delegates to.
+- A doc comment several paragraphs long on a short member, narrating its design or timing reasons:
+  check the comment rules in the repo's guides (at the root and in each touched directory), and move
+  each reason next to the line it explains.
 - Lifecycle descriptions (what is recorded or cleaned up on success, failure, cancel): trace each
   write path for each outcome and compare.
 
