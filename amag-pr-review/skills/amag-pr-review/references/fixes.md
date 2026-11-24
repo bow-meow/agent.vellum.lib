@@ -100,3 +100,7 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   thread abort) now lands before the rest of teardown, which can hang on a heap, loader or runtime
   lock the dead thread held; leaving the thread running instead lets it call into objects freed
   later. Signal and wait early, and keep any forced kill where the old sequence had it.
+- A missing-test finding answered by extracting part of the logic into a small helper and testing
+  only the helper: the unit the finding named (the handler that calls it, the state it keeps, the
+  merge with data loaded later) stays untested, and the helper's tests still pass with the call
+  removed. Drive the unit the finding names, or leave the finding open.
