@@ -58,6 +58,9 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   callback so an unexpected fault becomes fatal or visible: it also takes every recoverable error from
   the callback's other work, which then gets the fatal treatment (a stopped timer, a restart). Catch the
   recoverable types around each step that can raise them, and leave the outer handler for real faults.
+- A value, reason code or flag renamed to name one case when the condition that produces it still
+  covers more: every other case now reports under the narrower name. Narrow the condition in the same
+  fix, giving the other cases their own value, or keep a name as broad as the condition.
 - Several kinds of message sent through one shared rate limit (a once-a-minute log throttle) to stop
   a frequent one flooding: the frequent kind uses up the window and hides a rarer, more important one,
   and a suppressed count written only when the next message gets through is lost if none follows.
@@ -66,6 +69,10 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   path the finding named, while sibling paths that gather the same kind of evidence (another branch,
   an exemption set, a second lookup) keep the old, wider unit: the stand-in the finding caught
   survives one branch over. Find every path that collects that evidence and give each the new unit.
+- A guard added to the one value the finding named when sibling values beside it are fed and fail
+  the same way (several counts or flags read from sources that each emit an empty result on a failed
+  load): the siblings keep the defect, and the finding reads as closed. List every value fed by that
+  kind of source and guard each, or say why one differs.
 - A field (a location, an owner) added to the key of some writes into a map or set used to report or
   dedupe, while other writes to it keep the old key: entries that differ only in that field overwrite
   each other, and all but the last report disappear. Give every write the same full key.

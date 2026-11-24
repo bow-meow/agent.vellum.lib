@@ -103,7 +103,12 @@
   single iteration, and what happens to the work and its log line if a harder cut follows.
 - Units and conversions: time zones, UTC vs local, milliseconds vs seconds, signed/unsigned.
 - Culture and case: string comparisons that should be ordinal / case-insensitive, parsing that depends
-  on the current culture.
+  on the current culture. A gate that classifies a key or name with one case rule while another consumer
+  of the same key uses the other: a key spelled in the other case skips the gate yet still matches
+  downstream. Compare every comparer the key meets, and check the gate rejects what it doesn't classify.
+- A size or length limit stated for one form of the input (the raw file, decoded text) checked against
+  another (a wrapped, encoded or headered form), or before the form is known: the same content passes in
+  one form and fails in the other. Check which form each check of the limit sees.
 - Loops over a reader that fetches rows in batches (bulk/multi-row recordsets, paged result iterators):
   check the advance call moves one row, not one batch. A base-class "next" can skip the rest of the
   fetched batch, so only the first row of each batch is processed. Open the reader type to confirm.

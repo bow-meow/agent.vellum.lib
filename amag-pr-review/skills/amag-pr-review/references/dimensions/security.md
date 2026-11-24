@@ -9,7 +9,9 @@ This is an access-control product: authorization mistakes are the worst class of
   party chooses (client or host names, remote fields, file contents) written to a terminal or log
   without stripping control characters, which can rewrite what an operator sees at a prompt.
 - Input from panels, network or files trusted without validation: lengths, ranges, enum values,
-  deserialisation of untrusted data into arbitrary types.
+  deserialisation of untrusted data into arbitrary types. A size the sender declares (a length header,
+  stored object metadata) checked as the limit while the body itself is read without a cap: the sender
+  declares small and sends large. Check the read is capped, or that the check only claims to be a fast path.
 - Secrets: credentials, keys or tokens in code, config committed to the repo, or logs.
 - A private key or seed loaded or decrypted only to derive something public (its public key, a
   fingerprint): get the public value from where it's stored or published, so that path never holds the secret.
