@@ -11,6 +11,10 @@
   other writer of the same model (a save, a copy, a collapsed or unrendered view) skips it. Apply it
   where the value is written (the change handler, the load, the save), or derive it with `computed`.
 - Race between overlapping HTTP requests (use `switchMap` for search-as-you-type).
+- An `async ngOnInit` (or other lifecycle hook) that sets fields after an `await`: Angular doesn't
+  wait for it, so the template, its submit button and Enter act on the unset values first. Check what
+  a submit handler or enabling getter reads before the await resolves; pass the data in already
+  loaded, or gate the action on a loaded flag.
 - `innerHTML` / `bypassSecurityTrust*` with untrusted data.
 - Unhandled promise rejections, including one an added `await` now passes up to a caller with no
   `catch` (follow it to the event handler: what the user sees, what state is left), and an added

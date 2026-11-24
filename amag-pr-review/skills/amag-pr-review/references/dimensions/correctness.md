@@ -55,8 +55,10 @@
   when the next message gets through is never written if none follows.
 - A new mode or kind of work run through existing shared code (a run that can't be resumed, a
   different job shown in an existing progress view): list every message, hint, label and summary that
-  code prints and check each still reads right for the new kind. Sibling hint paths often get the new
-  flag in one place and keep the old advice in another.
+  code prints and check each still reads right for the new kind, including the values it interpolates:
+  a field that held a readable name for the old kind can hold an internal key for the new one, where a
+  display name exists. Sibling hint paths often get the new flag in one place and keep the old advice
+  in another.
 - A confirmation before a destructive or hard-to-undo action: its default should be the safe answer,
   and keystrokes buffered while earlier work ran must not answer it. Compare with the change's other
   prompts.
