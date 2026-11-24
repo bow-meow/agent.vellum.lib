@@ -104,3 +104,7 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   only the helper: the unit the finding named (the handler that calls it, the state it keeps, the
   merge with data loaded later) stays untested, and the helper's tests still pass with the call
   removed. Drive the unit the finding names, or leave the finding open.
+- A fix that brings a risky behaviour of its own (ordering between overlapping requests, a queue held
+  and replayed after a reply, a retry, a generation or state flag) with no test beside it: once
+  applied nothing reviews it again, and a slip fails silently. Name, as part of the fix, the test that
+  fails without it, or say in one line why the behaviour is not a risk.
