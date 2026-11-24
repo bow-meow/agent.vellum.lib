@@ -1,7 +1,10 @@
 # TypeScript / Angular
 
 ## Look for
-- Subscriptions without `takeUntil`/`async` pipe/`DestroyRef` → leaks on component destroy.
+- Subscriptions without `takeUntil`/`async` pipe/`DestroyRef` → leaks on component destroy. A
+  `providedIn: 'root'` service that subscribes in its constructor holds the subscription for the
+  whole session: every page that injects the service starts the stream's load, and a source that
+  refreshes only while observed keeps refreshing on every page. Subscribe in the component that needs it.
 - `any` or non-null assertions `!` hiding real nulls.
 - A test reaching a class's private members by `as unknown as` a hand-written interface: a renamed
   member still compiles and fails only at runtime. Bracket access (`obj['_field']`) is type-checked.

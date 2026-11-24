@@ -24,6 +24,12 @@
   matches or allow-lists collected per file, module or request, then tested per form, record or caller
   inside it): one item's entry excuses another's, and the check passes when it should fail. Check
   each item is tested only against entries from its own unit, on every branch that builds such a set.
+- Shared code that tells two kinds of caller apart by whether an optional field is set (a row with a
+  MAC address is a device, otherwise a reader): a blank value of that field in the first kind takes
+  the second kind's branch. Have each caller pass in which it is.
+- A failed call's result coalesced to an empty value (`?? []`, `?? {}`, `or []`) where the code then
+  acts on the contents: a count, a confirmation or a "nothing to do" branch reports the failure as
+  "none", and the action that follows still runs. Check that a failure stops the flow or shows as one.
 - A map or set that collects problems to report, keyed without the field that tells two of them apart
   (the file, owner or instance): a later `set` overwrites an earlier one and only the last is
   reported. Check every write to it uses the same full key.

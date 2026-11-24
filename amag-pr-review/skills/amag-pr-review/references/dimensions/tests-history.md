@@ -41,6 +41,10 @@ code and wiring. Size decides nothing: one line changing how money rounds is a r
   - An absence assertion (no element, row, key or log line) that looks for a name or id only the
     removed code produced: nothing renders it any more, so it passes whatever comes back under a new
     name. Ask for a positive assertion of what is there now, or for the check to go.
+  - An absence assertion whose test data never reaches the code that would produce the thing (an
+    empty field sends the view down a placeholder branch, so the renderer under test never runs):
+    it passes whatever that code does. Check the setup reaches it, or that the test says the check
+    proves nothing there.
   - A test of a failure the change guards against that only reaches its mild form (slowed, not
     stuck; short of a deadline, not across it), or that enters by an internal call where the system
     enters another way (calling a stop method directly instead of the real shutdown path). It passes
@@ -52,6 +56,10 @@ code and wiring. Size decides nothing: one line changing how money rounds is a r
     records qualify, its own formula for an expected value) instead of calling it: compare the two on
     the inputs they treat differently (several matching rows, nulls, values past a length limit). A
     copy that disagrees fails on some data, or picks inputs the real code would reject.
+- **A new test against the repo's written test rules**: read the testing section of the guides
+  (CLAUDE.md, a contributing guide) at the root and in the test's directories, and check the test
+  follows them (a rule asking for plain function tests with no mocks, and the test stands up a DI
+  container with stand-in services).
 - **Shared fixture setup** (a base class, an assembly-wide setup): a requirement the change adds there
   (a seeded record, a permission level, a running service) now fails every fixture that inherits it,
   including ones that never use it. Move the requirement to the fixtures that need it.

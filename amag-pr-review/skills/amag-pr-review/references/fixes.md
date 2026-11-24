@@ -115,3 +115,13 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   and replayed after a reply, a retry, a generation or state flag) with no test beside it: once
   applied nothing reviews it again, and a slip fails silently. Name, as part of the fix, the test that
   fails without it, or say in one line why the behaviour is not a risk.
+- A function's failure result changed from a fallback (a cached copy, a default) to `undefined` or
+  `null` to fix the one caller the finding named: a caller that coalesces it to an empty value
+  (`?? []`, `?? {}`, `or []`) now reads a failure as "there are none", and a count or confirmation
+  built on it tells the user nothing is affected while the action still runs. List every caller and
+  what each does with the new failure result, and fix them in the same change.
+- Work moved into a shared, application-lifetime object (a singleton, a root-provided service) by
+  subscribing in its constructor to a stream that loads data: every consumer of that object now
+  starts the load and waits on it, and the subscription never ends, so a source that refreshes only
+  while it has subscribers keeps refreshing everywhere. Keep the subscription in the consumer that
+  needs the data, scoped to its lifetime, and pass the result in.
