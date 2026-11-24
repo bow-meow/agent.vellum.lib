@@ -31,6 +31,9 @@
   absent, a value it trims or ignores) but runs only on some paths, such as only while the field is
   required: elsewhere the input passes, the server drops it and still reports success, so the user
   thinks it was saved. Check the guard covers every path the server's treatment applies to.
+  The same drift when the client decides by a different signal than the server: a file's name or
+  extension where the server reads its content. A file the server would accept is refused, and a
+  renamed one takes the wrong path. Check the client tests what the server tests.
 - "Unknown" outcomes: a lookup that times out, a read caught by `catch`, an empty result. Find what the
   code falls back to, follow that value to the final output (the URL, message or row it ends up in) and
   check it does what the comment on the fallback promises. "Treat it as X when unsure" is a common

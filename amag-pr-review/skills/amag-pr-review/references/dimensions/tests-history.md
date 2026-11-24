@@ -14,7 +14,9 @@ code and wiring. Size decides nothing: one line changing how money rounds is a r
 ## Look for
 - **Coverage of risks**: each risky behaviour the change adds or alters has a test that would fail if
   it regressed. Name the behaviour and which kind of risk it is. A no-risk behaviour without a test
-  is not a finding.
+  is not a finding. Tested helpers don't cover the branch that combines them: when the decision the
+  change exists for (which kind of input this is, which flow it takes) sits inline in a component or
+  handler, it is untested however well the helpers it calls are.
 - **Tests the change deletes or rewrites**: list what each removed assertion checked, and whether the
   code still does it (a value carried forward on save, a flag kept). A kept risky behaviour whose only
   test went with the change can now regress silently.
