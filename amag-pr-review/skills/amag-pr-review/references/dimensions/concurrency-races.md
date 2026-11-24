@@ -34,6 +34,10 @@ Races are subtle: name the exact interleaving (thread/request/message A does X, 
     A follow-up that must run once a side effect has started (a restart hint, a cleanup, a state
     write) placed after the awaited call is skipped when cancellation lands mid-call; it belongs in
     a `finally` keyed on "started".
+  - A stop that hands work to another owner (a shutdown whose work a restart resumes, a lease another
+    instance takes over): the stopping side's waits return cancelled, and code after them that records
+    an outcome (a health or status flag, an alert, an audit row) reports a failure for work still
+    running under the new owner. Check what each report after a wait does when the stop ended it.
   - A bounded queue whose producer waits while it is full: list what else the producer thread does
     (request or event handling, a watchdog or heartbeat, a message pump). A consumer that only slows
     paces the producer, which may be intended. One that stalls (a lock, a call that never returns)
@@ -57,7 +61,10 @@ Races are subtle: name the exact interleaving (thread/request/message A does X, 
   - Cache refreshed from the DB while a write is in flight → stale cache that never corrects.
 - **Distributed (server ↔ panel over NATS)**
   - Messages arriving out of order or twice: is the handler idempotent? Does it rely on order?
-  - Request/reply timeouts: the reply arriving after the caller gave up and moved on.
+  - Request/reply timeouts: the reply arriving after the caller gave up and moved on. Add up every wait
+    on the reply path (each step's own timeout, a cleanup awaited on a refusal branch) against the
+    caller's deadline: a fixed per-step timeout overruns once earlier steps spent part of it, and work
+    started after the caller gave up runs while the caller reports failure.
   - State changes racing a panel reconnect, re-onboard, or controller refresh.
 - **Filesystem / process**: TOCTOU (exists-then-open), two service instances starting at once, temp
   files with fixed names.

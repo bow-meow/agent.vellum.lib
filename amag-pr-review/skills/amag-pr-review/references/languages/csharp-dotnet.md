@@ -23,6 +23,8 @@
 - Nullable reference annotations ignored with `!` on values that can be null, or on values that can't only
   because of a separate check the compiler can't see (a `(T?, Error?)` tuple whose error half was checked,
   then `value!` at each call site): a result type with `[MemberNotNullWhen]` makes the compiler prove it.
+  A lookup in a shared cache that an earlier check found (`cache.Get(id)!`) is the first kind: the entry
+  can be removed or change state between the check and the lookup.
 - WinForms: UI updated from a background thread without `Invoke`.
 
 ## Team history

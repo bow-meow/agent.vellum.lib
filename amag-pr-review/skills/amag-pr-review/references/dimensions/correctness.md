@@ -53,8 +53,10 @@
   Compare with sibling probes in the change that do report "not checked".
 - Error handling: swallowed exceptions, broad `catch` that hides a real failure, errors that leave state
   half-written (DB row written, cache not; message acked, work not done; an in-memory copy updated
-  before the write it mirrors, so a failed write leaves memory claiming saved), missing rollback, error paths
-  that surface as an unhandled 500 or crash a service. A wrapper that acts on a thrown error (retry,
+  before the write it mirrors, so a failed write leaves memory claiming saved), missing rollback, a
+  rollback or cleanup that only logs when it fails while recovery treats what it leaves as live work, a
+  catch-all that marks items failed in memory without the save, audit or cancel the normal path does for
+  the same outcome, error paths that surface as an unhandled 500 or crash a service. A wrapper that acts on a thrown error (retry,
   reclassify, interrupt detection) never fires around a call that returns its failure as a value
   (`{ error }`, `undefined`, a status code): check what the wrapped call does on failure, and that
   every step of the protected sequence goes through the wrapper.
@@ -102,6 +104,8 @@
 - Contract compatibility:
   - NATS messages / DTOs / generated API types: renamed or removed fields, changed types, enum values
     reordered or renumbered, changed defaults. Check old panel ↔ new server and new panel ↔ old server.
+    New values and newly included items count too (a new reason code, entries a list now carries):
+    check each consumer's lookup maps and aggregations (a summary needing one shared reason, a total).
   - DB schema: columns renamed/removed while old code or procs still use them; upgrade path from an
     existing customer install.
   - Public method signatures or behaviour relied on by other callers (grep callers in the worktree).
@@ -133,6 +137,15 @@
   step fails: the failure is often exactly when it's needed, such as a step with no transaction that
   commits part of its work and then errors. Check the gate's premise ("a failure means the database is
   down") against what the failure path really does, retries and reconnects included.
+- A read that falls back to a last-good, cached or empty copy when the live read is slow or fails,
+  written for a display: check every caller. One that acts on the value (what to install, send, charge
+  or delete) must know it got the fallback, and refuse rather than act on stale or empty data.
+- A durable record of a state change (an audit row, an outbox message, a notification) written at a
+  later milestone than the save of that state: a restart in between resumes from the saved state and
+  never writes it. It belongs with the save, marked written so a resume doesn't repeat it.
+- Dependents skipped because the step they wait on failed (children, later stages): check the reason
+  they get when that step was never attempted (a deadline passed, a stop) rather than failed; a fixed
+  "aborted" mislabels them.
 - An orphan check or reconcile that only asks whether a record still exists: also check it still
   belongs to this owner (machine, tenant, shard, worker). A record moved elsewhere often notifies only
   its new owner, so the old owner's copy is the same orphan.
