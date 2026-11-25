@@ -119,7 +119,9 @@
     new kind of record in a shared store or key space): check each consumer's lookup maps and
     aggregations (a summary needing one shared reason, a total), and each existing path that takes an
     item from there by key and acts on it (sends, installs, deletes) assuming the old kinds: it now
-    accepts the new kind unless it checks.
+    accepts the new kind unless it checks. The reverse too: each existing intake path (an upload, an
+    import) that files content under an old kind's key now receives the new kind's content, and stores
+    it there unless it checks the content's own type, not just that it is well formed.
   - DB schema: columns renamed/removed while old code or procs still use them; upgrade path from an
     existing customer install.
   - Public method signatures or behaviour relied on by other callers (grep callers in the worktree).
