@@ -62,6 +62,13 @@
   "nothing in the way", a classifying lookup that fails drops items into the harsher branch, and a
   success that records nothing leaves the next unattended run choosing the destructive default.
   Compare with sibling probes in the change that do report "not checked".
+- A filter or mapper that rewrites another component's message into a new shape, reading a field from
+  where the producer is assumed to put it: check the producer's existing messages of the same family for
+  where that field really lives, and what the rewrite emits when the field is missing or the payload
+  doesn't parse. An empty or default replacement throws the original away; pass it on unchanged and log it.
+- A reply whose error text the caller reads as a code (it matches the message against known values):
+  check every error path returns one of the codes. A raw parse error or transport timeout passed straight
+  through reaches the caller as an unknown code and is filed as the wrong kind of failure.
 - Error handling: swallowed exceptions, broad `catch` that hides a real failure, errors that leave state
   half-written (DB row written, cache not; message acked, work not done; an in-memory copy updated
   before the write it mirrors, so a failed write leaves memory claiming saved), missing rollback, a
