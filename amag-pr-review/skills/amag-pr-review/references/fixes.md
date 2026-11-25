@@ -136,3 +136,8 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   leaves out, or that the original has gained since, makes the two sides rate the same input
   differently. Copy it from the original's current code guard by guard, and bring the original's test
   cases across with it.
+- A check that tells a damaged file of a known format from foreign input by one exact marker (the
+  first line holding a well-formed digest, a magic prefix), so the damaged file is refused and the
+  rest passed on: damage that hits the marker (a byte-order mark, an extra field, a changed line
+  ending) makes the damaged file look foreign, and it takes the path the fix meant to close. Detect the
+  format by any of its independent parts (the marker, or the header after it) and refuse a partial match.

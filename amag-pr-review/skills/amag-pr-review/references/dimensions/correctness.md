@@ -17,6 +17,14 @@
   the one the change controls. A value from another system (a device, a message, a file) is often
   trusted because today's producer formats it; if that drifts, the result is a confident wrong answer,
   not an error.
+- A shape check on an identifier or version that accepts several spellings of one value (leading
+  zeros, case, a trailing separator) where it is then stored as a key or matched as a string: one
+  value gets two entries, and exact matches against the other spelling fail. Accept only the
+  canonical spelling, or store it normalised.
+- Input sorted into kinds by one exact marker (a first line, a magic prefix) to route it (refuse a
+  damaged file of our format, pass anything else on): damage to the marker itself (a byte-order mark,
+  an extra field, a changed line ending) sends the damaged file down the other route. Check the
+  format's other structure too, and treat a partial match as damaged.
 - A uniqueness or count check over a mapped value where the mapping can fail to a shared sentinel
   (null, a default, 0): every unparsable input becomes the same value, so several bad inputs also
   report a duplicate that isn't there. Check the check runs only over the values that mapped.
@@ -107,8 +115,11 @@
 - Contract compatibility:
   - NATS messages / DTOs / generated API types: renamed or removed fields, changed types, enum values
     reordered or renumbered, changed defaults. Check old panel ↔ new server and new panel ↔ old server.
-    New values and newly included items count too (a new reason code, entries a list now carries):
-    check each consumer's lookup maps and aggregations (a summary needing one shared reason, a total).
+    New values and newly included items count too (a new reason code, entries a list now carries, a
+    new kind of record in a shared store or key space): check each consumer's lookup maps and
+    aggregations (a summary needing one shared reason, a total), and each existing path that takes an
+    item from there by key and acts on it (sends, installs, deletes) assuming the old kinds: it now
+    accepts the new kind unless it checks.
   - DB schema: columns renamed/removed while old code or procs still use them; upgrade path from an
     existing customer install.
   - Public method signatures or behaviour relied on by other callers (grep callers in the worktree).
