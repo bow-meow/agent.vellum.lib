@@ -141,3 +141,14 @@ judging an applied one. Each line below comes from a fix of ours that later turn
   rest passed on: damage that hits the marker (a byte-order mark, an extra field, a changed line
   ending) makes the damaged file look foreign, and it takes the path the fix meant to close. Detect the
   format by any of its independent parts (the marker, or the header after it) and refuse a partial match.
+- A cleanup added to a failure path that deletes or overwrites a shared resource by its name or key (a
+  staged upload, a temp object, a lock or cache entry) that a retry or a second request can recreate
+  under the same name while this one runs: the cleanup destroys the replacement. Delete only after
+  checking it is still the instance this operation read (an id, version or etag), on every path that
+  deletes it.
+- A failure captured to rethrow later, so a producer the failing call sits inside can finish (an error
+  recorded by a stream, callback or worker): the rethrow lands where the surrounding catches were
+  written for the call's own exception types, so it escapes their cleanup and answer, and the
+  object's other members that still reach the failed resource (a flush, a dispose) fail the old way.
+  Catch its type where it is rethrown with the same cleanup and answer, and quiet every member that
+  touches the resource once it has failed.

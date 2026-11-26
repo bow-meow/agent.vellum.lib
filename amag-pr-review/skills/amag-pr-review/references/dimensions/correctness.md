@@ -148,7 +148,9 @@
 - A time limit checked only between iterations, where one iteration can block without limit (a query
   with no timeout, a blocking call): the iteration in flight runs past the limit. Name what bounds a
   single iteration, and what happens to the work and its log line if a harder cut follows.
-- Units and conversions: time zones, UTC vs local, milliseconds vs seconds, signed/unsigned.
+- Units and conversions: time zones, UTC vs local, milliseconds vs seconds, signed/unsigned. An
+  unsigned size or count from outside (a header, metadata, a file) cast to a signed type for a limit
+  check wraps negative past the signed maximum and passes `value > limit`; compare in the unsigned type.
 - Culture and case: string comparisons that should be ordinal / case-insensitive, parsing that depends
   on the current culture. A gate that classifies a key or name with one case rule while another consumer
   of the same key uses the other: a key spelled in the other case skips the gate yet still matches

@@ -65,6 +65,10 @@ Races are subtle: name the exact interleaving (thread/request/message A does X, 
     on the reply path (each step's own timeout, a cleanup awaited on a refusal branch) against the
     caller's deadline: a fixed per-step timeout overruns once earlier steps spent part of it, and work
     started after the caller gave up runs while the caller reports failure.
+  - A delete or overwrite of a shared resource by a name or key that repeats (an upload slot named by
+    product and version, a fixed temp key): a request that outlives its caller's timeout runs on while
+    the retry recreates the resource under that name, and the first request's cleanup or success path
+    deletes the retry's copy. Look for a check that it is still the instance this request read.
   - State changes racing a panel reconnect, re-onboard, or controller refresh.
 - **Filesystem / process**: TOCTOU (exists-then-open), two service instances starting at once, temp
   files with fixed names.
