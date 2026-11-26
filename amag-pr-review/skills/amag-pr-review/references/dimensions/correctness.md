@@ -78,6 +78,14 @@
   reclassify, interrupt detection) never fires around a call that returns its failure as a value
   (`{ error }`, `undefined`, a status code): check what the wrapped call does on failure, and that
   every step of the protected sequence goes through the wrapper.
+- A destination (stream, callback, handler) that throws to stop a library's read or download partway:
+  check the library tolerates being abandoned. One that fills a bounded internal queue from a background
+  loop can wait forever on dispose for the queued items no one will read, or stall a shared connection.
+  Open its read loop; a safer stop is a flag plus discarding the rest, or a cancellation token it honours.
+- A change that adds cleanup (discard, delete, rollback) for one failure of a call: list the call's
+  other failures, including ones the code already let through before the change, and check each reaches
+  the same cleanup or has a reason not to. One that falls to an outer catch that only logs leaves the
+  thing behind.
 - A rate limit or throttle on logging or alerts shared by several kinds of message: a frequent kind
   can hide a rarer, more important one for the whole window, and a "N suppressed" count written only
   when the next message gets through is never written if none follows.
