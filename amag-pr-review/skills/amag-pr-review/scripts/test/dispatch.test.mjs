@@ -39,24 +39,25 @@ test('ticket-fit carries the claims checklist and both reviewers\' rules, except
   assert.equal(extraRules('correctness'), 'none');
 });
 
-test('roster runs docs only with enough changed prose, and as before when prose was not counted', () => {
+test('roster runs docs at high only, with enough changed prose, and as before when prose was not counted', () => {
   const base = { changed: 500, ticket: false, prDescription: false };
-  assert.ok(!names(roster({ ...base, prose: PROSE_REVIEWER_MIN - 1 })).includes('docs'));
-  assert.ok(names(roster({ ...base, prose: PROSE_REVIEWER_MIN })).includes('docs'));
-  assert.ok(names(roster(base)).includes('docs'));
+  assert.ok(!names(roster({ ...base, prose: PROSE_REVIEWER_MIN - 1 }, 0, 'high')).includes('docs'));
+  assert.ok(names(roster({ ...base, prose: PROSE_REVIEWER_MIN }, 0, 'high')).includes('docs'));
+  assert.ok(names(roster(base, 0, 'high')).includes('docs'));
+  for (const level of ['low', 'medium']) assert.ok(!names(roster({ ...base, prose: 500 }, 0, level)).includes('docs'), level);
 });
 
 test('roster from 200 to 1000 adds sql and styles only when they apply', () => {
   const base = { changed: 200, ticket: false, prDescription: false, sql: false, styles: 99 };
   assert.deepEqual(names(roster(base)),
-    ['correctness', 'regression', 'concurrency-races', 'resources-performance', 'tests-design', 'security', 'docs']);
-  const all = names(roster({ ...base, changed: 1000, ticket: true, prDescription: true, sql: true, styles: 100 }));
+    ['correctness', 'regression', 'concurrency-races', 'resources-performance', 'tests-design', 'security']);
+  const all = names(roster({ ...base, changed: 1000, ticket: true, prDescription: true, sql: true, styles: 100 }, 0, 'high'));
   for (const r of ['sql', 'ticket-fit', 'styles', 'security', 'docs']) assert.ok(all.includes(r), r);
   assert.ok(!all.includes('claims'));
 });
 
 test('roster over 1000 runs the core set per chunk and ticket-fit, docs and styles once', () => {
-  const list = roster({ changed: 1001, ticket: true, prDescription: true, sql: true, styles: 150 }, 2);
+  const list = roster({ changed: 1001, ticket: true, prDescription: true, sql: true, styles: 150 }, 2, 'high');
   const n = names(list);
   for (const c of [1, 2]) for (const r of ['correctness', 'regression', 'concurrency-races', 'resources-performance', 'sql', 'tests-design', 'security'])
     assert.ok(n.includes(`${r}-${c}`), `${r}-${c}`);
@@ -223,11 +224,11 @@ function fileDiff(path, added) {
   return lines.join('\n');
 }
 
-function workDir({ mode = 'pr', changed = 50, diff, ticket = true, extra = {} } = {}) {
+function workDir({ mode = 'pr', changed = 50, diff, ticket = true, level, extra = {} } = {}) {
   const w = mkdtempSync(join(tmpdir(), 'dispatch-w-'));
   const wt = join(w, 'wt');
   writeFileSync(join(w, 'repos.json'), JSON.stringify({
-    mode, dryRun: false,
+    mode, dryRun: false, level,
     pr: mode === 'pr' ? { ws: 'amag-engineering', repo: 'symmetryclassic', id: 42, title: 'Add {{thing}}' } : null,
     ticketKey: 'SYM-9', ticketDir: null,
     repos: [{ name: 'symmetryclassic', ws: 'amag-engineering', repo: 'symmetryclassic', clone: wt, wt, dest: 'release/11.1.0', mb: 'abc', head: 'def', diff: join(w, 'context.diff') }],
@@ -265,7 +266,7 @@ test('reviewers fills a prompt per agent with every slot set and writes dispatch
 
 test('reviewers splits a diff over 1000 lines into chunks and points each chunk agent at its chunk', () => {
   const diff = ['a/one/A.cs', 'b/two/B.cs', 'c/three/C.cs'].map(p => fileDiff(p, 500)).join('\n') + '\n';
-  const w = workDir({ changed: 1500, diff, ticket: false });
+  const w = workDir({ changed: 1500, diff, ticket: false, level: 'high' });
   const out = reviewers(w, { skillDir: SKILL });
   assert.ok(readdirSync(join(w, 'chunks')).length >= 2);
   const c2 = out.find(o => o.agent === 'correctness-2');

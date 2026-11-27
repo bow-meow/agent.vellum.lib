@@ -29,7 +29,7 @@ test('low runs a quick reviewer beside regression, sql and ticket-fit, and nothi
 
 test('medium is the roster that ran before levels existed', () => {
   assert.deepEqual(names(roster(big, 0, 'medium')), names(roster(big)));
-  assert.ok(names(roster(big)).includes('tests-design') && names(roster(big)).includes('docs'));
+  assert.ok(names(roster(big)).includes('tests-design') && !names(roster(big)).includes('docs'));
 });
 
 test('high adds a failure-paths pass beside correctness, per chunk over 1000 lines, and under 200 lines', () => {

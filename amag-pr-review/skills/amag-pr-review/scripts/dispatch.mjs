@@ -87,7 +87,7 @@ export function fill(template, values) {
 
 // prose undefined (a context.json from before it was counted) runs docs as before.
 export function roster({ changed, ticket, prDescription, sql, styles, prose }, chunks = 0, level = null) {
-  const { lean, quick, secondPass } = levelOf(level);
+  const { lean, quick, secondPass, docs } = levelOf(level);
   const second = secondPass ? ['failure-paths'] : [];
   // ticket-fit checks the claims too when there is a ticket: both read the same texts, and over 23
   // logged reviews a separate claims agent found 2 issues no other reviewer did, for 1.7M tokens.
@@ -100,7 +100,7 @@ export function roster({ changed, ticket, prDescription, sql, styles, prose }, c
     : ['correctness', 'regression', ...second, 'concurrency-races', 'resources-performance', sql && 'sql', !lean && 'tests-design', 'security']
   ).filter(Boolean);
   // approach judges the design against the goal the ticket or PR description states; with neither it would guess.
-  if (!lean) once.push((ticket || prDescription) && 'approach',(prose ?? PROSE_REVIEWER_MIN) >= PROSE_REVIEWER_MIN && 'docs', (styles ?? 0) >= STYLES_REVIEWER_MIN && 'styles');
+  if (!lean) once.push((ticket || prDescription) && 'approach', docs && (prose ?? PROSE_REVIEWER_MIN) >= PROSE_REVIEWER_MIN && 'docs', (styles ?? 0) >= STYLES_REVIEWER_MIN && 'styles');
   const single = once.filter(Boolean).map(entry);
   if (changed <= LARGE) return [...perChunk.map(reviewer => ({ reviewer, chunk: null })), ...single];
   const out = [];
